@@ -16,3 +16,9 @@
 <img src="Output/Estrcutura de Projecto.png" width="50%"> </a>
 </body>
 </html>
+
+## Cálculo de la pobreza multidimensional
+
+### R
+
+<https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html>
