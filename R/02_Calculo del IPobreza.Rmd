@@ -167,7 +167,7 @@ rezago.educativo <- poblacion %>%
 
 **Se guarda la base de datos**
 ```{r}
-fwrite(rezago.educativo, paste0(here::here(), "/Output/Data/ic_rezedu22.csv"), row.names = F)
+#fwrite(rezago.educativo, paste0(here::here(), "/Output/Data/ic_rezedu22.csv"), row.names = F)
 save(rezago.educativo, file = paste0(here::here(), "/Output/Data/ic_rezedu22.RData"))
 gdata::keep(rezago.educativo, poblacion, sure = T)
 ```
@@ -176,8 +176,17 @@ gdata::keep(rezago.educativo, poblacion, sure = T)
 #### Indicador de carencia por acceso a los servicios de salud
 
 ```{r}
-load(file = paste0(here::here(), "/Data/trabajos.RData")) %>% 
+load(file = paste0(here::here(), "/Data/trabajos.RData")) 
 ```
+
+**Indicador de carencia por servicios de salud**  
+
+Se considera en situación de carencia por acceso a servicios de salud a la población que:    
+ 
+ 1. No se encuentra inscrita al Seguro Popular* o afiliada a alguna institución  por prestación laboral, contratación voluntaria o afiliación de un familiar por parentesco directo a recibir servicios médicos por alguna institución que los preste como: las instituciones de seguridad social (`IMSS`, `ISSSTE federal o estatal`, `Pemex`, `Ejército` o `Marina`), los servicios médicos privados, u otra institución médica.      
+ 
+ - Se reporta la población que respondió estar afiliado o inscrito al Seguro Popular, o que tiene derecho a los servicios del
+ Instituto de Salud para el Bienestar (`INSABI`), lo anterior de acuerdo con el cuestionario de la ENIGH 2022.    
 
 ```{r}
 ocupados <- trabajos %>%
@@ -202,21 +211,211 @@ ocupados <- trabajos %>%
                        value.var = c("tipo_trab", "ocupa"), 
                         sep = "", 
                          fill = 0) %>% 
-                 as.data.frame()
+                 as.data.frame() %>%
+                  mutate(
+                         # Identificación de la población trabajadora 
+                          # (toda la que reporta al menos un empleo en la base de trabajos)
+                         trab = 1
+                         ) %>%
+                   select(folioviv, foliohog, numren, trab,starts_with("tipo_trab"), starts_with("ocupa"))
 ```
 
 
-**Formato .RData**
+**Se guarda la base de datos**
+```{r}
+#fwrite(ocupados, paste0(here::here(), "/Output/Data/ocupados22.csv"), row.names = F)
+save(ocupados, file = paste0(here::here(), "/Output/Data/ocupados22.RData"))
+```
+
+
+**Indicador de carencia por acceso a los servicios de salud** 
 
 ```{r}
-save(concentradohogar, file = paste0(here::here(), "/Data/concentradohogar.RData"))
-save(gastoshogar, file = paste0(here::here(), "/Data/gastoshogar.RData"))
-save(gastospersona, file = paste0(here::here(), "/Data/gastospersona.RData"))
-save(hogares, file = paste0(here::here(), "/Data/hogares.RData"))
-save(ingresos, file = paste0(here::here(), "/Data/ingresos.RData"))
-save(poblacion, file = paste0(here::here(), "/Data/poblacion.RData"))
-save(trabajos, file = paste0(here::here(), "/Data/trabajos.RData"))
-save(viviendas, file = paste0(here::here(), "/Data/viviendas.RData"))
+salud <- poblacion %>% 
+          filter(!(parentesco >= 400 & parentesco <500 | parentesco>=700 & parentesco <800)) %>%
+           left_join(., ocupados, by = c("folioviv", "foliohog", "numren")) %>%
+            mutate(
+                   # PEA (personas de 16 años o más)
+                   pea = case_when(.$trab == 1 & (.$edad >= 16 & !is.na(.$edad)) ~ 1, # PEA: ocupada
+                                   (.$act_pnea1 == 1 | .$act_pnea2 == 1) & (.$edad >= 16 & !is.na(.$edad)) ~ 2, # PEA: desocupada
+                                    (.$edad >= 16 & !is.na(.$edad)) & 
+                                     ((.$act_pnea1 != 1 | is.na(.$act_pnea1)) & (.$act_pnea2 != 1 | is.na(.$act_pnea2))) & 
+                                      ((.$act_pnea1 >= 2 & .$act_pnea1 <= 6) | (.$act_pnea2 >= 2 & .$act_pnea2 <= 6)) ~ 0)) %>% # PNEA
+                  # Tipo de trabajo
+                  # Ocupación principal
+                  mutate(tipo_trab1 = case_when(.$pea %in% 1 ~ .$tipo_trab1, # Depende de un patrón, jefe o superior  
+                                                .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab1, # No depende de un jefe y recibe o tiene asignado un sueldo
+                                                 is.na(.$pea) ~ NA), # No depende de un jefe y no recibe o no tiene asignado un sueldo
+                         tipo_trab2 = case_when(.$pea %in% 1 ~ .$tipo_trab2, # Depende de un patrón, jefe o superior  
+                                                .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab2,  # No depende de un jefe y recibe o tiene asignado un sueldo
+                                                 is.na(.$pea) ~ NA)) %>% # No depende de un jefe y no recibe o no tiene asignado un sueldo
+                  # Servicios médicos prestaciones laborales
+                  mutate(
+                         # Ocupación principal
+                         smlab1 = case_when(.$ocupa1 == 1 & .$atemed == 1 & 
+                                            (.$inst_1 == 1 | .$inst_2 == 2 |  .$inst_3 == 3 |.$inst_4 == 4) & 
+                                             (.$inscr_1 == 1) ~ 1, # Con servicios médicos
+                                            .$ocupa1 == 1 ~ 0), # Sin servicios médicos
+                         # Ocupación secundaria
+                         smlab2 = case_when(.$ocupa2 == 1 & .$atemed == 1 & 
+                                             (.$inst_1 == 1 | .$inst_2 == 2 |.$inst_3 == 3 | .$inst_4 == 4) & 
+                                              (.$inscr_1 == 1) ~  1, # Con servicios médicos  
+                                            .$ocupa2 == 1 ~ 0), # Sin servicios médicos
+                          # Contratación voluntaria de servicios médicos
+                         smcv = case_when(.$atemed == 1 & 
+                                           (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
+                                             .$inscr_6 == 6 & (.$edad >= 12 & !is.na(.$edad)) ~  1, # Sí cuenta
+                                           (.$edad >= 12 & !is.na(.$edad)) ~ 0)) %>%  # No cuenta
+                  # Acceso directo a servicios de salud
+                  mutate(sa_dir = case_when(
+                                           # Ocupación principal
+                                           .$tipo_trab1 == 1 & (.$smlab1 == 1) ~ 1, # Con acceso
+                                           .$tipo_trab1 == 2 & (.$smlab1 == 1 | .$smcv == 1) ~ 1, # Con acceso
+                                           .$tipo_trab1 == 3 & (.$smlab1 == 1 | .$smcv == 1) ~ 1, # Con acceso
+                                           # Ocupación secundaria
+                                           .$tipo_trab2==1 & (.$smlab2 == 1) ~ 1, # Con acceso
+                                           .$tipo_trab2==2 & (.$smlab2 == 1 | .$smcv == 1) ~ 1, # Con acceso
+                                           .$tipo_trab2==3 & (.$smlab2 == 1 | .$smcv == 1 ) ~ 1, # Con acceso
+                                            TRUE ~0)) %>% # Sin acceso
+                  # Núcleos familiares
+                  mutate(
+                         par = case_when((.$parentesco >= 100 & .$parentesco < 200) ~ 1, # Jefe o jefa del hogar 
+                                         (.$parentesco >= 200 & .$parentesco < 300) ~ 2, # Cónyuge del  jefe/a 
+                                         (.$parentesco >= 300 & .$parentesco < 400) ~ 3, # Hijo del jefe/a 
+                                          .$parentesco == 601 ~ 4, # Padre o Madre del jefe/a
+                                          .$parentesco == 615 ~ 5, # Suegro del jefe/a
+                                          TRUE ~ 6), # Sin parentesco directo
+                         # Asimismo, se utilizará la información relativa a la asistencia a la escuela
+                         inas_esc = case_when(.$asis_esc == 1 ~ 0,   # Sí asiste
+                                              .$asis_esc == 2 ~ 1 )) %>% # No asiste
+                  # En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
+                  mutate(
+                         jef = case_when(.$par == 1 & .$sa_dir == 1 & 
+                                          (((.$inst_2 == 2 | .$inst_3 == 3) & .$inscr_6 == 6) & 
+                                           (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
+                                            (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
+                                              is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7))) ~ NA_real_,
+                                         .$par == 1 & .$sa_dir == 1 ~ 1),
+                          cony = case_when(.$par == 2 & .$sa_dir == 1 & 
+                                            (((.$inst_2 == 2 | .$inst_3 == 3) & .$inscr_6 == 6) &
+                                             (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
+                                              (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
+                                                is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7))) ~ NA_real_,
+                                           .$par == 2 & .$sa_dir == 1 ~ 1),
+                          hijo = case_when(.$par == 3 & .$sa_dir == 1 & 
+                                            (((.$inst_2==2 | .$inst_3==3) & .$inscr_6==6) & 
+                                             (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) & 
+                                              (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
+                                                is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7) )) ~ NA_real_,
+                                           .$par == 3 & .$sa_dir == 1 ~ 1)) %>%
+                           as.data.table() %>%
+                            group_by(folioviv, foliohog) %>%
+                             mutate(jef_sa = sum(jef, na.rm = TRUE), # Acceso directo a servicios de salud de la jefatura del hogar
+                                    cony_sa = sum(cony, na.rm = TRUE), # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
+                                    hijo_sa = sum(hijo, na.rm = TRUE)) %>% # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
+                              ungroup() %>%
+                  mutate(jef_sa = if_else(.$jef_sa > 0, 1, .$jef_sa),  # Acceso directo a servicios de salud de la jefatura del hogar
+                         cony_sa = if_else(.$cony_sa > 0, 1, .$cony_sa), # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
+                         hijo_sa = if_else(.$hijo_sa > 0, 1, .$hijo_sa), # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
+                         
+                         # Otros núcleos familiares: se identifica a la población con acceso a servicios de salud mediante otros núcleos familiares a través de la 
+                         # afiliación o inscripción a servicios de salud por algún familiar dentro o fuera del hogar, muerte del asegurado o por contratación propia;  
+                         s_salud = case_when(.$atemed == 1 & (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
+                                              (.$inscr_3 == 3| .$inscr_4 == 4 | .$inscr_6 == 6 | .$inscr_7 == 7) ~ 1, # Sí cuenta
+                                             !is.na(.$pop_insabi) & !is.na(.$atemed) ~ 0)) %>%  # No cuenta
+                  # Indicador de carencia por acceso a los servicios de salud
+                  mutate(ic_asalud = case_when(
+                                               # Parentesco directo: jefatura
+                                               .$sa_dir == 1 ~ 0, 
+                                               .$par == 1 & .$cony_sa == 1 ~ 0, # No presenta carencia
+                                               .$par == 1 & .$pea == 0 & .$hijo_sa == 1 ~ 0, # No presenta carencia
+                                               # Parentesco directo: cónyuge
+                                               .$par == 2 & .$jef_sa == 1 ~ 0, # No presenta carencia
+                                               .$par == 2 & .$pea == 0 & .$hijo_sa == 1 ~ 0, # No presenta carencia
+                                               # Parentesco directo: descendientes
+                                               .$par == 3 & .$edad < 16 & .$jef_sa == 1 ~ 0, # No presenta carencia
+                                               .$par == 3 & .$edad < 16 & .$cony_sa == 1 ~ 0, # No presenta carencia
+                                               .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$jef_sa == 1 ~ 0, # No presenta carencia
+                                               .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$cony_sa == 1 ~ 0, # No presenta carencia
+                                               # Parentesco directo: ascendientes
+                                               .$par == 4 & .$pea == 0 & .$jef_sa == 1 ~ 0, # No presenta carencia
+                                               .$par == 5 & .$pea == 0 & .$cony_sa == 1 ~ 0, # No presenta carencia
+                                               # Otros núcleos familiares
+                                               .$s_salud == 1 ~ 0, # No presenta carencia
+                                               # Acceso reportado
+                                               .$pop_insabi == 1 | (.$pop_insabi == 2 & .$atemed == 1 & 
+                                                (.$inst_1 == 1 | .$inst_2 == 2 | inst_3 == 3 | 
+                                                  .$inst_4 == 4 | .$inst_5 == 5 | .$inst_6 == 6)) | 
+                                                   .$segvol_2 == 2 ~ 0, # No presenta carencia
+                                               TRUE ~ 1
+                                               ), # Presenta carencia
+                         # Población con presencia de discapacidad, sea física o mental
+                         discap = case_when(.$disc_camin >= "1" & .$disc_camin<= "2" ~1, # Con presencia de discapacidad
+                                            .$disc_ver >= "1" & .$disc_ver <= "2" ~1, # Con presencia de discapacidad
+                                            .$disc_brazo >= "1" & .$disc_brazo <= "2" ~1, # Con presencia de discapacidad
+                                            .$disc_apren >= "1" & .$disc_apren <= "2" ~1, # Con presencia de discapacidad  
+                                            .$disc_oir >= "1" & .$disc_oir <= "2" ~1, # Con presencia de discapacidad
+                                            .$disc_vest >= "1" & .$disc_vest <= "2" ~1, # Con presencia de discapacidad
+                                            .$disc_habla >= "1" & .$disc_habla <= "2" ~1, # Con presencia de discapacidad 
+                                            .$disc_acti >= "1" & .$disc_acti <= "2"  ~1,  # Con presencia de discapacidad
+                                            .$disc_camin == "&" & .$disc_ver == "&" &
+                                            .$disc_brazo == "&" & .$disc_apren == "&" &
+                                            .$disc_oir == "&" & .$disc_vest == "&" &
+                                            .$disc_habla == "&" & .$disc_acti == "&" ~ NA_real_,
+                                            TRUE ~ 0) # Sin presencia de discapacidad
+                         ) %>%  
+                   select(folioviv, foliohog, numren, sexo, starts_with("sa_"), ends_with("_sa"), pop_insabi, atemed, starts_with("inst_"), 
+                          starts_with("inscr_"), starts_with("segvol_"), ic_asalud, discap)
 ```
 
 
+**Se guarda la base de datos**
+```{r}
+#fwrite(salud, paste0(here::here(), "/Output/Data/ic_asalud22.csv"), row.names = F)
+save(salud, file = paste0(here::here(), "/Output/Data/ic_asalud22.RData"))
+```
+
+
+#### Indicador de carencia por acceso a la seguridad social
+
+```{r}
+# Prestaciones laborales
+load(file = paste0(here::here(), "/Data/trabajos.RData")) 
+```
+
+```{r}
+trabajos <- trabajos %>%
+             mutate(tipo_trab = case_when(
+                                          # Subordinados   
+                                          .$subor == 1 ~ 1,
+                                          # Independientes que reciben un pago
+                                          .$subor == 2 & .$indep == 1 & .$tiene_suel == 1 ~ 2,
+                                          .$subor == 2 & .$indep == 2 & .$pago == 1 ~ 2,
+                                          # Independientes que no reciben un pago
+                                          .$subor == 2 & .$indep == 1 & .$tiene_suel == 2 ~ 3,
+                                          .$subor == 2 & .$indep == 2 & (.$pago == 2 | .$pago == 3) ~ 3) ,
+                    # Ahorro para el retiro o pensión para la vejez (SAR, Afore)
+                    aforlab = case_when(is.na(.$pres_8) ~ 0,
+                                        .$pres_8 == 8 ~ 1),
+                    # Ocupación principal o secundaria
+                    id_trabajo = as.numeric(.$id_trabajo),
+                    ocupa = case_when(.$id_trabajo == 1 ~ 1,
+                                      .$id_trabajo == 2 ~ 1)) %>%
+             # Distinción de prestaciones en trabajo principal y secundario
+             select(folioviv, foliohog, numren, id_trabajo, tipo_trab, aforlab, ocupa) %>% 
+              as.data.table() %>% 
+               dcast(folioviv + foliohog + numren ~ id_trabajo, 
+                      value.var = c("tipo_trab", "aforlab", "ocupa"), 
+                       sep = "", 
+                        fill = 0) %>%
+                # Identificación de la población trabajadora toda la que reporta al menos un empleo en la base de trabajos)
+                 mutate(trab = 1) %>%
+                  select(folioviv, foliohog, numren, trab, tipo_trab1, tipo_trab2, aforlab1, aforlab2, ocupa1, ocupa2)
+```
+
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(trabajos, paste0(here::here(), "/Output/Data/prestaciones22.csv"), row.names = F)
+save(trabajos, file = paste0(here::here(), "/Output/Data/prestaciones22.RData"))
+```

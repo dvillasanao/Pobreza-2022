@@ -79,6 +79,20 @@ setwd(here::here())
 ```
 
 
+Todas las bases de datos de la ENIGH 2022 deben estar en formato `.CSV`   
+
+En este programa se utilizan las siguientes bases, nombrándolas de la siguiente forma:
+
+- Base de población: poblacion.csv  
+- Base de trabajos: trabajos.csv  
+- Base de ingresos: ingresos.csv  
+- Base de viviendas: viviendas.csv   
+- Base de hogares: hogares.csv   
+- Base de concentrado: concentradohogar.csv   
+- Base de no monetario hogar: gastoshogar.csv   
+- Base de no monetario personas: gastospersona.csv   
+
+
 **Se cargan las bases de datos en formato csv y se transmforma en .RData**
 
 ```{r}
