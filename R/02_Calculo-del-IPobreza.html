@@ -1712,7 +1712,8 @@ educación obligatorio vigente en el momento en que debía haberlo cursado
 <div id="indicador-de-carencia-por-acceso-a-los-servicios-de-salud" class="section level4">
 <h4>Indicador de carencia por acceso a los servicios de salud</h4>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Data/trabajos.RData&quot;</span>)) </span></code></pre></div>
-<p><strong>Indicador de carencia por servicios de salud</strong></p>
+<p><strong>Indicador de carencia por servicios de salud
+<code>ic_asalud</code></strong></p>
 <p>Se considera en situación de carencia por acceso a servicios de salud
 a la población que:</p>
 <ol style="list-style-type: decimal">
@@ -1907,7 +1908,7 @@ salud</strong></p>
 <h4>Indicador de carencia por acceso a la seguridad social</h4>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Prestaciones laborales</span></span>
 <span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Data/trabajos.RData&quot;</span>)) </span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>trabajop <span class="ot">&lt;-</span> trabajos <span class="sc">%&gt;%</span></span>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>trabajos <span class="ot">&lt;-</span> trabajos <span class="sc">%&gt;%</span></span>
 <span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>             <span class="fu">mutate</span>(<span class="at">tipo_trab =</span> <span class="fu">case_when</span>(</span>
 <span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>                                          <span class="co"># Subordinados   </span></span>
 <span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>                                          .<span class="sc">$</span>subor <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> <span class="dv">1</span>,</span>
@@ -1923,7 +1924,45 @@ salud</strong></p>
 <span id="cb11-14"><a href="#cb11-14" tabindex="-1"></a>                    <span class="co"># Ocupación principal o secundaria</span></span>
 <span id="cb11-15"><a href="#cb11-15" tabindex="-1"></a>                    <span class="at">id_trabajo =</span> <span class="fu">as.numeric</span>(.<span class="sc">$</span>id_trabajo),</span>
 <span id="cb11-16"><a href="#cb11-16" tabindex="-1"></a>                    <span class="at">ocupa =</span> <span class="fu">case_when</span>(.<span class="sc">$</span>id_trabajo <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> <span class="dv">1</span>,</span>
-<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>                                      .<span class="sc">$</span>id_trabajo <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> <span class="dv">1</span>))</span></code></pre></div>
+<span id="cb11-17"><a href="#cb11-17" tabindex="-1"></a>                                      .<span class="sc">$</span>id_trabajo <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> <span class="dv">1</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb11-18"><a href="#cb11-18" tabindex="-1"></a>             <span class="co"># Distinción de prestaciones en trabajo principal y secundario</span></span>
+<span id="cb11-19"><a href="#cb11-19" tabindex="-1"></a>             <span class="fu">select</span>(folioviv, foliohog, numren, id_trabajo, tipo_trab, aforlab, ocupa) <span class="sc">%&gt;%</span> </span>
+<span id="cb11-20"><a href="#cb11-20" tabindex="-1"></a>              <span class="fu">as.data.table</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb11-21"><a href="#cb11-21" tabindex="-1"></a>               <span class="fu">dcast</span>(folioviv <span class="sc">+</span> foliohog <span class="sc">+</span> numren <span class="sc">~</span> id_trabajo, </span>
+<span id="cb11-22"><a href="#cb11-22" tabindex="-1"></a>                      <span class="at">value.var =</span> <span class="fu">c</span>(<span class="st">&quot;tipo_trab&quot;</span>, <span class="st">&quot;aforlab&quot;</span>, <span class="st">&quot;ocupa&quot;</span>), </span>
+<span id="cb11-23"><a href="#cb11-23" tabindex="-1"></a>                       <span class="at">sep =</span> <span class="st">&quot;&quot;</span>, </span>
+<span id="cb11-24"><a href="#cb11-24" tabindex="-1"></a>                        <span class="at">fill =</span> <span class="dv">0</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb11-25"><a href="#cb11-25" tabindex="-1"></a>                <span class="co"># Identificación de la población trabajadora toda la que reporta al menos un empleo en la base de trabajos)</span></span>
+<span id="cb11-26"><a href="#cb11-26" tabindex="-1"></a>                 <span class="fu">mutate</span>(<span class="at">trab =</span> <span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb11-27"><a href="#cb11-27" tabindex="-1"></a>                  <span class="fu">select</span>(folioviv, foliohog, numren, trab, tipo_trab1, tipo_trab2, aforlab1, aforlab2, ocupa1, ocupa2)</span></code></pre></div>
+<p><strong>Se guarda la base de datos</strong></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co">#fwrite(trabajos, paste0(here::here(), &quot;/Output/Data/prestaciones22.csv&quot;), row.names = F)</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">save</span>(trabajos, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/prestaciones22.RData&quot;</span>))</span></code></pre></div>
+<div id="ingresos-por-jubilaciones-o-pensiones" class="section level5">
+<h5>Ingresos por jubilaciones o pensiones</h5>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Ingresos por jubilaciones o pensiones</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Data/ingresos.RData&quot;</span>)) </span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>ingresos <span class="ot">&lt;-</span> ingresos <span class="sc">%&gt;%</span></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>             <span class="fu">filter</span>(clave <span class="sc">==</span> <span class="st">&quot;P032&quot;</span> <span class="sc">|</span> clave <span class="sc">==</span> <span class="st">&quot;P033&quot;</span> <span class="sc">|</span> clave <span class="sc">==</span><span class="st">&quot;P104&quot;</span> <span class="sc">|</span> clave <span class="sc">==</span><span class="st">&quot;P045&quot;</span>) </span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="co"># Definición de los deflactores 2022 </span></span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>{</span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>  dic21 <span class="ot">&lt;-</span>  <span class="fl">0.94753762025</span></span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>  ene22 <span class="ot">&lt;-</span>  <span class="fl">0.95314330024</span></span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>  feb22 <span class="ot">&lt;-</span>  <span class="fl">0.96105102461</span></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>  mar22 <span class="ot">&lt;-</span>  <span class="fl">0.97056614137</span></span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a>  abr22 <span class="ot">&lt;-</span>  <span class="fl">0.97581641802</span></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a>  may22 <span class="ot">&lt;-</span>  <span class="fl">0.97753689329</span></span>
+<span id="cb13-15"><a href="#cb13-15" tabindex="-1"></a>  jun22 <span class="ot">&lt;-</span>  <span class="fl">0.98579194365</span></span>
+<span id="cb13-16"><a href="#cb13-16" tabindex="-1"></a>  jul22 <span class="ot">&lt;-</span>  <span class="fl">0.99309386687</span></span>
+<span id="cb13-17"><a href="#cb13-17" tabindex="-1"></a>  ago22 <span class="ot">&lt;-</span>  <span class="fl">1.00000000000</span></span>
+<span id="cb13-18"><a href="#cb13-18" tabindex="-1"></a>  sep22 <span class="ot">&lt;-</span>  <span class="fl">1.00620340379</span></span>
+<span id="cb13-19"><a href="#cb13-19" tabindex="-1"></a>  oct22 <span class="ot">&lt;-</span>  <span class="fl">1.01189793462</span></span>
+<span id="cb13-20"><a href="#cb13-20" tabindex="-1"></a>  nov22 <span class="ot">&lt;-</span>  <span class="fl">1.01772170303</span></span>
+<span id="cb13-21"><a href="#cb13-21" tabindex="-1"></a>  dic22 <span class="ot">&lt;-</span>  <span class="fl">1.02160690775</span></span>
+<span id="cb13-22"><a href="#cb13-22" tabindex="-1"></a>}</span></code></pre></div>
+</div>
 </div>
 </div>
 </div>

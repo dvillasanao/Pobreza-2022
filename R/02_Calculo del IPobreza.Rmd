@@ -179,7 +179,7 @@ gdata::keep(rezago.educativo, poblacion, sure = T)
 load(file = paste0(here::here(), "/Data/trabajos.RData")) 
 ```
 
-**Indicador de carencia por servicios de salud**  
+**Indicador de carencia por servicios de salud `ic_asalud`**  
 
 Se considera en situación de carencia por acceso a servicios de salud a la población que:    
  
@@ -419,3 +419,36 @@ trabajos <- trabajos %>%
 #fwrite(trabajos, paste0(here::here(), "/Output/Data/prestaciones22.csv"), row.names = F)
 save(trabajos, file = paste0(here::here(), "/Output/Data/prestaciones22.RData"))
 ```
+
+##### Ingresos por jubilaciones o pensiones
+
+```{r}
+# Ingresos por jubilaciones o pensiones
+load(file = paste0(here::here(), "/Data/ingresos.RData")) 
+
+ingresos <- ingresos %>%
+             filter(clave == "P032" | clave == "P033" | clave =="P104" | clave =="P045") 
+
+# Definición de los deflactores 2022 
+{
+  dic21	<-	0.94753762025
+  ene22	<-	0.95314330024
+  feb22	<-	0.96105102461
+  mar22	<-	0.97056614137
+  abr22	<-	0.97581641802
+  may22	<-	0.97753689329
+  jun22	<-	0.98579194365
+  jul22	<-	0.99309386687
+  ago22	<-	1.00000000000
+  sep22	<-	1.00620340379
+  oct22	<-	1.01189793462
+  nov22	<-	1.01772170303
+  dic22	<-	1.02160690775
+}
+
+```
+
+```{r}
+
+```
+
