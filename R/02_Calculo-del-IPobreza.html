@@ -2194,6 +2194,24 @@ rural y urbana.</p>
 <h5>Material de construcción de la vivienda</h5>
 <div class="sourceCode" id="cb19"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Data/viviendas.RData&quot;</span>)) </span>
 <span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Data/concentradohogar.RData&quot;</span>)) </span></code></pre></div>
+<p><strong>Indicador de carencia por calidad y espacios de la
+vivienda</strong></p>
+<p>Se considera en situación de carencia por calidad y espacios de la
+vivienda a las personas que residan en viviendas que presenten, al
+menos, una de las siguientes características:</p>
+<ol style="list-style-type: decimal">
+<li>El material de los pisos de la vivienda es de tierra<br />
+</li>
+<li>El material del techo de la vivienda es de lámina de cartón o
+desechos.<br />
+</li>
+<li>El material de los muros de la vivienda es de embarro o bajareque,
+de carrizo, bambú o palma, de lámina de cartón, metálica o asbesto, o
+material de desecho.<br />
+</li>
+<li>La razón de personas por cuarto (hacinamiento) es mayor que
+<code>2.5</code>.</li>
+</ol>
 <div class="sourceCode" id="cb20"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a>calidad.viviendas <span class="ot">&lt;-</span> viviendas <span class="sc">%&gt;%</span> </span>
 <span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>                      <span class="fu">left_join</span>(., concentradohogar,  <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;folioviv&quot;</span>)) <span class="sc">%&gt;%</span> </span>
 <span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>                       <span class="fu">mutate</span>(</span>
@@ -2211,20 +2229,71 @@ rural y urbana.</p>
 <span id="cb20-15"><a href="#cb20-15" tabindex="-1"></a>                              <span class="at">icv_techos =</span> <span class="fu">case_when</span>(.<span class="sc">$</span>icv_techos <span class="sc">&gt;=</span> <span class="dv">3</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
 <span id="cb20-16"><a href="#cb20-16" tabindex="-1"></a>                                                     .<span class="sc">$</span>icv_techos <span class="sc">&lt;=</span> <span class="dv">2</span> <span class="sc">~</span> <span class="dv">1</span>),</span>
 <span id="cb20-17"><a href="#cb20-17" tabindex="-1"></a>                              <span class="co"># Indicador de carencia por material de muros de la vivienda</span></span>
-<span id="cb20-18"><a href="#cb20-18" tabindex="-1"></a>                              </span>
-<span id="cb20-19"><a href="#cb20-19" tabindex="-1"></a>                              <span class="at">icv_muros =</span> <span class="fu">case_when</span>(.<span class="sc">$</span>icv_muros <span class="sc">&gt;=</span> <span class="dv">6</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
-<span id="cb20-20"><a href="#cb20-20" tabindex="-1"></a>                                                    .<span class="sc">$</span>icv_muros <span class="sc">&lt;=</span> <span class="dv">5</span> <span class="sc">~</span> <span class="dv">1</span>),</span>
-<span id="cb20-21"><a href="#cb20-21" tabindex="-1"></a>              </span>
-<span id="cb20-22"><a href="#cb20-22" tabindex="-1"></a>                              <span class="co"># Espacios en la vivienda (Hacinamiento)</span></span>
-<span id="cb20-23"><a href="#cb20-23" tabindex="-1"></a>                              <span class="co"># Índice de hacinamiento</span></span>
-<span id="cb20-24"><a href="#cb20-24" tabindex="-1"></a>                              <span class="at">cv_hac =</span> .<span class="sc">$</span>num_ind<span class="sc">/</span>.<span class="sc">$</span>num_cua) <span class="sc">%&gt;%</span></span>
-<span id="cb20-25"><a href="#cb20-25" tabindex="-1"></a>                       <span class="co"># Indicador de carencia por hacinamiento en la vivienda</span></span>
-<span id="cb20-26"><a href="#cb20-26" tabindex="-1"></a>                       <span class="fu">mutate</span>(</span>
-<span id="cb20-27"><a href="#cb20-27" tabindex="-1"></a>                              <span class="at">icv_hac =</span> <span class="fu">case_when</span>(</span>
-<span id="cb20-28"><a href="#cb20-28" tabindex="-1"></a>                                                  .<span class="sc">$</span>cv_hac <span class="sc">&gt;</span> <span class="fl">2.5</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>cv_hac) <span class="sc">~</span> <span class="dv">1</span>,</span>
-<span id="cb20-29"><a href="#cb20-29" tabindex="-1"></a>                                                  .<span class="sc">$</span>cv_hac <span class="sc">&lt;=</span> <span class="fl">2.5</span> <span class="sc">~</span> <span class="dv">0</span>)</span>
-<span id="cb20-30"><a href="#cb20-30" tabindex="-1"></a>                              )</span></code></pre></div>
+<span id="cb20-18"><a href="#cb20-18" tabindex="-1"></a>                              <span class="at">icv_muros =</span> <span class="fu">case_when</span>(.<span class="sc">$</span>icv_muros <span class="sc">&gt;=</span> <span class="dv">6</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
+<span id="cb20-19"><a href="#cb20-19" tabindex="-1"></a>                                                    .<span class="sc">$</span>icv_muros <span class="sc">&lt;=</span> <span class="dv">5</span> <span class="sc">~</span> <span class="dv">1</span>),</span>
+<span id="cb20-20"><a href="#cb20-20" tabindex="-1"></a>              </span>
+<span id="cb20-21"><a href="#cb20-21" tabindex="-1"></a>                              <span class="co"># Espacios en la vivienda (Hacinamiento)</span></span>
+<span id="cb20-22"><a href="#cb20-22" tabindex="-1"></a>                              <span class="co"># Índice de hacinamiento</span></span>
+<span id="cb20-23"><a href="#cb20-23" tabindex="-1"></a>                              <span class="at">cv_hac =</span> .<span class="sc">$</span>num_ind<span class="sc">/</span>.<span class="sc">$</span>num_cua) <span class="sc">%&gt;%</span></span>
+<span id="cb20-24"><a href="#cb20-24" tabindex="-1"></a>                       <span class="co"># Indicador de carencia por hacinamiento en la vivienda</span></span>
+<span id="cb20-25"><a href="#cb20-25" tabindex="-1"></a>                       <span class="fu">mutate</span>(</span>
+<span id="cb20-26"><a href="#cb20-26" tabindex="-1"></a>                              <span class="at">icv_hac =</span> <span class="fu">case_when</span>(</span>
+<span id="cb20-27"><a href="#cb20-27" tabindex="-1"></a>                                                  .<span class="sc">$</span>cv_hac <span class="sc">&gt;</span> <span class="fl">2.5</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>cv_hac) <span class="sc">~</span> <span class="dv">1</span>,</span>
+<span id="cb20-28"><a href="#cb20-28" tabindex="-1"></a>                                                  .<span class="sc">$</span>cv_hac <span class="sc">&lt;=</span> <span class="fl">2.5</span> <span class="sc">~</span> <span class="dv">0</span>)</span>
+<span id="cb20-29"><a href="#cb20-29" tabindex="-1"></a>                              ) <span class="sc">%&gt;%</span></span>
+<span id="cb20-30"><a href="#cb20-30" tabindex="-1"></a>                      <span class="co"># Indicador de carencia por calidad y espacios de la vivienda </span></span>
+<span id="cb20-31"><a href="#cb20-31" tabindex="-1"></a></span>
+<span id="cb20-32"><a href="#cb20-32" tabindex="-1"></a>                      <span class="fu">mutate</span>(</span>
+<span id="cb20-33"><a href="#cb20-33" tabindex="-1"></a>                             <span class="at">ic_cv =</span> <span class="fu">case_when</span>(</span>
+<span id="cb20-34"><a href="#cb20-34" tabindex="-1"></a>                                               <span class="fu">is.na</span>(.<span class="sc">$</span>icv_pisos) <span class="sc">|</span> <span class="fu">is.na</span>(.<span class="sc">$</span>icv_techos) <span class="sc">|</span> <span class="fu">is.na</span>(.<span class="sc">$</span>icv_muros) <span class="sc">|</span> <span class="fu">is.na</span>(.<span class="sc">$</span>icv_hac) <span class="sc">~</span> <span class="cn">NA_real_</span>,</span>
+<span id="cb20-35"><a href="#cb20-35" tabindex="-1"></a>                                               .<span class="sc">$</span>icv_pisos <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> .<span class="sc">$</span>icv_techos <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> .<span class="sc">$</span>icv_muros <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> .<span class="sc">$</span>icv_hac <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> <span class="dv">1</span>,     <span class="co"># Con carencia</span></span>
+<span id="cb20-36"><a href="#cb20-36" tabindex="-1"></a>                                               .<span class="sc">$</span>icv_pisos <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> .<span class="sc">$</span>icv_techos <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> .<span class="sc">$</span>icv_muros <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> .<span class="sc">$</span>icv_hac <span class="sc">==</span> <span class="dv">0</span> <span class="sc">~</span> <span class="dv">0</span>)) <span class="sc">%&gt;%</span> <span class="co"># Sin carencia</span></span>
+<span id="cb20-37"><a href="#cb20-37" tabindex="-1"></a>                       <span class="fu">select</span>(folioviv, foliohog, icv_pisos, icv_techos, icv_muros, icv_hac, ic_cv) </span></code></pre></div>
+<p><strong>Se guarda la base de datos</strong></p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="co">#fwrite(calidad.viviendas, paste0(here::here(), &quot;/Output/Data/ic_cev22.csv&quot;), row.names = F)</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="fu">save</span>(calidad.viviendas, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/ic_cev22.RData&quot;</span>))</span></code></pre></div>
 </div>
+</div>
+<div id="indicador-de-carencia-por-acceso-a-los-servicios-básicos-de-la-vivienda" class="section level4">
+<h4>Indicador de carencia por acceso a los servicios básicos de la
+vivienda</h4>
+<p><strong>Indicador de carencia por acceso a los servicios básicos en
+la vivienda</strong></p>
+<p>Se considera en situación de carencia por servicios básicos en la
+vivienda a las personas que residan en viviendas que presenten, al
+menos, una de las siguientes características:</p>
+<ol style="list-style-type: decimal">
+<li>El agua se obtiene de un pozo, río, lago, arroyo, pipa, o bien, el
+agua entubada la adquieren por acarreo de otra vivienda, o de la llave
+pública o hidrante.<br />
+</li>
+<li>No cuentan con servicio de drenaje o el desagüe tiene conexión a una
+tubería que va a dar a un río, lago, mar, barranca o grieta.<br />
+</li>
+<li>No disponen de energía eléctrica.<br />
+</li>
+<li>El combustible que se usa para cocinar o calentar los alimentos es
+leña o carbón sin chimenea.</li>
+</ol>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>servicios.basicos <span class="ot">&lt;-</span> concentradohogar <span class="sc">%&gt;%</span> </span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>                      <span class="fu">left_join</span>(., viviendas, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">&quot;folioviv&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>                       <span class="fu">mutate</span>(</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>                              <span class="co"># Indicador de carencia por acceso al agua</span></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>                              <span class="at">isb_agua=</span><span class="fu">case_when</span>(.<span class="sc">$</span>procaptar <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> .<span class="sc">$</span>disp_agua <span class="sc">==</span> <span class="st">&quot;4&quot;</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>                                                 .<span class="sc">$</span>disp_agua <span class="sc">&gt;=</span> <span class="dv">3</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>disp_agua) <span class="sc">~</span> <span class="dv">1</span>,</span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>                                                 .<span class="sc">$</span>disp_agua <span class="sc">&lt;=</span> <span class="dv">2</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>disp_agua) <span class="sc">~</span> <span class="dv">0</span>),</span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a>                              <span class="co"># Indicador de carencia por servicio de drenaje</span></span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>                              <span class="at">isb_dren=</span><span class="fu">case_when</span>(.<span class="sc">$</span>drenaje <span class="sc">&gt;=</span> <span class="dv">3</span> <span class="sc">~</span><span class="dv">1</span>,</span>
+<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>                                                 .<span class="sc">$</span>drenaje <span class="sc">&lt;=</span> <span class="dv">2</span> <span class="sc">~</span><span class="dv">0</span>),</span>
+<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a>                              <span class="co"># Indicador de carencia por servicios de electricidad</span></span>
+<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a>                              <span class="at">isb_luz=</span><span class="fu">case_when</span>(.<span class="sc">$</span>disp_elect <span class="sc">&gt;=</span> <span class="dv">5</span> <span class="sc">~</span><span class="dv">1</span>,</span>
+<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a>                                                .<span class="sc">$</span>disp_elect <span class="sc">&lt;=</span> <span class="dv">4</span> <span class="sc">~</span><span class="dv">0</span>),</span>
+<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a>                              <span class="co"># Indicador de carencia por combustible para cocinar</span></span>
+<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a>                              <span class="at">combus=</span><span class="fu">as.numeric</span>(.<span class="sc">$</span>combustible),</span>
+<span id="cb22-16"><a href="#cb22-16" tabindex="-1"></a>                              <span class="at">estufa=</span><span class="fu">as.numeric</span>(.<span class="sc">$</span>estufa_chi),</span>
+<span id="cb22-17"><a href="#cb22-17" tabindex="-1"></a>                              <span class="at">isb_combus=</span>(<span class="fu">case_when</span>((.<span class="sc">$</span>combus <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> .<span class="sc">$</span>combus <span class="sc">==</span> <span class="dv">2</span>) <span class="sc">&amp;</span> .<span class="sc">$</span>estufa <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> <span class="dv">1</span>, </span>
+<span id="cb22-18"><a href="#cb22-18" tabindex="-1"></a>                                                     (.<span class="sc">$</span>combus <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> .<span class="sc">$</span>combus <span class="sc">==</span> <span class="dv">2</span>) <span class="sc">&amp;</span> .<span class="sc">$</span>estufa <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
+<span id="cb22-19"><a href="#cb22-19" tabindex="-1"></a>                                                       .<span class="sc">$</span>combus <span class="sc">&gt;=</span> <span class="dv">3</span> <span class="sc">&amp;</span> .<span class="sc">$</span>combus <span class="sc">&lt;=</span> <span class="dv">6</span> <span class="sc">~</span> <span class="dv">0</span>)))</span></code></pre></div>
 </div>
 </div>
 </div>

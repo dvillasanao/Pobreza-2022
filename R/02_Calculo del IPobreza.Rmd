@@ -693,6 +693,14 @@ load(file = paste0(here::here(), "/Data/viviendas.RData"))
 load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
 ```
 
+**Indicador de carencia por calidad y espacios de la vivienda**  
+
+Se considera en situación de carencia por calidad y espacios de la vivienda a las personas que residan en viviendas que presenten, al menos, una de las siguientes características:     
+  
+1. El material de los pisos de la vivienda es de tierra   
+2. El material del techo de la vivienda es de lámina de cartón o desechos.   
+3. El material de los muros de la vivienda es de embarro o bajareque, de carrizo, bambú o palma, de lámina de cartón, metálica o asbesto, o material de desecho.    
+4. La razón de personas por cuarto (hacinamiento) es mayor que `2.5`.      
 
 ```{r}
 calidad.viviendas <- viviendas %>% 
@@ -712,7 +720,6 @@ calidad.viviendas <- viviendas %>%
                               icv_techos = case_when(.$icv_techos >= 3 ~ 0,
                                                      .$icv_techos <= 2 ~ 1),
                               # Indicador de carencia por material de muros de la vivienda
-                              
                               icv_muros = case_when(.$icv_muros >= 6 ~ 0,
                                                     .$icv_muros <= 5 ~ 1),
               
@@ -724,6 +731,67 @@ calidad.viviendas <- viviendas %>%
                               icv_hac = case_when(
                                                   .$cv_hac > 2.5 & !is.na(.$cv_hac) ~ 1,
                                                   .$cv_hac <= 2.5 ~ 0)
-                              )
+                              ) %>%
+                      # Indicador de carencia por calidad y espacios de la vivienda 
+
+                      mutate(
+                             ic_cv = case_when(
+                                               is.na(.$icv_pisos) | is.na(.$icv_techos) | is.na(.$icv_muros) | is.na(.$icv_hac) ~ NA_real_,
+                                               .$icv_pisos == 1 | .$icv_techos == 1 | .$icv_muros == 1 | .$icv_hac == 1 ~ 1,     # Con carencia
+                                               .$icv_pisos == 0 & .$icv_techos == 0 & .$icv_muros == 0 & .$icv_hac == 0 ~ 0)) %>% # Sin carencia
+                       select(folioviv, foliohog, icv_pisos, icv_techos, icv_muros, icv_hac, ic_cv) 
 ```
 
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(calidad.viviendas, paste0(here::here(), "/Output/Data/ic_cev22.csv"), row.names = F)
+save(calidad.viviendas, file = paste0(here::here(), "/Output/Data/ic_cev22.RData"))
+```
+
+
+#### Indicador de carencia por acceso a los servicios básicos de la vivienda   
+
+**Indicador de carencia por acceso a los servicios básicos en la vivienda**   
+
+Se considera en situación de carencia por servicios básicos en la vivienda a las personas que residan en viviendas que presenten, al menos, una de las siguientes características:   
+  
+1. El agua se obtiene de un pozo, río, lago, arroyo, pipa, o bien, el agua entubada la adquieren por acarreo de otra vivienda, o de la llave pública o hidrante.  
+2. No cuentan con servicio de drenaje o el desagüe tiene conexión a una tubería que va a dar a un río, lago, mar, barranca o grieta.   
+3. No disponen de energía eléctrica.   
+4. El combustible que se usa para cocinar o calentar los alimentos es leña o carbón sin chimenea.   
+
+```{r}
+servicios.basicos <- concentradohogar %>% 
+                      left_join(., viviendas, by = c("folioviv")) %>% 
+                       mutate(
+                              # Indicador de carencia por acceso al agua
+                              isb_agua = case_when(.$procaptar == 1 & .$disp_agua == "4" ~ 0,
+                                                 .$disp_agua >= 3 & !is.na(.$disp_agua) ~ 1,
+                                                 .$disp_agua <= 2 & !is.na(.$disp_agua) ~ 0),
+                              # Indicador de carencia por servicio de drenaje
+                              isb_dren = case_when(.$drenaje >= 3 ~1,
+                                                 .$drenaje <= 2 ~0),
+                              # Indicador de carencia por servicios de electricidad
+                              isb_luz = case_when(.$disp_elect >= 5 ~1,
+                                                .$disp_elect <= 4 ~0),
+                              # Indicador de carencia por combustible para cocinar
+                              combus = as.numeric(.$combustible),
+                              estufa = as.numeric(.$estufa_chi),
+                              isb_combus = case_when((.$combus == 1 | .$combus == 2) & .$estufa == 2 ~ 1, 
+                                                     (.$combus == 1 | .$combus == 2) & .$estufa == 1 ~ 0,
+                                                       .$combus >= 3 & .$combus <= 6 ~ 0)) %>%
+                              # Indicador de carencia por acceso a los servicios básicos en la vivienda
+                       mutate(
+                              ic_sbv = case_when(
+                                                 is.na(.$isb_agua) | is.na(.$isb_dren) | is.na(.$isb_luz) | is.na(.$isb_combus) ~ NA_real_,
+                                                 .$isb_agua == 1 | .$isb_dren == 1 | .$isb_luz == 1 | .$isb_combus == 1 ~ 1, # Con carencia
+                                                 .$isb_agua == 0 & .$isb_dren == 0 & .$isb_luz == 0 & .$isb_combus == 0 ~ 0)) %>% # Sin carencia
+                       select(folioviv, foliohog, isb_agua, isb_dren, isb_luz, isb_combus, ic_sbv)
+  
+```
+**Se guarda la base de datos**
+```{r}
+#fwrite(servicios.basicos, paste0(here::here(), "/Output/Data/ic_sbv22.csv"), row.names = F)
+save(servicios.basicos, file = paste0(here::here(), "/Output/Data/ic_sbv22.RData"))
+```
