@@ -99,8 +99,7 @@ Siguiendo la estructura del cálculo del índice multidimensional de la pobreza,
 #### Indicador de rezago educativo  
 
 ```{r}
-poblacion <- load(file = paste0(here::here(), "/Data/poblacion.RData")) %>% 
-              rename_all(tolower)
+load(file = paste0(here::here(), "/Data/poblacion.RData")) 
 ```
 
 **Indicador de carencia por rezago educativo `ic_rezedu`**
@@ -232,7 +231,7 @@ save(ocupados, file = paste0(here::here(), "/Output/Data/ocupados22.RData"))
 
 ```{r}
 salud <- poblacion %>% 
-          filter(!(parentesco >= 400 & parentesco <500 | parentesco>=700 & parentesco <800)) %>%
+          filter(!(parentesco >= 400 & parentesco < 500 | parentesco >= 700 & parentesco < 800)) %>%
            left_join(., ocupados, by = c("folioviv", "foliohog", "numren")) %>%
             mutate(
                    # PEA (personas de 16 años o más)
@@ -365,7 +364,9 @@ salud <- poblacion %>%
                                             TRUE ~ 0) # Sin presencia de discapacidad
                          ) %>%  
                    select(folioviv, foliohog, numren, sexo, starts_with("sa_"), ends_with("_sa"), pop_insabi, atemed, starts_with("inst_"), 
-                          starts_with("inscr_"), starts_with("segvol_"), ic_asalud, discap)
+                          starts_with("inscr_"), starts_with("segvol_"), ic_asalud, discap, par, inas_esc, jef, cony, pea, act_pnea1, act_pnea2)
+
+names(salud)
 ```
 
 
@@ -449,6 +450,280 @@ ingresos <- ingresos %>%
 ```
 
 ```{r}
+pensiones <- ingresos %>%
+              mutate( 
+                     # Se deflactan los ingresos por jubilaciones, pensiones y programas de adultos mayores de acuerdo con el mes de levantamiento
+                     ing_6 = case_when(.$mes_6 == 2 ~ .$ing_6/feb22,
+                                       .$mes_6 == 3 ~ .$ing_6/mar22,
+                                       .$mes_6 == 4 ~ .$ing_6/abr22,
+                                       .$mes_6 == 5 ~ .$ing_6/may22),
+                     ing_5 = case_when(.$mes_5 == 3 ~ .$ing_5/mar22,
+                                       .$mes_5 == 4 ~ .$ing_5/abr22,
+                                       .$mes_5 == 5 ~ .$ing_5/may22,
+                                       .$mes_5 == 6 ~ .$ing_5/jun22),
+                     ing_4 = case_when(.$mes_4 == 4 ~ .$ing_4/abr22,
+                                       .$mes_4 == 5 ~ .$ing_4/may22,
+                                       .$mes_4 == 6 ~ .$ing_4/jun22,
+                                       .$mes_4 == 7 ~ .$ing_4/jul22),
+                     ing_3 = case_when(.$mes_3 == 5 ~ .$ing_3/may22,
+                                       .$mes_3 == 6 ~ .$ing_3/jun22,
+                                       .$mes_3 == 7 ~ .$ing_3/jul22,
+                                       .$mes_3 == 8 ~ .$ing_3/ago22),
+                     ing_2 = case_when(.$mes_2 == 6 ~ .$ing_2/jun22,
+                                       .$mes_2 == 7 ~ .$ing_2/jul22,
+                                       .$mes_2 == 8 ~ .$ing_2/ago22,
+                                       .$mes_2 == 9 ~ .$ing_2/sep22),
+                     ing_1 = case_when(.$mes_1 == 7 ~ .$ing_1/jul22,
+                                       .$mes_1 == 8 ~ .$ing_1/ago22,
+                                       .$mes_1 == 9 ~ .$ing_1/sep22,
+                                       .$mes_1 == 10 ~ .$ing_1/oct22)) %>%
+              mutate(
+                     # Ingreso promedio mensual por jubilaciones y pensiones
+                     ing_pam = case_when(.$clave=="P104" | .$clave=="P045" ~  apply(select(., ing_1, ing_2, ing_3, ing_4, ing_5, ing_6), 1, mean),
+                                         TRUE ~ 0),
+                     # Ingreso promedio mensual por programas de adultos mayores
+                     ing_pens = case_when(.$clave=="P032" | .$clave=="P033" ~ apply(dplyr::select(., ing_1, ing_2, ing_3, ing_4, ing_5, ing_6), 1, mean),
+                                         TRUE ~0))  %>%
+                      group_by(folioviv, foliohog, numren) %>%
+                       mutate(ing_pens = sum(.$ing_pens, na.rm = TRUE),
+                              ing_pam = sum(.$ing_pam, na.rm = TRUE)) %>%
+                        ungroup()
+```
 
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(pensiones, paste0(here::here(), "/Output/Data/pensiones22.csv"), row.names = F)
+save(pensiones, file = paste0(here::here(), "/Output/Data/pensiones22.RData"))
+```
+
+##### Construcción del indicador
+
+**Indicador de carencia por acceso a la seguridad social** 
+
+Se encuentra en situación de carencia por acceso a la seguridad social a la población que:    
+1. No disponga de acceso directo a la seguridad social.   
+2. No cuente con parentesco directo con alguna persona dentro del hogar que tenga acceso directo.    
+3. No recibe servicios médicos por parte de algún familiar dentro o fuera del hogar, por muerte del asegurado o por contratación propia.  
+4. No recibe ingreso por parte de un programa de adultos mayores donde el monto sea mayor o igual al valor promedio de la canasta alimentaria rural y urbana.    
+
+```{r}
+# Valor monetario de las líneas de pobreza extrema por ingresos rural y urbana
+lp1_urb <- 2086.21
+lp1_rur <- 1600.18
+lp_pam <- (lp1_urb + lp1_rur)/2
+```
+
+ 
+```{r}
+seguridad.social <- poblacion %>%
+                     # Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+                     filter(!(.$parentesco >= 400 & .$parentesco < 500 | .$parentesco >= 700 & .$parentesco < 800)) %>%
+                     # Núcleos familiares
+                     mutate(
+                            par = case_when((.$parentesco >= 100 & .$parentesco < 200) ~ 1, # Jefe o jefa del hogar 
+                                            (.$parentesco >= 200 & .$parentesco < 300) ~ 2, # Cónyuge del  jefe/a 
+                                            (.$parentesco >= 300 & .$parentesco < 400) ~ 3, # Hijo del jefe/a 
+                                             .$parentesco == 601 ~ 4, # Padre o Madre del jefe/a
+                                             .$parentesco == 615 ~ 5, # Suegro del jefe/a
+                                             TRUE ~ 6),  # Sin parentesco directo
+                            # Asimismo, se utilizará la información relativa a la asistencia a la escuela
+                            inas_esc = case_when(.$asis_esc == 1 ~ 0,   # Sí asiste
+                                                 .$asis_esc == 2 ~ 1) # No asiste
+                     ) %>%
+                     # Integración de bases 
+                      left_join(., trabajos, by = c("folioviv", "foliohog", "numren")) %>%
+                      left_join(., pensiones, by = c("folioviv", "foliohog", "numren")) %>%
+                     mutate(
+                            # PEA (personas de 16 años o más)
+                            pea = case_when(.$trab == 1 & (.$edad >= 16 & !is.na(.$edad)) ~ 1, # PEA: ocupada
+                                             (.$act_pnea1 == 1 | .$act_pnea2 == 1) & (.$edad >= 16 & !is.na(.$edad)) ~ 2, # PEA: desocupada
+                                            (.$edad >= 16 & !is.na(.$edad)) & 
+                                             ((.$act_pnea1 != 1 | is.na(.$act_pnea1)) & 
+                                              (.$act_pnea2 != 1 | is.na(.$act_pnea2))) & 
+                                               ((.$act_pnea1 >= 2 & .$act_pnea1 <= 6) | (.$act_pnea2 >= 2 & .$act_pnea2 <= 6))  ~ 0)) %>% # PNEA
+                     mutate(
+                            # Tipo de trabajo
+                            # Ocupación principal
+                            tipo_trab1 = case_when(.$pea %in% 1 ~ .$tipo_trab1, # Depende de un patrón, jefe o superior  
+                                                   .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab1, # No depende de un jefe y recibe o tiene asignado un sueldo
+                                                    is.na(.$pea) ~ NA), # No depende de un jefe y no recibe o no tiene asignado un sueldo
+                            # Ocupación secundaria
+                            tipo_trab2 = case_when(.$pea %in% 1 ~ .$tipo_trab2, # Depende de un patrón, jefe o superior  
+                                                   .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab2,  # No depende de un jefe y recibe o tiene asignado un sueldo
+                                                    is.na(.$pea) ~ NA), # No depende de un jefe y no recibe o no tiene asignado un sueldo
+                                           
+                            # Jubilados o pensionados
+                            jub = case_when(.$trabajo_mp == 2 & .$act_pnea1 == 2 | .$act_pnea2 == 2 ~ 1, # Población pensionada o jubilada
+                                            .$ing_pens > 0 &  !is.na(.$ing_pens) ~ 1, # Población pensionada o jubilada
+                                            .$inscr_2 == 2 ~ 1, # Población pensionada o jubilada
+                                            TRUE ~ 0), # Población no pensionada o jubilada
+                            # Prestaciones básicas
+                            # Prestaciones laborales (Servicios médicos)
+               
+                            # Ocupación principal
+                            smlab1 = case_when(.$ocupa1 == 1 & .$atemed == 1 & 
+                                                (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
+                                                 (.$inscr_1 == 1) ~ 1, # Sin servicios médicos
+                                               .$ocupa1 == 1 ~ 0), # Con servicios médicos
+                            # Ocupación secundaria
+                            smlab2 = case_when(.$ocupa2 == 1 & .$atemed == 1 & 
+                                                (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
+                                                 (.$inscr_1 == 1) ~  1, # Sin servicios médicos
+                                               .$ocupa2 == 1 ~ 0), # Con servicios médicos
+                            # Contratación voluntaria: servicios médicos y ahorro para el retiro o pensión para la vejez (SAR, Afore, Haber de retiro)
+              
+                            # Servicios médicos
+                            smcv = case_when(.$atemed == 1 & (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) &
+                                               .$inscr_6 == 6 & (.$edad >= 12 & !is.na(.$edad)) ~ 1, # Sí cuenta
+                                             (.$edad >= 12 & !is.na(.$edad)) ~ 0), # No cuenta
+                            # SAR o Afore
+                            aforecv = case_when(.$segvol_1 == 1 & (.$edad >= 12 & !is.na(.$edad)) ~ 1, # Sí cuenta
+                                                 is.na(.$segvol_1) & (.$edad>=12 & !is.na(.$edad)) ~ 0)) %>% # No cuenta
+                     # Acceso directo a la seguridad social
+                     mutate(
+                            # Acceso directo a la seguridad social
+                            ss_dir = case_when(  
+                                               # Ocupación principal
+                                               .$tipo_trab1 == 1 & .$smlab1 == 1 ~ 1, # Con acceso
+                                               .$tipo_trab1 == 2 & ((.$smlab1 == 1 | .$smcv == 1) & (.$aforlab1 == 1 | .$aforecv == 1)) ~ 1, # Con acceso
+                                               .$tipo_trab1 == 3 & ((.$smlab1 ==1 | .$smcv == 1) & .$aforecv == 1) ~ 1, # Con acceso
+                                               # Ocupación secundaria
+                                               .$tipo_trab2 == 1 & .$smlab2 == 1 ~ 1, # Con acceso
+                                               .$tipo_trab2 == 2 & ((.$smlab2 == 1 | .$smcv == 1) & (.$aforlab2 == 1 | .$aforecv == 1)) ~ 1, # Con acceso  
+                                               .$tipo_trab2 == 3 & ((.$smlab2 == 1 | .$smcv == 1) & .$aforecv == 1) ~ 1, # Con acceso
+                                               # Jubilados y pensionados
+                                               .$jub == 1 ~ 1, # Con acceso
+                                               TRUE ~ 0)
+                            ) %>%  # Sin acceso
+                            
+                     # Indicador de carencia por acceso a la seguridad social 
+                     mutate(
+                            # En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
+                            jef = case_when(.$par == 1 & .$ss_dir == 1 & 
+                                             (((.$inst_2 == "2" | .$inst_3 == "3") & .$inscr_6 == "6") & 
+                                              (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
+                                               (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
+                                                is.na(.$inscr_4) & is.na(.$inscr_5)  & is.na(.$inscr_7))) ~ NA_real_,
+                                            .$par == 1 & .$ss_dir == 1 ~ 1),
+                            
+                            cony = case_when(.$par == 2 & .$ss_dir == 1 & 
+                                              (((.$inst_2 == "2" | inst_3 == "3") & inscr_6 == "6") &
+                                               (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
+                                                (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
+                                                 is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7) )) ~ NA_real_,
+                                             .$par == 2 & .$ss_dir == 1 ~ 1),
+                            
+                            hijo = case_when(.$par == 3 & .$ss_dir == 1 & 
+                                              (((.$inst_2 == "2" | .$inst_3 == "3") & .$inscr_6 == "6") & 
+                                               (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) & 
+                                               (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
+                                                is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7) )) ~ NA_real_,
+                                             .$par == 3 & .$ss_dir == 1 & .$jub == 1 & (.$edad > 25 & !is.na(.$edad)) ~ 1,
+                                             .$par == 3 & .$ss_dir == 1 & .$jub == 0 ~ 1)) %>%
+                      as.data.table() %>%
+                       group_by(folioviv, foliohog) %>%
+                        mutate(jef_ss = sum(jef, na.rm = TRUE), # Acceso directo a servicios de salud de la jefatura del hogar
+                               cony_ss = sum(cony, na.rm = TRUE), # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
+                               hijo_ss = sum(hijo, na.rm = TRUE)) %>% # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
+                         ungroup() %>%
+                          mutate(jef_ss = if_else(.$jef_ss > 0, 1, .$jef_ss), # Acceso directo a la seguridad social de la jefatura del hogar
+                                 cony_ss = if_else(.$cony_ss > 0, 1, .$cony_ss), # Acceso directo a la seguridad social de cónyuge de la jefatura del hogar
+                                 hijo_ss = if_else(.$hijo_ss > 0, 1, .$hijo_ss)) %>% # Acceso directo a la seguridad social de hijos(as) de la jefatura del hogar
+                          # Otros núcleos familiares: se identifica a la población con acceso a la seguridad social mediante otros núcleos 
+                          # familiares a través de la afiliación o inscripción a servicios de salud por algún familiar dentro o fuera del 
+                          # hogar, muerte del asegurado o por contratación propia
+  
+                          mutate(s_salud = case_when(.$atemed == 1 & 
+                                                      (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
+                                                        (.$inscr_3 == 3 | .$inscr_4 == 4 | .$inscr_6 == 6 | inscr_7 == 7) ~ 1, # Con acceso
+                                                          !is.na(.$pop_insabi) & !is.na(.$atemed) ~ 0) # Sin acceso
+                                 ) %>% 
+                          # Programas sociales de pensiones para adultos mayores 
+
+                          # Se identifica a las personas de 65 años o más que reciben un programa para adultos mayores si el monto recibido 
+                          # es mayor o igual al promedio de la línea de pobreza extrema por ingresos rural y urbana.
+                          mutate(pam = case_when(.$edad >= 65 & !is.na(.$edad) & .$ing_pam >= lp_pam & !is.na(.$ing_pam) ~ 1, # Recibe
+                                                 .$edad >= 65 & !is.na(.$edad) ~ 0) # No recibe
+                                 ) %>% 
+  
+                         # Indicador de carencia por acceso a la seguridad social
+                         
+                          mutate(
+                                 ic_segsoc = case_when(
+                                                       # Acceso directo
+                                                       .$ss_dir == 1 ~ 0, # No presenta carencia
+                                                       # Parentesco directo: jefatura
+                                                       .$par == 1 & .$cony_ss == 1 ~ 0, # No presenta carencia
+                                                       .$par == 1 & .$pea == 0 & .$hijo_ss == 1 ~ 0, # No presenta carencia
+                                                       # Parentesco directo: cónyuge
+                                                       .$par == 2 & .$jef_ss == 1 ~ 0, # No presenta carencia 
+                                                       .$par == 2 & .$pea == 0 & .$hijo_ss == 1 ~ 0, # No presenta carencia
+                                                       # Parentesco directo: descendientes
+                                                       .$par == 3 & .$edad < 16 & .$jef_ss == 1 ~ 0, # No presenta carencia
+                                                       .$par == 3 & .$edad < 16 & .$cony_ss == 1 ~ 0, # No presenta carencia
+                                                       .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$jef_ss == 1 ~ 0, # No presenta carencia
+                                                       .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$cony_ss == 1 ~ 0, # No presenta carencia
+                                                       # Parentesco directo: ascendientes
+                                                       .$par == 4 & .$pea == 0 & .$jef_ss == 1 ~ 0, # No presenta carencia
+                                                       .$par == 5 & .$pea == 0 & .$cony_ss == 1 ~ 0, # No presenta carencia
+                                                       # Otros núcleos familiares
+                                                       .$s_salud == 1 ~ 0, # No presenta carencia
+                                                       # Programa de adultos mayores
+                                                       .$pam == 1 ~ 0, # No presenta carencia
+                                                        TRUE ~ 1) # Presenta carencia
+                                 ) %>%
+                           select(folioviv, foliohog, numren,starts_with("tipo_trab"), starts_with("aforlab"), starts_with("smlab"), smcv, aforecv, 
+                                  pea, jub, ss_dir, par, ends_with("_ss"), s_salud, pam, ing_pam, ic_segsoc)
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(seguridad.social, paste0(here::here(), "/Output/Data/ic_segsoc22.csv"), row.names = F)
+save(seguridad.social, file = paste0(here::here(), "/Output/Data/ic_segsoc22.RData"))
+```
+
+
+#### Indicador de carencia por calidad y espacios de la vivienda 
+
+##### Material de construcción de la vivienda
+
+```{r}
+load(file = paste0(here::here(), "/Data/viviendas.RData")) 
+load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
+```
+
+
+```{r}
+calidad.viviendas <- viviendas %>% 
+                      left_join(., concentradohogar,  by = c("folioviv")) %>% 
+                       mutate(
+                              icv_pisos = as.numeric(.$mat_pisos), # Material de los pisos de la vivienda
+                              icv_techos = as.numeric(.$mat_techos), # Material de los techos de la vivienda
+                              icv_muros = as.numeric(.$mat_pared), # Material de muros en la vivienda
+                              num_ind = .$tot_resid, # Número de residentes en la vivienda
+                              num_cua = .$num_cuarto # Número de cuartos en la vivienda
+                              ) %>% 
+                       mutate(
+                              # Indicador de carencia por material de piso de la vivienda
+                              icv_pisos = case_when(.$icv_pisos >= 2 ~ 0,
+                                                    .$icv_pisos == 1 ~ 1),
+                              # Indicador de carencia por material de techos de la vivienda
+                              icv_techos = case_when(.$icv_techos >= 3 ~ 0,
+                                                     .$icv_techos <= 2 ~ 1),
+                              # Indicador de carencia por material de muros de la vivienda
+                              
+                              icv_muros = case_when(.$icv_muros >= 6 ~ 0,
+                                                    .$icv_muros <= 5 ~ 1),
+              
+                              # Espacios en la vivienda (Hacinamiento)
+                              # Índice de hacinamiento
+                              cv_hac = .$num_ind/.$num_cua) %>%
+                       # Indicador de carencia por hacinamiento en la vivienda
+                       mutate(
+                              icv_hac = case_when(
+                                                  .$cv_hac > 2.5 & !is.na(.$cv_hac) ~ 1,
+                                                  .$cv_hac <= 2.5 ~ 0)
+                              )
 ```
 
