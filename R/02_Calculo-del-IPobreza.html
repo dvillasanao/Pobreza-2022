@@ -3153,6 +3153,75 @@ de Construcción de las líneas de pobreza por ingresos. Disponible en: <a href=
 </div>
 <div id="cuadrantes" class="section level3">
 <h3>Cuadrantes</h3>
+<div class="sourceCode" id="cb66"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" tabindex="-1"></a>pobreza <span class="ot">&lt;-</span> pobreza <span class="sc">%&gt;%</span> </span>
+<span id="cb66-2"><a href="#cb66-2" tabindex="-1"></a>            <span class="fu">mutate</span>(</span>
+<span id="cb66-3"><a href="#cb66-3" tabindex="-1"></a>                   <span class="at">cuadrantes=</span><span class="fu">case_when</span>(.<span class="sc">$</span>plp <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> (.<span class="sc">$</span>i_privacion <span class="sc">&gt;=</span> <span class="dv">1</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>i_privacion)) <span class="sc">~</span> <span class="dv">1</span>, <span class="co"># Pobres</span></span>
+<span id="cb66-4"><a href="#cb66-4" tabindex="-1"></a>                                        .<span class="sc">$</span>plp <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> (.<span class="sc">$</span>i_privacion <span class="sc">&gt;=</span> <span class="dv">1</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>i_privacion)) <span class="sc">~</span> <span class="dv">2</span>, <span class="co"># Vulnerables por carencias</span></span>
+<span id="cb66-5"><a href="#cb66-5" tabindex="-1"></a>                                        .<span class="sc">$</span>plp <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> .<span class="sc">$</span>i_privacion <span class="sc">==</span> <span class="dv">0</span> <span class="sc">~</span> <span class="dv">3</span>,  <span class="co"># Vulnerables por ingresos     </span></span>
+<span id="cb66-6"><a href="#cb66-6" tabindex="-1"></a>                                        .<span class="sc">$</span>plp <span class="sc">==</span> <span class="dv">0</span> <span class="sc">&amp;</span> .<span class="sc">$</span>i_privacion <span class="sc">==</span> <span class="dv">0</span> <span class="sc">~</span> <span class="dv">4</span>))  <span class="co"># No pobres y no vulnerables</span></span></code></pre></div>
+</div>
+<div id="profundidad-en-el-espacio-del-bienestar-económico" class="section level3">
+<h3>Profundidad en el espacio del bienestar económico</h3>
+<div class="sourceCode" id="cb67"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" tabindex="-1"></a><span class="co">#Línea de pobreza extrema por ingresos (LPEI);</span></span>
+<span id="cb67-2"><a href="#cb67-2" tabindex="-1"></a><span class="co"># Valor monetario de la canasta alimentaria</span></span>
+<span id="cb67-3"><a href="#cb67-3" tabindex="-1"></a>lp1_urb <span class="ot">&lt;-</span> <span class="fl">2086.21</span></span>
+<span id="cb67-4"><a href="#cb67-4" tabindex="-1"></a>lp1_rur <span class="ot">&lt;-</span> <span class="fl">1600.18</span></span>
+<span id="cb67-5"><a href="#cb67-5" tabindex="-1"></a></span>
+<span id="cb67-6"><a href="#cb67-6" tabindex="-1"></a><span class="co"># Línea de pobreza por ingresos (LPI)</span></span>
+<span id="cb67-7"><a href="#cb67-7" tabindex="-1"></a><span class="co"># Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria</span></span>
+<span id="cb67-8"><a href="#cb67-8" tabindex="-1"></a>lp2_urb <span class="ot">&lt;-</span> <span class="fl">4158.35</span></span>
+<span id="cb67-9"><a href="#cb67-9" tabindex="-1"></a>lp2_rur <span class="ot">&lt;-</span> <span class="fl">2970.76</span></span></code></pre></div>
+<div class="sourceCode" id="cb68"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" tabindex="-1"></a>pobreza <span class="ot">&lt;-</span> pobreza <span class="sc">%&gt;%</span> </span>
+<span id="cb68-2"><a href="#cb68-2" tabindex="-1"></a>            <span class="fu">mutate</span>( </span>
+<span id="cb68-3"><a href="#cb68-3" tabindex="-1"></a>                   <span class="co"># FGT (a=1)</span></span>
+<span id="cb68-4"><a href="#cb68-4" tabindex="-1"></a>                   <span class="co"># Distancia normalizada del ingreso respecto a la línea de pobreza por ingresos</span></span>
+<span id="cb68-5"><a href="#cb68-5" tabindex="-1"></a>                   <span class="at">prof1 =</span> <span class="fu">case_when</span>(.<span class="sc">$</span>rururb <span class="sc">==</span><span class="dv">1</span> <span class="sc">&amp;</span> .<span class="sc">$</span>plp <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> (lp2_rur <span class="sc">-</span> .<span class="sc">$</span>ictpc)<span class="sc">/</span>(lp2_rur), </span>
+<span id="cb68-6"><a href="#cb68-6" tabindex="-1"></a>                                     .<span class="sc">$</span>rururb <span class="sc">==</span><span class="dv">0</span> <span class="sc">&amp;</span> .<span class="sc">$</span>plp <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> (lp2_urb <span class="sc">-</span> .<span class="sc">$</span>ictpc)<span class="sc">/</span>(lp2_urb),</span>
+<span id="cb68-7"><a href="#cb68-7" tabindex="-1"></a>                                     <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>ictpc) <span class="sc">~</span> <span class="dv">0</span>),</span>
+<span id="cb68-8"><a href="#cb68-8" tabindex="-1"></a>                   <span class="co"># Distancia normalizada del ingreso respecto a la línea de pobreza extrema por ingresos</span></span>
+<span id="cb68-9"><a href="#cb68-9" tabindex="-1"></a>                   <span class="at">prof_e1 =</span> <span class="fu">case_when</span>(.<span class="sc">$</span>rururb<span class="sc">==</span><span class="dv">1</span> <span class="sc">&amp;</span> .<span class="sc">$</span>plp_e <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> (lp1_rur <span class="sc">-</span> .<span class="sc">$</span>ictpc)<span class="sc">/</span>(lp1_rur),</span>
+<span id="cb68-10"><a href="#cb68-10" tabindex="-1"></a>                                       .<span class="sc">$</span>rururb<span class="sc">==</span><span class="dv">0</span> <span class="sc">&amp;</span> .<span class="sc">$</span>plp_e <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> (lp1_urb <span class="sc">-</span> .<span class="sc">$</span>ictpc)<span class="sc">/</span>(lp1_urb),</span>
+<span id="cb68-11"><a href="#cb68-11" tabindex="-1"></a>                                        <span class="sc">!</span><span class="fu">is.na</span>(.<span class="sc">$</span>ictpc) <span class="sc">~</span> <span class="dv">0</span>))</span></code></pre></div>
+</div>
+<div id="profundidad-de-la-privación-social" class="section level3">
+<h3>Profundidad de la privación social</h3>
+<div class="sourceCode" id="cb69"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" tabindex="-1"></a>pobreza <span class="ot">&lt;-</span> pobreza <span class="sc">%&gt;%</span> </span>
+<span id="cb69-2"><a href="#cb69-2" tabindex="-1"></a>            <span class="fu">mutate</span>( </span>
+<span id="cb69-3"><a href="#cb69-3" tabindex="-1"></a>                   <span class="at">profun =</span> .<span class="sc">$</span>i_privacion<span class="sc">/</span><span class="dv">6</span></span>
+<span id="cb69-4"><a href="#cb69-4" tabindex="-1"></a>                   ) <span class="sc">%&gt;%</span> </span>
+<span id="cb69-5"><a href="#cb69-5" tabindex="-1"></a>               <span class="co">#   Intensidad de la privación social      </span></span>
+<span id="cb69-6"><a href="#cb69-6" tabindex="-1"></a>            <span class="fu">mutate</span>(        </span>
+<span id="cb69-7"><a href="#cb69-7" tabindex="-1"></a>                   <span class="do">### Intensidad de la privación social: pobres</span></span>
+<span id="cb69-8"><a href="#cb69-8" tabindex="-1"></a>                   <span class="at">int_pob =</span> .<span class="sc">$</span>profun <span class="sc">*</span> .<span class="sc">$</span>pobreza,</span>
+<span id="cb69-9"><a href="#cb69-9" tabindex="-1"></a>                   </span>
+<span id="cb69-10"><a href="#cb69-10" tabindex="-1"></a>                   <span class="do">### Intensidad de la privación social: pobres extremos</span></span>
+<span id="cb69-11"><a href="#cb69-11" tabindex="-1"></a>                   <span class="at">int_pobe =</span> .<span class="sc">$</span>profun <span class="sc">*</span> .<span class="sc">$</span>pobreza_e,</span>
+<span id="cb69-12"><a href="#cb69-12" tabindex="-1"></a>                   </span>
+<span id="cb69-13"><a href="#cb69-13" tabindex="-1"></a>                   <span class="do">### Intensidad de la privación social: población vulnerable por carencias</span></span>
+<span id="cb69-14"><a href="#cb69-14" tabindex="-1"></a>                   <span class="at">int_vulcar =</span> .<span class="sc">$</span>profun <span class="sc">*</span> .<span class="sc">$</span>vul_car,</span>
+<span id="cb69-15"><a href="#cb69-15" tabindex="-1"></a>                   </span>
+<span id="cb69-16"><a href="#cb69-16" tabindex="-1"></a>                   <span class="do">### Intensidad de la privación social: población con carencias sociales</span></span>
+<span id="cb69-17"><a href="#cb69-17" tabindex="-1"></a>                   <span class="at">int_caren =</span> .<span class="sc">$</span>profun <span class="sc">*</span> .<span class="sc">$</span>carencias) <span class="sc">%&gt;%</span> </span>
+<span id="cb69-18"><a href="#cb69-18" tabindex="-1"></a>             <span class="fu">select</span>( folioviv, foliohog, numren, est_dis.x, upm.x, factor.x, tam_loc, rururb, ent, ubica_geo, edad.x, sexo, parentesco.x,</span>
+<span id="cb69-19"><a href="#cb69-19" tabindex="-1"></a>                     ic_rezedu, anac_e, inas_esc.x, niv_ed, ic_asalud, ic_segsoc,sa_dir, ss_dir, s_salud.x, par.x, jef_ss, cony_ss,</span>
+<span id="cb69-20"><a href="#cb69-20" tabindex="-1"></a>                     hijo_ss, pea.x, jub, pam, ing_pam, ic_cv, icv_pisos, icv_muros, icv_techos, icv_hac, ic_sbv, isb_agua, isb_dren,</span>
+<span id="cb69-21"><a href="#cb69-21" tabindex="-1"></a>                     isb_luz, isb_combus, ic_ali_nc, id_men, tot_iaad, tot_iamen, ins_ali, ic_ali, lca, dch, plp_e, plp, </span>
+<span id="cb69-22"><a href="#cb69-22" tabindex="-1"></a>                     pobreza, pobreza_e, pobreza_m, vul_car, vul_ing, no_pobv,  i_privacion, carencias, carencias3, cuadrantes, </span>
+<span id="cb69-23"><a href="#cb69-23" tabindex="-1"></a>                     prof1, prof_e1, profun,  int_pob, int_pobe, int_vulcar, int_caren,tamhogesc, ictpc, ict, ing_mon, </span>
+<span id="cb69-24"><a href="#cb69-24" tabindex="-1"></a>                     ing_lab, ing_ren, ing_tra, nomon, pago_esp, reg_esp, hli, discap)</span></code></pre></div>
+<div class="sourceCode" id="cb70"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" tabindex="-1"></a>pobreza <span class="ot">&lt;-</span> pobreza <span class="sc">%&gt;%</span></span>
+<span id="cb70-2"><a href="#cb70-2" tabindex="-1"></a>            <span class="fu">rename</span>(<span class="st">&quot;est_dis&quot;</span> <span class="ot">=</span> <span class="st">&quot;est_dis.x&quot;</span>,</span>
+<span id="cb70-3"><a href="#cb70-3" tabindex="-1"></a>                   <span class="st">&quot;upm&quot;</span> <span class="ot">=</span> <span class="st">&quot;upm.x&quot;</span>,</span>
+<span id="cb70-4"><a href="#cb70-4" tabindex="-1"></a>                   <span class="st">&quot;factor&quot;</span> <span class="ot">=</span> <span class="st">&quot;factor.x&quot;</span>,</span>
+<span id="cb70-5"><a href="#cb70-5" tabindex="-1"></a>                   <span class="st">&quot;edad&quot;</span> <span class="ot">=</span> <span class="st">&quot;edad.x&quot;</span>,</span>
+<span id="cb70-6"><a href="#cb70-6" tabindex="-1"></a>                   <span class="st">&quot;parentesco&quot;</span> <span class="ot">=</span> <span class="st">&quot;parentesco.x&quot;</span>,</span>
+<span id="cb70-7"><a href="#cb70-7" tabindex="-1"></a>                   <span class="st">&quot;inas_esc&quot;</span> <span class="ot">=</span> <span class="st">&quot;inas_esc.x&quot;</span>,</span>
+<span id="cb70-8"><a href="#cb70-8" tabindex="-1"></a>                   <span class="st">&quot;s_salud&quot;</span> <span class="ot">=</span> <span class="st">&quot;s_salud.x&quot;</span>,</span>
+<span id="cb70-9"><a href="#cb70-9" tabindex="-1"></a>                   <span class="st">&quot;par&quot;</span> <span class="ot">=</span> <span class="st">&quot;par.x&quot;</span>,</span>
+<span id="cb70-10"><a href="#cb70-10" tabindex="-1"></a>                   <span class="st">&quot;pea&quot;</span> <span class="ot">=</span> <span class="st">&quot;pea.x&quot;</span>)</span></code></pre></div>
+<p><strong>Se guarda la base de datos</strong></p>
+<div class="sourceCode" id="cb71"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" tabindex="-1"></a><span class="co">#fwrite(pobreza, paste0(here::here(), &quot;/Output/Data/pobreza_22.csv&quot;), row.names = F)</span></span>
+<span id="cb71-2"><a href="#cb71-2" tabindex="-1"></a><span class="fu">save</span>(pobreza, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/pobreza_22.RData&quot;</span>))</span></code></pre></div>
 </div>
 </div>
 

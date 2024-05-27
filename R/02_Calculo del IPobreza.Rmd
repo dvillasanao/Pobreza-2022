@@ -1758,3 +1758,92 @@ pobreza <- pobreza %>%
 
 
 ### Cuadrantes
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate(
+                   cuadrantes=case_when(.$plp == 1 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 1, # Pobres
+                                        .$plp == 0 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 2, # Vulnerables por carencias
+                                        .$plp == 1 & .$i_privacion == 0 ~ 3,  # Vulnerables por ingresos     
+                                        .$plp == 0 & .$i_privacion == 0 ~ 4))  # No pobres y no vulnerables
+```
+
+
+### Profundidad en el espacio del bienestar económico  
+
+```{r}
+#Línea de pobreza extrema por ingresos (LPEI);
+# Valor monetario de la canasta alimentaria
+lp1_urb <- 2086.21
+lp1_rur <- 1600.18
+
+# Línea de pobreza por ingresos (LPI)
+# Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria
+lp2_urb <- 4158.35
+lp2_rur <- 2970.76
+```
+
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate( 
+                   # FGT (a=1)
+                   # Distancia normalizada del ingreso respecto a la línea de pobreza por ingresos
+                   prof1 = case_when(.$rururb ==1 & .$plp == 1 ~ (lp2_rur - .$ictpc)/(lp2_rur), 
+                                     .$rururb ==0 & .$plp == 1 ~ (lp2_urb - .$ictpc)/(lp2_urb),
+                                     !is.na(.$ictpc) ~ 0),
+                   # Distancia normalizada del ingreso respecto a la línea de pobreza extrema por ingresos
+                   prof_e1 = case_when(.$rururb==1 & .$plp_e == 1 ~ (lp1_rur - .$ictpc)/(lp1_rur),
+                                       .$rururb==0 & .$plp_e == 1 ~ (lp1_urb - .$ictpc)/(lp1_urb),
+                                        !is.na(.$ictpc) ~ 0))
+```
+
+
+### Profundidad de la privación social  
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate( 
+                   profun = .$i_privacion/6
+                   ) %>% 
+               #   Intensidad de la privación social      
+            mutate(        
+                   ### Intensidad de la privación social: pobres
+                   int_pob = .$profun * .$pobreza,
+                   
+                   ### Intensidad de la privación social: pobres extremos
+                   int_pobe = .$profun * .$pobreza_e,
+                   
+                   ### Intensidad de la privación social: población vulnerable por carencias
+                   int_vulcar = .$profun * .$vul_car,
+                   
+                   ### Intensidad de la privación social: población con carencias sociales
+                   int_caren = .$profun * .$carencias) %>% 
+             select( folioviv, foliohog, numren, est_dis.x, upm.x, factor.x, tam_loc, rururb, ent, ubica_geo, edad.x, sexo, parentesco.x,
+                     ic_rezedu, anac_e, inas_esc.x, niv_ed, ic_asalud, ic_segsoc,sa_dir, ss_dir, s_salud.x, par.x, jef_ss, cony_ss,
+                     hijo_ss, pea.x, jub, pam, ing_pam, ic_cv, icv_pisos, icv_muros, icv_techos, icv_hac, ic_sbv, isb_agua, isb_dren,
+                     isb_luz, isb_combus, ic_ali_nc, id_men, tot_iaad, tot_iamen, ins_ali, ic_ali, lca, dch, plp_e, plp, 
+                     pobreza, pobreza_e, pobreza_m, vul_car, vul_ing, no_pobv,  i_privacion, carencias, carencias3, cuadrantes, 
+                     prof1, prof_e1, profun,  int_pob, int_pobe, int_vulcar, int_caren,tamhogesc, ictpc, ict, ing_mon, 
+                     ing_lab, ing_ren, ing_tra, nomon, pago_esp, reg_esp, hli, discap)
+```
+
+
+```{r}
+pobreza <- pobreza %>%
+            rename("est_dis" = "est_dis.x",
+                   "upm" = "upm.x",
+                   "factor" = "factor.x",
+                   "edad" = "edad.x",
+                   "parentesco" = "parentesco.x",
+                   "inas_esc" = "inas_esc.x",
+                   "s_salud" = "s_salud.x",
+                   "par" = "par.x",
+                   "pea" = "pea.x")
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(pobreza, paste0(here::here(), "/Output/Data/pobreza_22.csv"), row.names = F)
+save(pobreza, file = paste0(here::here(), "/Output/Data/pobreza_22.RData"))
+```
