@@ -1162,3 +1162,297 @@ save(ingresos, file = paste0(here::here(), "/Output/Data/ingreso_deflactado22.RD
 ```
 
 
+##### No Monetario  
+
+En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que identifique la decena de levantamiento.   
+
+Creación del ingreso no monetario deflactado a pesos de agosto del 2022.  
+
+```{r}
+load(file = paste0(here::here(), "/Data/gastoshogar.RData")) 
+load(file = paste0(here::here(), "/Data/gastospersona.RData"))
+
+gastoshogar <- gastoshogar %>% 
+                mutate(base = 1)
+
+gastospersona <- gastospersona  %>% 
+                  mutate(base = 2) 
+```
+
+```{r}
+no.monetario <- gastospersona %>%
+                 bind_rows(., gastoshogar) %>%
+                  mutate(frecuencia = ifelse(.$base == 2, 
+                                              .$frec_rem, 
+                                               .$frecuencia), 
+                          # En el caso de la información de gasto no monetario, para deflactar se utiliza la decena 
+                          # de levantamiento de la encuesta, la cual se encuentra en la octava posición del folio de la vivienda. 
+                          # En primer lugar se obtiene una variable que identifique la decena de levantamiento.
+                         decena = str_sub(str_pad(.$folioviv, 10, "left", pad = "0"), 8, 8))
+```
+
+**Definición de los deflactores**
+
+```{r}
+# Rubro 1.1 semanal, Alimentos		
+  d11w07	<-	0.9869825057
+  d11w08	<-	1.0000000000
+  d11w09	<-	1.0130754464
+  d11w10	<-	1.0178275200
+  d11w11	<-	1.0207468579
+  
+  # Rubro 1.2 semanal, Bebidas alcohólicas y tabaco		
+  d12w07	<-	0.9923340135
+  d12w08	<-	1.0000000000
+  d12w09	<-	1.0035071112
+  d12w10	<-	1.0111808568
+  d12w11	<-	1.0131982216
+  
+  # Rubro 2 trimestral, Vestido, calzado y accesorios		
+  d2t05	<-	0.9899050815
+  d2t06	<-	0.9941003723
+  d2t07	<-	0.9997465345
+  d2t08	<-	1.0083352270
+  
+  # Rubro 3 mensual, viviendas		
+  d3m07	<-	0.9998142481
+  d3m08	<-	1.0000000000
+  d3m09	<-	0.9978682753
+  d3m10	<-	1.0031577830
+  d3m11	<-	1.0197073965
+  
+  # Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar		
+  d42m07	<-	0.9894769136
+  d42m08	<-	1.0000000000
+  d42m09	<-	1.0086286240
+  d42m10	<-	1.0182083142
+  d42m11	<-	1.0237613131
+  
+  # Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar		
+  d42t05	<-	0.9787953163
+  d42t06	<-	0.9897197934
+  d42t07	<-	0.9993685126
+  d42t08	<-	1.0089456461
+  
+  # Rubro 4.1 semestral, Muebles y aparatos dómesticos		
+  d41s02	<-	1.0003069312
+  d41s03	<-	0.9993861376
+  d41s04	<-	0.9992122603
+  d41s05	<-	0.9991442214
+  
+  # Rubro 5.1 trimestral, Salud		
+  d51t05	<-	0.9909917367
+  d51t06	<-	0.9954834527
+  d51t07	<-	0.9994564693
+  d51t08	<-	1.0030487384
+  
+  # Rubro 6.1.1 semanal, Transporte público urbano		
+  d611w07	<-	0.9963207274
+  d611w08	<-	1.0000000000
+  d611w09	<-	1.0034865488
+  d611w10	<-	1.0052385833
+  d611w11	<-	1.0064912880
+  
+  # Rubro 6 mensual, Transporte		
+  d6m07	<-	0.9987845893
+  d6m08	<-	1.0000000000
+  d6m09	<-	1.0001664946
+  d6m10	<-	1.0057274150
+  d6m11	<-	1.0076837268
+  
+  # Rubro 6 semestral, Transporte		
+  d6s02	<-	0.9808628306
+  d6s03	<-	0.9879901879
+  d6s04	<-	0.9927380596
+  d6s05	<-	0.9969378864
+  
+  # Rubro 7 mensual, Educación y esparcimiento		
+  d7m07	<-	0.9961413091
+  d7m08	<-	1.0000000000
+  d7m09	<-	1.0095233900
+  d7m10	<-	1.0144128271
+  d7m11	<-	1.0174522069
+  
+  # Rubro 2.3 mensual, Accesorios y cuidados del vestido		
+  d23m07	<-	0.9952443607
+  d23m08	<-	1.0000000000
+  d23m09	<-	1.0081869233
+  d23m10	<-	1.0108184343
+  d23m11	<-	1.0072323555
+  
+  # Rubro 2.3 trimestral,  Accesorios y cuidados del vestido		
+  d23t05	<-	0.9914948875
+  d23t06	<-	0.9956428139
+  d23t07	<-	1.0011437613
+  d23t08	<-	1.0063351192
+  
+  # INPC semestral		
+  dINPCs02 <-	0.9773093813
+  dINPCs03 <-	0.9838008772
+  dINPCs04 <-	0.9897404209
+  dINPCs05 <-	0.9957540070
+```
+
+
+**Una vez definidos los deflactores, se seleccionan los rubros** 
+
+```{r}
+no.monetario <- no.monetario %>%
+                 mutate(gasnomon = .$gas_nm_tri/3,
+                        esp = if_else(.$tipo_gasto == "G4", 1, NA_real_),
+                        reg = if_else(.$tipo_gasto == "G5" | .$tipo_gasto == "G6", 1, NA_real_))  %>%
+                 filter(!(tipo_gasto %in% c("G2", "G3", "G7"))) %>%
+                 # Control para la frecuencia de los regalos recibidos por persona
+                 filter(!(((frecuencia >= 5 & frecuencia <= 6) | is.na(frecuencia) | frecuencia == 0) & base == 1 & tipo_gasto == "G5")) %>%
+                 filter(!(((frecuencia == 9) | is.na(frecuencia)) & base == 2 & tipo_gasto == "G5")) %>%
+                 mutate(
+                        # Se definen las asignaciones para las diferentes claves de ingreso
+                        ali_nm = if_else(between(.$clave, "A001", "A222") | between(.$clave, "A242", "A247"), .$gasnomon, NA_real_),
+                        alta_nm = if_else(between(.$clave, "A223", "A241"), .$gasnomon, NA_real_),
+                        veca_nm = if_else(between(.$clave, "H001", "H122") | .$clave == "H136", .$gasnomon, NA_real_),
+                        viv_nm = if_else(between(.$clave, "G001", "G016") | between(.$clave, "R001", "R004") | .$clave == "R013", .$gasnomon, NA_real_),
+                        lim_nm = if_else(between(.$clave, "C001", "C024"), .$gasnomon, NA_real_),
+                        cris_nm = if_else(between(.$clave, "I001", "I026"), .$gasnomon, NA_real_),
+                        ens_nm = if_else(between(.$clave, "K001", "K037"), .$gasnomon, NA_real_),
+                        sal_nm = if_else(between(.$clave, "J001", "J072"), .$gasnomon, NA_real_),
+                        tpub_nm = if_else(between(.$clave, "B001", "B007"), .$gasnomon, NA_real_),
+                        tfor_nm = if_else(between(.$clave, "M001", "M018") | between(.$clave, "F007", "F014"), .$gasnomon, NA_real_),
+                        com_nm = if_else(between(.$clave, "F001", "F006") | between(.$clave, "R005", "R008") | between(.$clave, "R010", "R011"), .$gasnomon, NA_real_),
+                        edre_nm = if_else(between(.$clave, "E001", "E034") | between(.$clave, "H134", "H135") | between(.$clave, "L001", "L029") | between(.$clave, "N003", "N005") | .$clave == "R009", .$gasnomon, NA_real_),
+                        edba_nm = if_else((between(.$clave, "E002", "E003") | between(.$clave, "H134", "H135")), .$gasnomon, NA_real_),
+                        cuip_nm = if_else(between(.$clave, "D001", "D026") | .$clave == "H132", .$gasnomon, NA_real_),
+                        accp_nm = if_else(between(.$clave, "H123", "H131") | .$clave == "H133", .$gasnomon, NA_real_),
+                        otr_nm = if_else(between(.$clave, "N001", "N002") | between(.$clave, "N006", "N016") | between(.$clave, "T901", "T915") | .$clave == "R012", .$gasnomon, NA_real_),
+                        
+                        reda_nm = if_else(between(.$clave, "T901", "T915") | .$clave == "N013", .$gasnomon, NA_real_)
+                        ) %>% 
+                 # Se deflactan los rubros del gasto no monetario según la decena de levantamiento
+                   mutate(
+                          # Gasto no monetario en Alimentos deflactado (semanal)
+                          ali_nm = case_when(.$decena %in% c(1, 2, 3) ~ .$ali_nm/d11w08,
+                                             .$decena %in% c(4, 5, 6) ~ .$ali_nm/d11w09,
+                                             .$decena %in% c(7, 8, 9) ~ .$ali_nm/d11w10,
+                                             .$decena %in% c(0) ~ .$ali_nm/d11w11),
+                          # Gasto no monetario en Alcohol y tabaco deflactado (semanal)
+                          alta_nm = case_when(.$decena %in% c(1,2,3) ~ .$alta_nm/d12w08,
+                                              .$decena %in% c(4,5,6) ~ .$alta_nm/d12w09,
+                                              .$decena %in% c(7,8,9) ~ .$alta_nm/d12w10,
+                                              .$decena %in% c(0) ~ .$alta_nm/d12w11),
+                          # Gasto no monetario en Vestido y calzado deflactado (trimestral)
+                          veca_nm = case_when(.$decena %in% c(1,2) ~ .$veca_nm/d2t05,
+                                              .$decena %in% c(3,4,5) ~ .$veca_nm/d2t06,
+                                              .$decena %in% c(6,7,8) ~ .$veca_nm/d2t07,
+                                              .$decena %in% c(9,0) ~ .$veca_nm/d2t08),
+                          # Gasto no monetario en viviendas y servicios de conservación deflactado (mensual)
+                          viv_nm = case_when(.$decena %in% c(1,2) ~ .$viv_nm/d3m07,
+                                             .$decena %in% c(3,4,5) ~ .$viv_nm/d3m08,
+                                             .$decena %in% c(6,7,8) ~ .$viv_nm/d3m09,
+                                             .$decena %in% c(9,0) ~ .$viv_nm/d3m10),
+                          # Gasto no monetario en Artículos de limpieza deflactado (mensual)
+                          lim_nm = case_when(.$decena %in% c(1,2) ~ .$lim_nm/d42m07,
+                                             .$decena %in% c(3,4,5) ~ .$lim_nm/d42m08,
+                                             .$decena %in% c(6,7,8) ~ .$lim_nm/d42m09,
+                                             .$decena %in% c(9,0) ~ .$lim_nm/d42m10),
+                          # Gasto no monetario en Cristalería y blancos deflactado (trimestral)
+                          cris_nm = case_when(.$decena %in% c(1,2) ~ .$cris_nm/d42t05,
+                                              .$decena %in% c(3,4,5) ~ .$cris_nm/d42t06,
+                                              .$decena %in% c(6,7,8) ~ .$cris_nm/d42t07,
+                                              .$decena %in% c(9,0) ~ .$cris_nm/d42t08),
+                          # Gasto no monetario en Enseres domésticos y muebles deflactado (semestral)
+                          ens_nm = case_when(.$decena %in% c(1,2) ~ .$ens_nm/d41s02,
+                                             .$decena %in% c(3,4,5) ~ .$ens_nm/d41s03,
+                                             .$decena %in% c(6,7,8) ~ .$ens_nm/d41s04,
+                                             .$decena %in% c(9,0) ~ .$ens_nm/d41s05),
+                          # Gasto no monetario en Salud deflactado (trimestral)
+                          sal_nm = case_when(.$decena %in% c(1,2) ~ .$sal_nm/d51t05,
+                                             .$decena %in% c(3,4,5) ~ .$sal_nm/d51t06,
+                                             .$decena %in% c(6,7,8) ~ .$sal_nm/d51t07,
+                                             .$decena %in% c(9,0) ~ .$sal_nm/d51t08),
+                          # Gasto no monetario en Transporte público deflactado (semanal)
+                          tpub_nm = case_when(.$decena %in% c(1,2,3) ~ .$tpub_nm/d611w08,
+                                              .$decena %in% c(4,5,6) ~ .$tpub_nm/d611w09,
+                                              .$decena %in% c(7,8,9) ~ .$tpub_nm/d611w10,
+                                              .$decena %in% c(0) ~ .$tpub_nm/d611w11),
+                          # Gasto no monetario en Transporte foráneo deflactado (semestral)
+                          tfor_nm = case_when(.$decena %in% c(1,2) ~ .$tfor_nm/d6s02,
+                                              .$decena %in% c(3,4,5) ~ .$tfor_nm/d6s03,
+                                              .$decena %in% c(6,7,8) ~ .$tfor_nm/d6s04,
+                                              .$decena %in% c(9,0) ~ .$tfor_nm/d6s05),
+                          # Gasto no monetario en Comunicaciones deflactado (mensual)
+                          com_nm = case_when(.$decena %in% c(1,2) ~ .$com_nm/d6m07,
+                                             .$decena %in% c(3,4,5) ~ .$com_nm/d6m08,
+                                             .$decena %in% c(6,7,8) ~ .$com_nm/d6m09,
+                                             .$decena %in% c(9,0) ~ .$com_nm/d6m10),
+                          # Gasto no monetario en Educación y recreación deflactado (mensual)
+                          edre_nm = case_when(.$decena %in% c(1,2) ~ .$edre_nm/d7m07,
+                                              .$decena %in% c(3,4,5) ~ .$edre_nm/d7m08,
+                                              .$decena %in% c(6,7,8) ~ .$edre_nm/d7m09,
+                                              .$decena %in% c(9,0) ~ .$edre_nm/d7m10),
+                          # Gasto no monetario en Educación básica deflactado (mensual)
+                          edba_nm = case_when(.$decena %in% c(1,2) ~ .$edba_nm/d7m07,
+                                              .$decena %in% c(3,4,5) ~ .$edba_nm/d7m08,
+                                              .$decena %in% c(6,7,8) ~ .$edba_nm/d7m09,
+                                              .$decena %in% c(9,0) ~ .$edba_nm/d7m10),
+                          # Gasto no monetario en Cuidado personal deflactado (mensual)
+                          cuip_nm = case_when(.$decena %in% c(1,2) ~ .$cuip_nm/d23m07,
+                                              .$decena %in% c(3,4,5) ~ .$cuip_nm/d23m08,
+                                              .$decena %in% c(6,7,8) ~ .$cuip_nm/d23m09,
+                                              .$decena %in% c(9,0) ~ .$cuip_nm/d23m10),
+                          # Gasto no monetario en Accesorios personales deflactado (trimestral)
+                          accp_nm = case_when(.$decena %in% c(1,2) ~ .$accp_nm/d23t05,
+                                              .$decena %in% c(3,4,5) ~ .$accp_nm/d23t06,
+                                              .$decena %in% c(6,7,8) ~ .$accp_nm/d23t07,
+                                              .$decena %in% c(9,0) ~ .$accp_nm/d23t08),
+                           # Gasto no monetario en Otros gastos y transferencias deflactado (semestral)
+                          otr_nm = case_when(.$decena %in% c(1,2) ~ .$otr_nm/dINPCs02,
+                                             .$decena %in% c(3,4,5) ~ .$otr_nm/dINPCs03,
+                                             .$decena %in% c(6,7,8) ~ .$otr_nm/dINPCs04,
+                                             .$decena %in% c(9,0) ~ .$otr_nm/dINPCs05),
+                          # Gasto no monetario en Regalos Otorgados deflactado
+                          reda_nm = case_when(.$decena %in% c(1,2) ~ .$reda_nm/dINPCs02,
+                                              .$decena %in% c(3,4,5) ~ .$reda_nm/dINPCs03,
+                                              .$decena %in% c(6,7,8) ~ .$reda_nm/dINPCs04,
+                                              .$decena %in% c(9,0) ~ .$reda_nm/dINPCs05))
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(no.monetario, paste0(here::here(), "/Output/Data/ingresonomonetario_def22.csv"), row.names = F)
+save(no.monetario, file = paste0(here::here(), "/Output/Data/ingresonomonetario_def22.RData"))
+```
+
+**Construcción de la base de pagos en especie a partir de la base de gasto no monetario**  
+
+```{r}
+pagos.especie <- no.monetario %>%
+                  filter(esp == 1) %>%
+                   group_by(folioviv, foliohog) %>% 
+                    summarise(across(all_of(names(.)[endsWith(names(.), "_nm")]), ~sum(., na.rm = TRUE))) %>%
+                     rename_with(~ paste0(., "e"), 4:20)
+```
+
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(pagos.especie, paste0(here::here(), "/Output/Data/esp_def22.csv"), row.names = F)
+save(pagos.especie, file = paste0(here::here(), "/Output/Data/esp_def22.RData"))
+```
+
+**Construcción de base de regalos a partir de la base no monetaria**  
+
+```{r}
+regalos <- no.monetario %>% 
+            filter(reg == 1) %>%
+             group_by(folioviv, foliohog) %>% 
+              summarise(across(all_of(names(.)[endsWith(names(.), "_nm")]), ~sum(., na.rm = TRUE))) %>%
+               rename_with(~ paste0(., "r"), 4:20)
+```
+
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(regalos, paste0(here::here(), "/Output/Data/reg_def22.csv"), row.names = F)
+save(regalos, file = paste0(here::here(), "/Output/Data/reg_def22.RData"))
+```
+
+
