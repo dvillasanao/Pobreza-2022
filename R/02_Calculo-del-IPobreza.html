@@ -1615,6 +1615,38 @@ color: #0A2687;
 color: #ffffff;
 background-color: #09C2BC;
 }
+.nav-pills>li:nth-child(1) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(2) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(3) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(4) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(5) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(6) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(7) {
+color: #000000;
+background: #EEEEEE
+}
+.nav-pills>li:nth-child(8) {
+color: #000000;
+background: #EEEEEE
+}
 </style>
 <p><strong>Librerías que se utilizaron en el documento</strong></p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(pacman)) <span class="fu">install.packages</span>(<span class="st">&quot;pacman&quot;</span>)</span>
@@ -2896,8 +2928,11 @@ monetaria</strong></p>
 <div class="sourceCode" id="cb49"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" tabindex="-1"></a><span class="co">#fwrite(regalos, paste0(here::here(), &quot;/Output/Data/reg_def22.csv&quot;), row.names = F)</span></span>
 <span id="cb49-2"><a href="#cb49-2" tabindex="-1"></a><span class="fu">save</span>(regalos, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/reg_def22.RData&quot;</span>))</span></code></pre></div>
 </div>
-<div id="construcción-del-ingreso-corriente-total" class="section level5">
-<h5>Construcción del ingreso corriente total</h5>
+</div>
+</div>
+<div id="construcción-del-ingreso-corriente-total" class="section level3 tabset tabset-pills">
+<h3 class="tabset tabset-pills">Construcción del ingreso corriente
+total</h3>
 <div class="sourceCode" id="cb50"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Data/concentradohogar.RData&quot;</span>)) </span>
 <span id="cb50-2"><a href="#cb50-2" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/ingreso_deflactado22.RData&quot;</span>))</span>
 <span id="cb50-3"><a href="#cb50-3" tabindex="-1"></a><span class="fu">load</span>(<span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/esp_def22.RData&quot;</span>))</span></code></pre></div>
@@ -2935,7 +2970,9 @@ monetaria</strong></p>
 <div class="sourceCode" id="cb52"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" tabindex="-1"></a><span class="co">#fwrite(ingreso.corriente, paste0(here::here(), &quot;/Output/Data/ingresotot22.csv&quot;), row.names = F)</span></span>
 <span id="cb52-2"><a href="#cb52-2" tabindex="-1"></a><span class="fu">save</span>(ingreso.corriente, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/ingresotot22.RData&quot;</span>))</span></code></pre></div>
 </div>
-</div>
+<div id="construcción-del-tamaño-de-hogar-con-economías-de-escala-y-escalas-de-equivalencia" class="section level3 tabset tabset-pills">
+<h3 class="tabset tabset-pills">Construcción del tamaño de hogar con
+economías de escala y escalas de equivalencia</h3>
 </div>
 </div>
 

@@ -59,6 +59,38 @@ h3 {
     color: #ffffff;
     background-color: #09C2BC;
 }
+.nav-pills>li:nth-child(1) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(2) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(3) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(4) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(5) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(6) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(7) {
+    color: #000000;
+    background: #EEEEEE
+}
+.nav-pills>li:nth-child(8) {
+    color: #000000;
+    background: #EEEEEE
+}
 </style>
 ```
 
@@ -1455,7 +1487,9 @@ regalos <- no.monetario %>%
 save(regalos, file = paste0(here::here(), "/Output/Data/reg_def22.RData"))
 ```
 
-##### Construcción del ingreso corriente total 
+
+
+### Construcción del ingreso corriente total   {.tabset .tabset-pills} 
 
 ```{r}
 load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
@@ -1502,3 +1536,5 @@ ingreso.corriente <- concentradohogar %>%
 save(ingreso.corriente, file = paste0(here::here(), "/Output/Data/ingresotot22.RData"))
 ```
 
+
+### Construcción del tamaño de hogar con economías de escala y escalas de equivalencia   {.tabset .tabset-pills} 
