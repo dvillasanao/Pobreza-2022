@@ -1566,9 +1566,195 @@ En este programa se construyen los indicadores de bienestar económico mediante 
 Para más información, se sugiere consultar el documento metodológico de Construcción de las líneas de pobreza por ingresos. Disponible en: https://www.coneval.org.mx/InformesPublicaciones/InformesPublicaciones/Documents/Lineas_pobreza.pdf     
 
 ```{r}
+#Línea de pobreza extrema por ingresos (LPEI);
+# Valor monetario de la canasta alimentaria;
+lp1_urb <- 2086.21
+lp1_rur <- 1600.18
+
+# Línea de pobreza por ingresos (LPI)
+# Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria
+lp2_urb <- 4158.35
+lp2_rur <- 2970.76
+```
+
+
+```{r}
 p_ingreso <- ingreso.corriente %>% 
               left_join(., tam_hogar.escala, by = c("folioviv", "foliohog")) %>% 
                # Información per cápita
-               mutate(ictpc = ict/tamhogesc)
+               mutate(ictpc = .$ict/.$tamhogesc) %>% 
+               # Se identifica a los hogares bajos de la línea de la pobreza
+               mutate(
+                      # Se identifica a los hogares bajo lp1
+                      plp_e = case_when(.$ictpc < lp1_urb  & .$rururb == 0  ~ 1,
+                                        .$ictpc >= lp1_urb  & .$rururb == 0 & !is.na(.$ictpc) ~ 0,
+                                        .$ictpc < lp1_rur  & .$rururb == 1  ~ 1,
+                                        .$ictpc >= lp1_rur  & .$rururb == 1 & !is.na(.$ictpc) ~ 0),
+                      # Se identifica a los hogares bajo lp2
+                      plp = case_when(.$ictpc < lp2_urb  & .$rururb == 0  ~ 1,
+                                      .$ictpc >= lp2_urb  & .$rururb == 0 & !is.na(.$ictpc) ~ 0,
+                                      .$ictpc < lp2_rur  & .$rururb == 1  ~ 1,
+                                      .$ictpc >= lp2_rur  & .$rururb == 1 & !is.na(.$ictpc) ~ 0)) %>% 
+                select(folioviv, foliohog, factor, tam_loc, rururb, tamhogesc, ict, ictpc, plp_e, plp, est_dis, upm, ubica_geo, 
+                       tot_integ, ing_mon, ing_lab, ing_ren, ing_tra, nomon, pago_esp, reg_esp)  
 ```
 
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(p_ingreso, paste0(here::here(), "/Output/Data/p_ingresos22.csv"), row.names = F)
+save(p_ingreso, file = paste0(here::here(), "/Output/Data/p_ingresos22.RData"))
+```
+
+
+## Pobreza multidimensional  {.tabset .tabset-pills .top2-tiles} 
+
+### Integración de las bases 
+
+**Se vuelven a cargar las bases de datos**  
+
+```{r}
+# Rezago eductivo 
+load(file = paste0(here::here(), "/Output/Data/ic_rezedu22.RData"))
+# Carencia por acceso a los servicios de salud
+load(file = paste0(here::here(), "/Output/Data/ic_asalud22.RData"))
+# Carencia por acceso a la seguridad social
+load(file = paste0(here::here(), "/Output/Data/ic_segsoc22.RData"))
+# Carencia por calidad y espacios de la vivienda
+load(file = paste0(here::here(), "/Output/Data/ic_cev22.RData"))
+# Carencia por acceso a los servicios básicos de la vivienda
+load(file = paste0(here::here(), "/Output/Data/ic_sbv22.RData"))
+# Carencia por acceso a la alimentación nutritiva y de calidad 
+load(file = paste0(here::here(), "/Output/Data/ic_ali22.RData"))
+# Línea de pobreza por ingresos (LPI)
+load(file = paste0(here::here(), "/Output/Data/p_ingresos22.RData"))
+```
+
+Se integran las seis bases de datos.  
+
+```{r}
+require(tidyr)
+pobreza <- rezago.educativo %>%  
+            left_join(., salud, by = c("folioviv", "foliohog", "numren")) %>% 
+             left_join(., seguridad.social, by = c("folioviv", "foliohog", "numren")) %>% 
+              left_join(., calidad.viviendas, by = c("folioviv", "foliohog")) %>% 
+               left_join(., servicios.basicos, by = c("folioviv", "foliohog")) %>% 
+                left_join(., alimentacion, by = c("folioviv", "foliohog")) %>% 
+                 left_join(., p_ingreso, by = c("folioviv", "foliohog")) %>% 
+                  mutate_at(vars(c(ing_mon, ing_lab, ing_ren, ing_tra)),  ~ if_else(is.na(.), 0, .)) %>% 
+                   # Se eliminan posibles duplicados
+                   distinct(folioviv, foliohog, numren, .keep_all = TRUE) %>% 
+                    mutate(
+                           folioviv = str_pad(.$folioviv, 10, "left", pad = "0"),
+                           ent = as.numeric(str_sub(.$folioviv, 1,2))) %>%
+                    mutate(          
+                           entidad = case_when(.$ent == 1  ~ "Aguascalientes",
+                                               .$ent == 2  ~ "Baja California",
+                                               .$ent == 3  ~ "Baja California Sur",
+                                               .$ent == 4  ~ "Campeche",
+                                               .$ent == 5  ~ "Coahuila",
+                                               .$ent == 6  ~ "Colima",
+                                               .$ent == 7  ~ "Chiapas",
+                                               .$ent == 8  ~ "Chihuahua",
+                                               .$ent == 9  ~ "Ciudad de México",
+                                               .$ent == 10 ~	"Durango",
+                                               .$ent == 11 ~	"Guanajuato",
+                                               .$ent == 12 ~	"Guerrero",
+                                               .$ent == 13 ~	"Hidalgo",
+                                               .$ent == 14 ~	"Jalisco",
+                                               .$ent == 15 ~	"México",
+                                               .$ent == 16 ~	"Michoacán",
+                                               .$ent == 17 ~	"Morelos",
+                                               .$ent == 18 ~	"Nayarit",
+                                               .$ent == 19 ~	"Nuevo León",
+                                               .$ent == 20 ~	"Oaxaca",
+                                               .$ent == 21 ~	"Puebla",
+                                               .$ent == 22 ~	"Querétaro",
+                                               .$ent == 23 ~	"Quintana Roo",
+                                               .$ent == 24 ~	"San Luis Potosí",
+                                               .$ent == 25 ~	"Sinaloa",
+                                               .$ent == 26 ~	"Sonora",
+                                               .$ent == 27 ~	"Tabasco",
+                                               .$ent == 28 ~	"Tamaulipas",
+                                               .$ent == 29 ~	"Tlaxcala",
+                                               .$ent == 30 ~	"Veracruz",
+                                               .$ent == 31 ~	"Yucatán",
+                                               .$ent == 32 ~	"Zacatecas"))
+```
+
+
+### Índice de Privación Social 
+
+```{r}
+pobreza <- pobreza %>%
+            group_by(folioviv, foliohog, numren) %>%
+             mutate(i_privacion = sum(ic_rezedu, ic_asalud, ic_segsoc, ic_cv, ic_sbv, ic_ali_nc, 
+                                      na.rm = TRUE)) %>%
+              ungroup()
+```
+
+
+### Pobreza multidimensional 
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate(
+                  # Pobreza
+                  pobreza = case_when(.$plp == 1 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 1, # Pobre
+                                       (.$plp == 0 | .$i_privacion == 0) & (!is.na(.$plp) & !is.na(.$i_privacion)) ~ 0), # No pobre
+                  # Pobreza extrema
+                  pobreza_e = case_when(.$plp_e == 1 & (.$i_privacion >= 3 & !is.na(.$i_privacion)) ~ 1, # Pobre extremo
+                                          (.$plp_e == 0 | .$i_privacion < 3 ) & (!is.na(.$plp_e) & !is.na(.$i_privacion)) ~ 0)) %>% # No pobre extremo
+           mutate(
+                  # Pobreza moderada
+                  pobreza_m = case_when(.$pobreza == 1 & .$pobreza_e == 0 ~ 1, # Pobre moderado 
+                                         .$pobreza == 0 | (.$pobreza == 1 & .$pobreza_e == 1) ~ 0) # No pobre moderado
+                  )
+```
+
+
+### Población vulnerable
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate(
+                   # Vulnerables por carencias
+                   vul_car = case_when(.$plp == 0 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 1, # Vulnerable
+                                        is.na(.$pobreza) ~ NA_real_,
+                                         TRUE ~ 0), # No vulnerable
+                   # Vulnerables por ingresos
+                   vul_ing = case_when(.$plp == 1 & .$i_privacion == 0 ~ 1, # Vulnerable
+                                        is.na(.$pobreza)~  NA_real_,
+                                         TRUE~0)) # No vulnerable
+```
+
+
+### Población no pobre y no vulnerable 
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate(
+                   # Población no pobre y no vulnerable
+                   no_pobv = case_when(.$plp == 0 & .$i_privacion == 0 ~ 1,  # Vulnerable
+                                        is.na(.$pobreza) ~ NA_real_,
+                                         TRUE ~ 0))  # No vulnerable
+```
+
+
+### Población con carencias sociales   
+
+```{r}
+pobreza <- pobreza %>% 
+            mutate(
+                   # Población con al menos una carencia
+                   carencias = case_when(.$i_privacion >= 1 & !is.na(.$i_privacion) ~ 1, # Población con al menos una carencia
+                                          is.na(.$pobreza) ~ NA_real_,
+                                           TRUE ~ 0), # Población sin carencias
+                   # Población con tres o más carencias                  
+                   carencias3 = case_when(.$i_privacion >= 3 & !is.na(.$i_privacion) ~ 1, # Población con al menos tres o más carencias
+                                           is.na(.$pobreza) ~ NA_real_,
+                                            TRUE ~ 0)) # Población con menos de tres carencias
+```
+
+
+### Cuadrantes
