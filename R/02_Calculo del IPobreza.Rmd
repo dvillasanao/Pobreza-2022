@@ -1455,4 +1455,50 @@ regalos <- no.monetario %>%
 save(regalos, file = paste0(here::here(), "/Output/Data/reg_def22.RData"))
 ```
 
+##### Construcción del ingreso corriente total 
+
+```{r}
+load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
+load(file = paste0(here::here(), "/Output/Data/ingreso_deflactado22.RData"))
+load(file = paste0(here::here(), "/Output/Data/esp_def22.RData"))
+```
+
+```{r}
+ingreso.corriente <- concentradohogar %>%
+                      select(folioviv, foliohog, tam_loc, factor, tot_integ, est_dis, upm, ubica_geo) %>% 
+                       # Incorporación de la base de ingreso monetario deflactado
+                       left_join(., ingresos, by = c("folioviv", "foliohog")) %>% 
+                       # Incorporación de la base de ingreso no monetario deflactado: pago en especie
+                       left_join(., pagos.especie, by = c("folioviv", "foliohog")) %>% 
+                       # Incorporación de la base de ingreso no monetario deflactado: regalos en especie
+                       left_join(., regalos, by = c("folioviv", "foliohog")) %>% 
+                        mutate(
+                               rururb = case_when(.$tam_loc == 4 ~ 1, # Rural
+                                                  .$tam_loc <= 3 ~ 0), # Urbano
+                               pago_esp = apply(.[,c("ali_nme", "alta_nme", "veca_nme", "viv_nme", 
+                                                     "lim_nme", "cris_nme", "ens_nme", "sal_nme", 
+                                                     "tpub_nme", "tfor_nme", "com_nme", "edre_nme", 
+                                                     "cuip_nme", "accp_nme", "otr_nme")], 
+                                                1, 
+                                                 sum, 
+                                                  na.rm = TRUE), 
+                              reg_esp  = apply(.[,c("ali_nmr", "alta_nmr", "veca_nmr", "viv_nmr", 
+                                                      "lim_nmr", "cris_nmr", "ens_nmr", "sal_nmr", 
+                                                      "tpub_nmr", "tfor_nmr", "com_nmr", "edre_nmr", 
+                                                      "cuip_nmr", "accp_nmr", "otr_nmr")], 
+                                                1, 
+                                                 sum, 
+                                                  na.rm = TRUE)) %>% 
+                        mutate(
+                               nomon = apply(.[,c("pago_esp","reg_esp")], 1, sum, na.rm = TRUE)) %>%
+                        # Se construye el Ingreso Corriente Total con el ingreso monetario  y el ingreso no monetario 
+                        mutate(ict = apply(.[,c("ing_mon", "nomon")], 1, sum, na.rm = TRUE)) %>% 
+                         select(!c(gasto_nm.x, gasto_nm.y))
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(ingreso.corriente, paste0(here::here(), "/Output/Data/ingresotot22.csv"), row.names = F)
+save(ingreso.corriente, file = paste0(here::here(), "/Output/Data/ingresotot22.RData"))
+```
 
