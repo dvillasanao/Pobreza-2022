@@ -985,4 +985,180 @@ save(alimentacion, file = paste0(here::here(), "/Output/Data/ic_ali22.RData"))
 ```
 
 
-#### VII. Bienestar económico (ingresos)
+#### VII. Bienestar económico (ingresos) {.tabset .tabset-pills}   
+
+##### Ingresos
+
+Para la construcción del ingreso corriente del hogar es necesario utilizar información sobre la condición de ocupación y los ingresos de los individuos.  
+Se utiliza la información contenida en la base trabajo.csv para identificar a la población ocupada que declara tener como prestación laboral aguinaldo, ya sea por su trabajo principal o secundario, a fin de incorporar los ingresos por este concepto en la medición
+
+Creación del ingreso monetario deflactado a pesos de agosto del 2022   
+
+```{r}
+load(file = paste0(here::here(), "/Data/trabajos.RData")) 
+```
+
+
+```{r}
+aguinaldos <- trabajos %>% 
+               select(folioviv, foliohog, numren, id_trabajo, pres_2) %>% 
+                as.data.table() %>% 
+                 dcast(folioviv + foliohog + numren ~ id_trabajo,
+                        value.var = "pres_2") %>% 
+                  mutate(
+                         # Población con al menos un empleo 
+                         trab = 1,
+                         # Aguinaldo trabajo principal
+                         aguinaldo1 = case_when(.$`1` == 2 ~ 1,  # Dispone de aguinaldo
+                                                TRUE ~ 0),   # No dispone de aguinaldo
+                         # Aguinaldo trabajo secundario
+                         aguinaldo2 = case_when(`2` == 2 ~ 1,   # Dispone de aguinaldo
+                                                TRUE ~ 0)) %>% # No dispone de aguinaldo
+                   select(folioviv, foliohog, numren, aguinaldo1, aguinaldo2, trab)
+```
+
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(aguinaldos, paste0(here::here(), "/Output/Data/aguinaldo22.csv"), row.names = F)
+save(aguinaldos, file = paste0(here::here(), "/Output/Data/aguinaldo22.RData"))
+```
+
+
+**Ahora se incorpora a la base de ingresos**
+
+```{r}
+load(file = paste0(here::here(), "/Data/ingresos.RData")) 
+```
+
+
+```{r}
+ingresos <- ingresos %>%
+             full_join(., aguinaldos, by = c("folioviv", "foliohog", "numren")) %>%
+              mutate(index = case_when(.$clave == "P009" & .$aguinaldo1 != 1 ~ 1,
+                                       .$clave == "P016" & .$aguinaldo2 != 1 ~ 1,
+                                       TRUE ~ 0)) %>%
+               filter(index != 1)
+```
+
+Una vez realizado lo anterior, se procede a deflactar el ingreso recibido por los hogares a precios de agosto de 2022. Para ello, se utilizan las variables meses, las cuales toman los valores 2 a 10 e indican el mes en que se recibió el ingreso respectivo.   
+
+**Definición de los deflactores 2022**   
+
+```{r}
+{
+  dic21	<-	0.94753762025
+  ene22	<-	0.95314330024
+  feb22	<-	0.96105102461
+  mar22	<-	0.97056614137
+  abr22	<-	0.97581641802
+  may22	<-	0.97753689329
+  jun22	<-	0.98579194365
+  jul22	<-	0.99309386687
+  ago22	<-	1.00000000000
+  sep22	<-	1.00620340379
+  oct22	<-	1.01189793462
+  nov22	<-	1.01772170303
+  dic22	<-	1.02160690775
+}
+```
+
+```{r}
+ingresos <- ingresos %>%
+             mutate( 
+                    ing_6 = ifelse(is.na(.$mes_6), 
+                                    .$ing_6,
+                                     case_when(.$mes_6 == 2  ~ .$ing_6/feb22,
+                                               .$mes_6 == 3  ~ .$ing_6/mar22,
+                                               .$mes_6 == 4  ~ .$ing_6/abr22,
+                                               .$mes_6 == 5  ~ .$ing_6/may22)),
+                    ing_5 = ifelse(is.na(.$mes_5), 
+                                    .$ing_5,
+                                     case_when(.$mes_5 == 3  ~ .$ing_5/mar22,
+                                               .$mes_5 == 4  ~ .$ing_5/abr22,
+                                               .$mes_5 == 5  ~ .$ing_5/may22,
+                                               .$mes_5 == 6  ~ .$ing_5/jun22)),
+                    ing_4 = ifelse(is.na(.$mes_4), 
+                                    .$ing_4,
+                                     case_when(.$mes_4 == 4  ~ .$ing_4/abr22,
+                                               .$mes_4 == 5  ~ .$ing_4/may22,
+                                               .$mes_4 == 6  ~ .$ing_4/jun22,
+                                               .$mes_4 == 7  ~ .$ing_4/jul22)),
+                    ing_3 = ifelse(is.na(.$mes_3), 
+                                    .$ing_3,
+                                     case_when(.$mes_3 == 5  ~ .$ing_3/may22,
+                                               .$mes_3 == 6  ~ .$ing_3/jun22,
+                                               .$mes_3 == 7  ~ .$ing_3/jul22,
+                                               .$mes_3 == 8  ~ .$ing_3/ago22)),
+                    ing_2 = ifelse(is.na(.$mes_2), 
+                                    .$ing_2,
+                                     case_when(.$mes_2 == 6  ~ .$ing_2/jun22,
+                                               .$mes_2 == 7  ~ .$ing_2/jul22,
+                                               .$mes_2 == 8  ~ .$ing_2/ago22,
+                                               .$mes_2 == 9  ~ .$ing_2/sep22)),
+                    ing_1 = ifelse(is.na(.$mes_1), 
+                                    .$ing_1,
+                                     case_when(.$mes_1 == 7  ~ .$ing_1/jul22,
+                                               .$mes_1 == 8  ~ .$ing_1/ago22,
+                                               .$mes_1 == 9  ~ .$ing_1/sep22,
+                                               .$mes_1 == 10 ~ .$ing_1/oct22))) 
+```
+
+Se deflactan las claves P008 y P015 (Reparto de utilidades) y P009 y P016 (aguinaldo) con los deflactores de mayo a agosto 2022 y de diciembre de 2021 a agosto 2022, respectivamente, y se obtiene el promedio mensual.   
+
+```{r} 
+index <-c("P008", "P009", "P015", "P016") 
+```
+
+```{r}
+ingresos <- ingresos %>%
+             mutate(ing_1 = ifelse(.$clave == "P008" | .$clave == "P015", 
+                                    (.$ing_1/may22)/12, 
+                                      .$ing_1), 
+                    ing_1 = ifelse(.$clave == "P009" | .$clave == "P016", 
+                                    (.$ing_1/dic21)/12, 
+                                      .$ing_1),
+                    ing_2 = ifelse((.$clave %in%  index) & .$ing_2 == 0, 
+                                    NA_real_, 
+                                     ing_2),
+                    ing_3 = ifelse((.$clave %in%  index) & .$ing_3 == 0, 
+                                    NA_real_, 
+                                     .$ing_3),
+                    ing_4 = ifelse((.$clave %in%  index) & .$ing_4 == 0, 
+                                    NA_real_, 
+                                     .$ing_4),
+                    ing_5 = ifelse((.$clave %in%  index) & .$ing_5 == 0, 
+                                    NA_real_, 
+                                     .$ing_5),
+                    ing_6 = ifelse((.$clave %in%  index) & .$ing_6 == 0, 
+                                    NA_real_, 
+                                     .$ing_6)) %>%
+              # Una vez realizada la deflactación, se procede a obtener el ingreso mensual promedio en los últimos seis meses, para cada persona y clave de ingreso 
+             mutate(
+                    ing_mens = apply(.[,c("ing_1","ing_2","ing_3","ing_4","ing_5","ing_6")], 1, mean, na.rm = TRUE)) %>%
+             mutate(
+                    # Para obtener el ingreso corriente monetario, se seleccionan las claves de ingreso correspondientes
+                    ing_mon = case_when((.$clave >= "P001" & .$clave <= "P009") | (.$clave >= "P011" & .$clave <= "P016") |
+                                        (.$clave >= "P018" & .$clave <= "P048") | (.$clave >= "P067" & .$clave <= "P081") |
+                                         (.$clave >= "P101" & .$clave <= "P108") ~ .$ing_mens ),
+                    # Para obtener el ingreso laboral, se seleccionan las claves de ingreso correspondientes
+                    ing_lab = case_when((.$clave >= "P001" & .$clave <= "P009") | (.$clave >= "P011" & .$clave <= "P016") |
+                                        (.$clave >= "P018" & .$clave <= "P022") | (.$clave >= "P067" & .$clave <= "P081") ~ .$ing_mens ), 
+                    # Para obtener el ingreso por rentas, se seleccionan las claves de ingreso correspondientes
+                    ing_ren = case_when((.$clave >= "P023" & .$clave <= "P031") ~ .$ing_mens ), 
+                    # Para obtener el ingreso por transferencias, se seleccionan las claves de ingreso correspondientes 
+                    ing_tra = case_when((.$clave >= "P032" & .$clave <= "P048") | (.$clave >= "P101" & .$clave <= "P108") ~ .$ing_mens )
+                    ) %>%
+              # Se estima el total de ingresos de cada  hogar
+              group_by(folioviv, foliohog) %>%
+               summarise(across(c(ing_mon, ing_lab, ing_ren, ing_tra), sum, na.rm = TRUE)) %>%
+                ungroup() 
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(ingresos, paste0(here::here(), "/Output/Data/ingreso_deflactado22.csv"), row.names = F)
+save(ingresos, file = paste0(here::here(), "/Output/Data/ingreso_deflactado22.RData"))
+```
+
+
