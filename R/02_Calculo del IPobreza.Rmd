@@ -96,7 +96,7 @@ Siguiendo la estructura del cálculo del índice multidimensional de la pobreza,
 
 ### Indicadores de carencias sociales  {.tabset .tabset-pills}    
 
-#### Indicador de rezago educativo  
+#### I. Indicador de rezago educativo  
 
 ```{r}
 load(file = paste0(here::here(), "/Data/poblacion.RData")) 
@@ -172,7 +172,7 @@ gdata::keep(rezago.educativo, poblacion, sure = T)
 ```
 
 
-#### Indicador de carencia por acceso a los servicios de salud
+#### II. Indicador de carencia por acceso a los servicios de salud
 
 ```{r}
 load(file = paste0(here::here(), "/Data/trabajos.RData")) 
@@ -377,7 +377,7 @@ save(salud, file = paste0(here::here(), "/Output/Data/ic_asalud22.RData"))
 ```
 
 
-#### Indicador de carencia por acceso a la seguridad social
+#### III. Indicador de carencia por acceso a la seguridad social
 
 ```{r}
 # Prestaciones laborales
@@ -596,10 +596,8 @@ seguridad.social <- poblacion %>%
                                                .$jub == 1 ~ 1, # Con acceso
                                                TRUE ~ 0)
                             ) %>%  # Sin acceso
-                            
-                     # Indicador de carencia por acceso a la seguridad social 
+                     # En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
                      mutate(
-                            # En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
                             jef = case_when(.$par == 1 & .$ss_dir == 1 & 
                                              (((.$inst_2 == "2" | .$inst_3 == "3") & .$inscr_6 == "6") & 
                                               (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
@@ -684,7 +682,7 @@ save(seguridad.social, file = paste0(here::here(), "/Output/Data/ic_segsoc22.RDa
 ```
 
 
-#### Indicador de carencia por calidad y espacios de la vivienda 
+#### IV. Indicador de carencia por calidad y espacios de la vivienda 
 
 ##### Material de construcción de la vivienda
 
@@ -750,7 +748,7 @@ save(calidad.viviendas, file = paste0(here::here(), "/Output/Data/ic_cev22.RData
 ```
 
 
-#### Indicador de carencia por acceso a los servicios básicos de la vivienda   
+#### V. Indicador de carencia por acceso a los servicios básicos de la vivienda   
 
 **Indicador de carencia por acceso a los servicios básicos en la vivienda**   
 
@@ -795,3 +793,196 @@ servicios.basicos <- concentradohogar %>%
 #fwrite(servicios.basicos, paste0(here::here(), "/Output/Data/ic_sbv22.csv"), row.names = F)
 save(servicios.basicos, file = paste0(here::here(), "/Output/Data/ic_sbv22.RData"))
 ```
+
+#### VI. Indicador de carencia por acceso a la alimentación nutritiva y de calidad  
+ 
+```{r}
+menores.alimentacion <- poblacion %>%
+                         # Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+                         filter(!(parentesco >= 400 & parentesco < 500 | parentesco >= 700 & parentesco < 800)) %>% 
+                          # Indicador de hogares con menores de 18 años
+                          mutate(men = case_when(.$edad >= 0 & .$edad <= 17 ~ 1, 
+                                                 TRUE ~ NA)) %>%
+                           as.data.frame() %>%
+                           # group_by(folioviv, foliohog) %>%
+                             summarise(men = sum(men, na.rm = TRUE), .by = c(folioviv, foliohog)) %>%
+                              ungroup() %>%
+                               mutate(id_men = case_when(.$men >= 1 & !is.na(.$men) ~ 1, 
+                                                         .$men == 0 ~ 0)) %>%
+                                select(folioviv, foliohog, id_men)
+ # Nota: no concuerda la suma de los menores de edad con la función summarise y la función DT
+ #menores <- as.data.table(menores.alimentacion)[, lapply(.SD, sum, na.rm = TRUE), 
+ #                                                by =.(folioviv, foliohog), .SDcols = c("men")] %>%
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(smenores.alimentacion, paste0(here::here(), "/Output/Data/menores22.csv"), row.names = F)
+save(menores.alimentacion, file = paste0(here::here(), "/Output/Data/menores22.RData"))
+```
+
+
+##### Grado de inseguridad alimentaria
+
+```{r}
+load(file = paste0(here::here(), "/Data/hogares.RData")) 
+```
+
+```{r}
+alimentacion <- hogares %>% 
+                 # Parte 1. Grado de inseguridad alimentaria
+                 mutate(
+                        # Seis preguntas para hogares sin población menor a 18 años
+                        # Algún adulto tuvo una alimentación basada en muy poca variedad de alimentos
+                        ia_1ad = case_when(.$acc_alim4 == 2 ~ 0, # No
+                                           .$acc_alim4 == 1 ~ 1, # Sí
+                                           is.na(.$acc_alim4) ~ 0), # No
+                        # Algún adulto dejó de desayunar, comer o cenar
+                        ia_2ad = case_when(.$acc_alim5 == 2 ~ 0,  # No
+                                           .$acc_alim5 == 1 ~ 1, # Sí
+                                           is.na(.$acc_alim5) ~ 0),  # No
+                        # Algún adulto comió menos de lo que debía comer
+                        ia_3ad = case_when(.$acc_alim6 == 2 ~ 0,  # No
+                                           .$acc_alim6 == 1 ~ 1, # Sí
+                                           is.na(.$acc_alim6) ~ 0),  # No
+                        # El hogar se quedó sin comida
+                        ia_4ad = case_when(.$acc_alim2 == 2 ~ 0,  # No
+                                           .$acc_alim2 == 1 ~ 1, # Sí
+                                           is.na(.$acc_alim2) ~ 0), # No
+                        # Algún adulto sintió hambre pero no comió
+                        ia_5ad = case_when(.$acc_alim7 == 2 ~ 0, # No
+                                           .$acc_alim7 == 1 ~ 1, # Sí
+                                           is.na(.$acc_alim7) ~ 0), # No
+                        # Algún adulto solo comió una vez al día o dejó de comer todo un día
+                        ia_6ad = case_when(.$acc_alim8 == 2 ~ 0,  # No
+                                           .$acc_alim8 == 1 ~ 1, # Sí
+                                           is.na(.$acc_alim8) ~ 0), # No
+            
+                        # Seis preguntas para hogares sin población menor a 18 años
+            
+                        # Alguien de 0 a 17 años tuvo una alimentación basada en muy poca variedad de alimentos
+                        ia_7men = case_when(.$acc_alim11 == 2 ~ 0, # No
+                                            .$acc_alim11 == 1 ~ 1, # Sí
+                                            is.na(.$acc_alim11) ~ 0), # No
+                        # Alguien de 0 a 17 años comió menos de lo que debía
+                        ia_8men = case_when(.$acc_alim12 == 2 ~ 0, # No
+                                            .$acc_alim12 == 1 ~ 1, # Sí
+                                            is.na(.$acc_alim12) ~ 0), # No
+                        # Se tuvo que disminuir la cantidad servida en las comidas a alguien de 0 a 17 años
+                        ia_9men = case_when(.$acc_alim13 == 2 ~ 0, # No
+                                            .$acc_alim13 == 1 ~ 1, # Sí
+                                            is.na(.$acc_alim13) ~ 0), # No
+                        # Alguien de 0 a 17 años sintió hambre pero no comió
+                        ia_10men  =case_when(.$acc_alim14 == 2 ~ 0, # No
+                                             .$acc_alim14 == 1 ~ 1, # Sí
+                                             is.na(.$acc_alim14) ~ 0), # No
+                        # Alguien de 0 a 17 años se acostó con hambre
+                        ia_11men = case_when(.$acc_alim15 == 2 ~ 0, # No
+                                             .$acc_alim15 == 1 ~ 1, # Sí
+                                             is.na(.$acc_alim15) ~ 0), # No
+                        # Alguien de 0 a 17 años comió una vez al día o dejó de comer todo un día
+                        ia_12men = case_when(.$acc_alim16 == 2 ~ 0, # No
+                                             .$acc_alim16 == 1 ~ 1, # Sí
+                                             is.na(.$acc_alim16) ~ 0) # No
+                        ) %>%
+                 # Construcción de la escala de inseguridad alimentaria
+                 left_join(., menores.alimentacion, by = c("folioviv", "foliohog")) %>%
+                  mutate(
+                         # Escala para hogares sin menores de 18 años
+                         tot_iaad = case_when(id_men == 0 ~ .$ia_1ad + .$ia_2ad + .$ia_3ad + .$ia_4ad + .$ia_5ad + .$ia_6ad),
+                         # Escala para hogares con menores de 18 años
+                         tot_iamen = case_when(id_men == 1 ~ .$ia_1ad + .$ia_2ad + .$ia_3ad + .$ia_4ad + .$ia_5ad + .$ia_6ad + .$ia_7men + .$ia_8men + .$ia_9men + .$ia_10men + .$ia_11men + .$ia_12men)) %>% 
+                  mutate(
+                         # Grado de inseguridad alimentaria
+                         ins_ali = case_when(
+                                             # Seguridad alimentaria  
+                                             .$tot_iaad == 0 | .$tot_iamen == 0 ~ 0, 
+                                             # Inseguridad alimentaria leve
+                                             .$tot_iaad == 1 | .$tot_iaad == 2 | .$tot_iamen == 1 | .$tot_iamen == 2 | .$tot_iamen == 3 ~ 1,
+                                             # Inseguridad alimentaria moderada
+                                             .$tot_iaad == 3 | .$tot_iaad == 4 | .$tot_iamen == 4 | .$tot_iamen == 5 | .$tot_iamen == 6 | .$tot_iamen == 7 ~ 2,
+                                             # Inseguridad alimentaria severa
+                                             .$tot_iaad == 5 | .$tot_iaad == 6 | .$tot_iamen >= 8 & !is.na(.$tot_iamen) ~ 3)) %>%
+                  # Se genera el indicador de carencia por acceso a la alimentación que  considera en situación de carencia a la población en hogares que  
+                  # presenten inseguridad alimentaria moderada o severa.
+
+                  mutate(
+                         # Indicador de carencia por acceso a la alimentación  
+                         ic_ali = case_when(.$ins_ali == 2 | .$ins_ali == 3 ~ 1, # Con carencia
+                                            .$ins_ali == 0 | .$ins_ali == 1 ~ 0)) # Sin carencia
+```
+
+##### Limitación en el consumo de alimentos  
+
+Se considera el número de días que se consumieron cada uno de los 12 grupos  de alimentos por el ponderador utilizado por el Programa Mundial de Alimentos (`PMA`) de las Naciones Unidas:   
+
+`Grupo 1`: (maíz, avena, arroz, sorgo, mijo, pan y otros cereales) y (yuca, papas, camotes y otros tubérculos)  
+`Grupo 2`: frijoles, chícharos, cacahuates, nueces  
+`Grupo 3`: vegetales y hojas  
+`Grupo 4`: frutas  
+`Grupo 5`: carne de res, cabra, aves, cerdo, huevos y pescado  
+`Grupo 6`: leche, yogur y otros lácteos  
+`Grupo 7`: azúcares y productos azucarados  
+`Grupo 8`: aceites, grasas y mantequilla  
+`Grupo 9`: especias, té, café, sal, polvo de pescado, pequeñas cantidades de leche para el té  
+
+El ponderador para el `Grupo 1` es 2, para el `Grupo 2` es 3, para el `Grupo 3` y `Grupo 4` es 1, para el `Grupo 5` y `Grupo 6` es 4, para el `Grupo 7` y `Grupo 8` es 0.5, y para el `Grupo 9` es 0.    
+
+
+```{r}
+alimentacion <- alimentacion %>%
+                 mutate(
+                        cpond1 = if_else(.$alim17_1 > .$alim17_2, .$alim17_1, .$alim17_2) * 2,
+                        cpond3  = .$alim17_3  * 1,
+                        cpond4  = .$alim17_4  * 1,
+                        cpond5  = apply(.[,c("alim17_5", "alim17_6", "alim17_7")], 1, max) * 4,
+                        cpond8  = .$alim17_8  * 3   ,
+                        cpond9  = .$alim17_9  * 4   ,
+                        cpond10 = .$alim17_10 * 0.5 ,
+                        cpond11 = .$alim17_11 * 0.5 ,
+                        cpond12 = .$alim17_12 * 0 
+                        ) %>%
+                 mutate(
+                        # Puntaje total de consumo ponderado de alimentos, indica el número ponderado 
+                        # de grupos de alimentos que se consumieron en los últimos siete días     
+                        tot_cpond = .$cpond1 + .$cpond3 + .$cpond4 + .$cpond5 + .$cpond8 + .$cpond9 + .$cpond10 + .$cpond11 + .$cpond12
+                        ) %>%
+                 mutate(
+                        # Se categoriza la dieta consumida en los hogares
+                        # Dieta consumida en los hogares              
+                        dch = case_when(.$tot_cpond >=  0 & .$tot_cpond <= 28   ~ 1,  # Pobre 
+                                        .$tot_cpond >  28 & .$tot_cpond <= 42   ~ 2,  # Limítrofe
+                                        .$tot_cpond >  42 & !is.na(.$tot_cpond) ~ 3)) %>% # Aceptable
+                 mutate(
+                        # Limitación en el consumo de Alimentos
+                        lca = case_when(.$dch == 1 | .$dch == 2 ~ 1,   # Limitado
+                                        .$dch == 3 ~ 0))           # No
+```
+
+
+##### Indicador de carencia por acceso a la alimentación nutritiva y de calidad   
+
+Se considera en situación de carencia por acceso a la alimentación nutritiva y de calidad a la población en hogares que presenten, al menos, una de las siguientes características:
+  
+1. Grado inseguridad alimentaria moderada o severa.   
+2. Limitación en el consumo de alimentos.  
+
+
+```{r}
+alimentacion <- alimentacion %>%
+                 mutate(
+                        ic_ali_nc = case_when(.$ic_ali == 0 & .$lca == 0 ~ 0, # Sin carencia
+                                              (.$ic_ali == 1 | .$lca == 1) &
+                                               (!is.na(.$ic_ali) & !is.na(.$lca)) ~ 1)) %>% # Con carencia
+                  select(folioviv, foliohog, id_men, starts_with("ia_"), tot_iaad, tot_iamen, ins_ali, dch, lca, ic_ali, ic_ali_nc)
+```
+
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(alimentacion, paste0(here::here(), "/Output/Data/ic_ali22.csv"), row.names = F)
+save(alimentacion, file = paste0(here::here(), "/Output/Data/ic_ali22.RData"))
+```
+
+
+#### VII. Bienestar económico (ingresos)
