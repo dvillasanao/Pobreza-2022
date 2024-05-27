@@ -55,41 +55,17 @@ h3 {
     padding: 10px 15px;
     color: #0A2687;
 }
-.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+.nav-pills>li.active>a, .nav-pills > li.active > a:hover, .nav-pills > li.active > a:focus {
     color: #ffffff;
     background-color: #09C2BC;
 }
-.nav-pills>li:nth-child(1) {
-    color: #000000;
-    background: #EEEEEE
+.top1-tiles a:nth-of-type(1):hover, .top-tiles1 a:nth-of-type(1):focus{
+    color: #ffffff;
+    background: #0A6A87
 }
-.nav-pills>li:nth-child(2) {
-    color: #000000;
-    background: #EEEEEE
-}
-.nav-pills>li:nth-child(3) {
-    color: #000000;
-    background: #EEEEEE
-}
-.nav-pills>li:nth-child(4) {
-    color: #000000;
-    background: #EEEEEE
-}
-.nav-pills>li:nth-child(5) {
-    color: #000000;
-    background: #EEEEEE
-}
-.nav-pills>li:nth-child(6) {
-    color: #000000;
-    background: #EEEEEE
-}
-.nav-pills>li:nth-child(7) {
-    color: #000000;
-    background: #EEEEEE
-}
-.nav-pills>li:nth-child(8) {
-    color: #000000;
-    background: #EEEEEE
+.top2-tiles a:nth-of-type(1):hover, .top2-tiles a:nth-of-type(1):focus{
+    color: #ffffff;
+    background: #0A6CC8
 }
 </style>
 ```
@@ -117,7 +93,7 @@ if (!require(pacman)) install.packages("pacman")
 library(pacman) ; p_load("data.table", "tidyverse", "gdata", "srvyr", "bit64")
 ```
 
-## Medición multidimensional del índice de pobreza 2022 {.tabset .tabset-pills}       
+## Medición multidimensional del índice de pobreza 2022 {.tabset .tabset-pills .top1-tiles}       
 
 Se sigue la estructura del índice de pobreza, presentado en la página oficial del CONEVAL.   
 
@@ -126,7 +102,7 @@ De acuerdo con los Lineamientos y criterios generales para la definición, ident
 Siguiendo la estructura del cálculo del índice multidimensional de la pobreza, se simplifican los códigos para entender el orden del cálculo de los indicadores sociodemográficos.      
 
 
-### Indicadores de carencias sociales  {.tabset .tabset-pills}    
+### Indicadores de carencias sociales  {.tabset .tabset-pills .top2-tiles}    
 
 #### I. Indicador de rezago educativo  
 
@@ -1489,7 +1465,9 @@ save(regalos, file = paste0(here::here(), "/Output/Data/reg_def22.RData"))
 
 
 
-### Construcción del ingreso corriente total   {.tabset .tabset-pills} 
+### Construcción del ingreso corriente total   {.tabset .tabset-pills .top2-tiles} 
+
+#### Ingreso corriente total {}
 
 ```{r}
 load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
@@ -1537,4 +1515,60 @@ save(ingreso.corriente, file = paste0(here::here(), "/Output/Data/ingresotot22.R
 ```
 
 
-### Construcción del tamaño de hogar con economías de escala y escalas de equivalencia   {.tabset .tabset-pills} 
+#### Construcción del tamaño de hogar con economías de escala y escalas de equivalencia   {.tabset .tabset-pills} 
+
+```{r}
+tam_hogar.escala <- poblacion %>% 
+                     # Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+                     filter(!(parentesco >= 400 & parentesco < 500 | parentesco >= 700 & parentesco < 800)) %>%
+                      mutate(ind = 1) %>%
+                       group_by(folioviv, foliohog) %>%
+                        mutate(tot_ind = sum(ind, na.rm = TRUE)) %>%
+                         ungroup() %>%
+                          # Escalas de equivalencia  
+                          mutate(tamhogesc = case_when(.$tot_ind == 1 ~ 1,
+                                                       .$edad <= 5 ~ .7031,
+                                                       .$edad >= 6 & .$edad<=12 ~ .7382,
+                                                       .$edad >= 13 & .$edad<=18 ~ .7057,
+                                                       .$edad >= 19 & !is.na(.$edad) ~ .9945)) %>%
+                           select(folioviv, foliohog, numren, tamhogesc) %>% 
+                            group_by(folioviv, foliohog) %>%
+                             summarise(tamhogesc = sum(tamhogesc, na.rm = TRUE)) %>%
+                              ungroup()
+```
+
+**Se guarda la base de datos**
+```{r}
+#fwrite(tam_hogar.escala, paste0(here::here(), "/Output/Data/tamhogesc22.csv"), row.names = F)
+save(tam_hogar.escala, file = paste0(here::here(), "/Output/Data/tamhogesc22.RData"))
+```
+
+
+#### Bienestar económico {.tabset .tabset-pills} 
+
+Incorporación de la información sobre el tamaño del hogar ajustado
+
+```{r}
+load(file = paste0(here::here(), "/Output/Data/ingresotot22.RData"))
+load(file = paste0(here::here(), "/Output/Data/tamhogesc22.RData"))
+```
+
+**Indicadores de Bienestar económico**    
+
+`LP I`: Valor de la Canasta alimentaria   
+`LP II`: Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria (ver Anexo A del documento metodológico).    
+
+En este programa se construyen los indicadores de bienestar económico mediante las 2 líneas definidas por CONEVAL, denominándolas:   
+  
+`lp1` : Línea de Pobreza Extrema por Ingresos (`LPEI`)   
+`lp2` : Línea de Pobreza por Ingresos (`LPI`)    
+
+Para más información, se sugiere consultar el documento metodológico de Construcción de las líneas de pobreza por ingresos. Disponible en: https://www.coneval.org.mx/InformesPublicaciones/InformesPublicaciones/Documents/Lineas_pobreza.pdf     
+
+```{r}
+p_ingreso <- ingreso.corriente %>% 
+              left_join(., tam_hogar.escala, by = c("folioviv", "foliohog")) %>% 
+               # Información per cápita
+               mutate(ictpc = ict/tamhogesc)
+```
+
