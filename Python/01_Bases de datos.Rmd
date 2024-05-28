@@ -1,6 +1,6 @@
 ---
 title: "Bases de datos"
-subtitle: 'Índice de pobreza 2022'
+subtitle: 'Índice de pobreza 2022 / Python'
 author: "Diana Villasana Ocampo"
 output:
    html_document:
@@ -81,14 +81,46 @@ setwd(here::here())
 ```
 
 
+```{python}
+import os
+# Cambia el directorio de trabajo al directorio actual del script
+os.path.dirname(os.getcwd())
+current_directory = r.root_dir
+os.chdir(current_directory)
+os.getcwd()
+```
+
+
 ```{r}
 library(reticulate)
+reticulate::py_install("pyreadr")
+reticulate::py_install("rpy2")
 ```
+
+🔹 Se define un `conda environment` a utilizar:
+
+```{r,eval=FALSE}
+#Se utiliza {reticulate} para instalar miniconda con:
+#reticulate::install_miniconda()
+#Se visualiza la configuración de python: que tengo actualemente.  
+#reticulate::py_config()
+#reticulate::repl_python() #can be used to interactively run Python code
+# Se define un `conda environment` a utilizar:
+reticulate::conda_create(envname='Pobreza-2022', 
+                         python_version="3.11.5")
+```
+
 
 **Se intalan la paqueterías de pyton** 
 
 ```{python}
-import pandas as pd # manipulación de datos
+# Se instalan los paquetes y librerías a utilizar en el programa
+#pip install pandas
+#pip install numpy
+#pip install tabulate
+import pandas as pd 
+import numpy as np
+from tabulate import tabulate
 ```
 
 Todas las bases de datos de la ENIGH 2022 deben estar en formato `.CSV`   
@@ -104,8 +136,37 @@ En este programa se utilizan las siguientes bases, nombrándolas de la siguiente
 - Base de no monetario hogar: gastoshogar.csv   
 - Base de no monetario personas: gastospersona.csv   
 
+En este programa de cálculo se utilizan dos tipos de archivos, los cuales están ubicados en las siguientes carpetas:
+
+1) Bases originales: 'C:/Pobreza 2022/Bases de datos'
+2) Bases generadas:  'C:/Pobreza 2022/Output'
+
+
+**Se cargan las bases de datos en formato csv**
+
+```{python}
+concentradohogar = pd.read_csv(current_directory + "/Bases de datos/concentradohogar.csv", low_memory = False)
+gastoshogar = pd.read_csv(current_directory + "/Bases de datos/gastoshogar.csv", low_memory = False)
+gastospersona = pd.read_csv(current_directory + "/Bases de datos/gastospersona.csv", low_memory = False)
+hogares = pd.read_csv(current_directory + "/Bases de datos/hogares.csv", low_memory = False)
+ingresos = pd.read_csv(current_directory + "/Bases de datos/ingresos.csv", low_memory = False)
+poblacion = pd.read_csv(current_directory + "/Bases de datos/poblacion.csv", low_memory = False)
+trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False)
+viviendas = pd.read_csv(current_directory + "/Bases de datos/viviendas.csv", low_memory = False)
+```
+
 
 ```{r}
-
+system("pip install pyreadr")
 ```
+
+```{python, eval = FALSE}
+#pip install pyreadr
+#conda install -c conda-forge pyreadr
+from collections import OrderedDict
+import pyreadr
+import pandas as pd
+concentradohogar = pyreadr.read_r(current_directory + "/Data/concentradohogar.RData")
+```
+
 
