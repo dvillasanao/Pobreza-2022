@@ -325,7 +325,7 @@ rezedu = (poblacion.copy()
 ```
 
 
-#### II. Indicador de carencia por acceso a los servicios de salud  {.tabset .tabset-pills .top3-tiles}     
+#### II. Indicador de carencia por acceso a los servicios de salud  {.tabset .tabset-pills .top3-tiles}       
 
 ```{python}
 #del [[trabajos]] # Eliminamos el data.frame "trabajos" 
@@ -339,11 +339,11 @@ Se considera en situación de carencia por acceso a servicios de salud a la pobl
  1. No se encuentra inscrita al Seguro Popular* o afiliada a alguna institución  por prestación laboral, contratación voluntaria o afiliación de un familiar por parentesco directo a recibir servicios médicos por alguna institución que los preste como: las instituciones de seguridad social (`IMSS`, `ISSSTE federal o estatal`, `Pemex`, `Ejército` o `Marina`), los servicios médicos privados, u otra institución médica.      
  
  - Se reporta la población que respondió estar afiliado o inscrito al Seguro Popular, o que tiene derecho a los servicios del
- Instituto de Salud para el Bienestar (`INSABI`), lo anterior de acuerdo con el cuestionario de la ENIGH 2022.   
+ Instituto de Salud para el Bienestar (`INSABI`), lo anterior de acuerdo con el cuestionario de la ENIGH 2022.     
  
- 
- ##### Opción 1   
 
+##### Opción 1     
+ 
 ```{python}
 #Convirtiendo variables string a numericas
 ocupados[['subor', 'indep', 'tiene_suel','pago','id_trabajo']] = ocupados[['subor', 'indep', 'tiene_suel','pago','id_trabajo']].apply(pd.to_numeric, errors = 'coerce')
@@ -381,6 +381,9 @@ ocupados = ocupados.reset_index()
 ocupados['trab'] = 1
 ocupados = ocupados[['folioviv', 'foliohog', 'numren', 'trab'] + [col for col in ocupados.columns if col.startswith('tipo_trab') or col.startswith('ocupa')]]
 ```
+
+
+##### Opción 2    
 
 ```{python}
 import pandas as pd
