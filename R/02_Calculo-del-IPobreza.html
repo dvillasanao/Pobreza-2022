@@ -1623,6 +1623,10 @@ background: #0A6A87
 color: #ffffff;
 background: #0A6CC8
 }
+.top3-tiles a:nth-of-type(1):hover, .top2-tiles a:nth-of-type(1):focus{
+color: #ffffff;
+background: #596AB7
+}
 </style>
 <p><strong>Librerías que se utilizaron en el documento</strong></p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">require</span>(pacman)) <span class="fu">install.packages</span>(<span class="st">&quot;pacman&quot;</span>)</span>
@@ -3024,8 +3028,8 @@ de Construcción de las líneas de pobreza por ingresos. Disponible en: <a href=
 </div>
 </div>
 </div>
-<div id="pobreza-multidimensional" class="section level2 tabset tabset-pills top2-tiles">
-<h2 class="tabset tabset-pills top2-tiles">Pobreza multidimensional</h2>
+<div id="pobreza-multidimensional" class="section level2 tabset tabset-pills top3-tiles">
+<h2 class="tabset tabset-pills top3-tiles">Pobreza multidimensional</h2>
 <div id="integración-de-las-bases" class="section level3">
 <h3>Integración de las bases</h3>
 <p><strong>Se vuelven a cargar las bases de datos</strong></p>
@@ -3222,6 +3226,81 @@ de Construcción de las líneas de pobreza por ingresos. Disponible en: <a href=
 <p><strong>Se guarda la base de datos</strong></p>
 <div class="sourceCode" id="cb71"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" tabindex="-1"></a><span class="co">#fwrite(pobreza, paste0(here::here(), &quot;/Output/Data/pobreza_22.csv&quot;), row.names = F)</span></span>
 <span id="cb71-2"><a href="#cb71-2" tabindex="-1"></a><span class="fu">save</span>(pobreza, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/pobreza_22.RData&quot;</span>))</span></code></pre></div>
+</div>
+</div>
+<div id="resultados" class="section level2">
+<h2>Resultados</h2>
+<div id="nivel-nacional" class="section level3">
+<h3>Nivel nacional</h3>
+<div class="sourceCode" id="cb72"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" tabindex="-1"></a>pob_w <span class="ot">&lt;-</span> pobreza <span class="sc">%&gt;%</span> </span>
+<span id="cb72-2"><a href="#cb72-2" tabindex="-1"></a>          <span class="fu">as_survey_design</span>(<span class="at">weights =</span> factor, </span>
+<span id="cb72-3"><a href="#cb72-3" tabindex="-1"></a>                            <span class="at">nest =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb72-4"><a href="#cb72-4" tabindex="-1"></a>           <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(pobreza))</span>
+<span id="cb72-5"><a href="#cb72-5" tabindex="-1"></a></span>
+<span id="cb72-6"><a href="#cb72-6" tabindex="-1"></a>vars  <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;pobreza&quot;</span>, <span class="st">&quot;pobreza_m&quot;</span>, <span class="st">&quot;pobreza_e&quot;</span>, <span class="st">&quot;vul_car&quot;</span>, <span class="st">&quot;vul_ing&quot;</span>, <span class="st">&quot;no_pobv&quot;</span>, <span class="st">&quot;carencias&quot;</span>, <span class="st">&quot;carencias3&quot;</span>, <span class="st">&quot;ic_rezedu&quot;</span>, </span>
+<span id="cb72-7"><a href="#cb72-7" tabindex="-1"></a>           <span class="st">&quot;ic_asalud&quot;</span>, <span class="st">&quot;ic_segsoc&quot;</span>, <span class="st">&quot;ic_cv&quot;</span>, <span class="st">&quot;ic_sbv&quot;</span>, <span class="st">&quot;ic_ali_nc&quot;</span>, <span class="st">&quot;plp_e&quot;</span>, <span class="st">&quot;plp&quot;</span>)</span>
+<span id="cb72-8"><a href="#cb72-8" tabindex="-1"></a></span>
+<span id="cb72-9"><a href="#cb72-9" tabindex="-1"></a>por <span class="ot">&lt;-</span> pob_w <span class="sc">%&gt;%</span>  </span>
+<span id="cb72-10"><a href="#cb72-10" tabindex="-1"></a>        <span class="fu">select</span>(vars) <span class="sc">%&gt;%</span> </span>
+<span id="cb72-11"><a href="#cb72-11" tabindex="-1"></a>         <span class="fu">summarise_all</span>(survey_mean, <span class="at">vartype =</span> <span class="cn">NULL</span>) <span class="sc">%&gt;%</span>  </span>
+<span id="cb72-12"><a href="#cb72-12" tabindex="-1"></a>          <span class="fu">round</span>(<span class="at">digits =</span> <span class="dv">6</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb72-13"><a href="#cb72-13" tabindex="-1"></a>           <span class="fu">t</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb72-14"><a href="#cb72-14" tabindex="-1"></a>            <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb72-15"><a href="#cb72-15" tabindex="-1"></a>             <span class="fu">mutate_at</span>(<span class="fu">vars</span>(<span class="dv">1</span>),<span class="cf">function</span>(x) x <span class="sc">*</span> <span class="dv">100</span>)</span>
+<span id="cb72-16"><a href="#cb72-16" tabindex="-1"></a></span>
+<span id="cb72-17"><a href="#cb72-17" tabindex="-1"></a>tot <span class="ot">&lt;-</span> pob_w <span class="sc">%&gt;%</span>  </span>
+<span id="cb72-18"><a href="#cb72-18" tabindex="-1"></a>        <span class="fu">select</span>(vars) <span class="sc">%&gt;%</span> </span>
+<span id="cb72-19"><a href="#cb72-19" tabindex="-1"></a>         <span class="fu">summarise_all</span>(survey_total, <span class="at">vartype =</span> <span class="cn">NULL</span>) <span class="sc">%&gt;%</span>  </span>
+<span id="cb72-20"><a href="#cb72-20" tabindex="-1"></a>          <span class="fu">t</span>() <span class="sc">%&gt;%</span> </span>
+<span id="cb72-21"><a href="#cb72-21" tabindex="-1"></a>           <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb72-22"><a href="#cb72-22" tabindex="-1"></a>            <span class="fu">mutate_at</span>(<span class="fu">vars</span>(<span class="dv">1</span>),<span class="cf">function</span>(x) x <span class="sc">/</span> <span class="dv">1000000</span>) </span>
+<span id="cb72-23"><a href="#cb72-23" tabindex="-1"></a></span>
+<span id="cb72-24"><a href="#cb72-24" tabindex="-1"></a></span>
+<span id="cb72-25"><a href="#cb72-25" tabindex="-1"></a>nac <span class="ot">&lt;-</span> <span class="fu">bind_cols</span>(por, tot)</span>
+<span id="cb72-26"><a href="#cb72-26" tabindex="-1"></a></span>
+<span id="cb72-27"><a href="#cb72-27" tabindex="-1"></a><span class="fu">rownames</span>(nac) <span class="ot">&lt;-</span>vars</span>
+<span id="cb72-28"><a href="#cb72-28" tabindex="-1"></a><span class="fu">colnames</span>(nac) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Porcentaje&quot;</span>, <span class="st">&quot;Millones de personas&quot;</span>)</span></code></pre></div>
+</div>
+<div id="porcentaje-y-número-de-personas-por-indicador-de-pobreza-entidad-federativa." class="section level3">
+<h3>Porcentaje y número de personas por indicador de pobreza, entidad
+federativa.</h3>
+<div class="sourceCode" id="cb73"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" tabindex="-1"></a>vars  <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;pobreza&quot;</span>, <span class="st">&quot;pobreza_m&quot;</span>, <span class="st">&quot;pobreza_e&quot;</span>, <span class="st">&quot;vul_car&quot;</span>, <span class="st">&quot;vul_ing&quot;</span>, <span class="st">&quot;no_pobv&quot;</span>)</span>
+<span id="cb73-2"><a href="#cb73-2" tabindex="-1"></a></span>
+<span id="cb73-3"><a href="#cb73-3" tabindex="-1"></a>pob_ent_por <span class="ot">&lt;-</span> pob_w <span class="sc">%&gt;%</span> </span>
+<span id="cb73-4"><a href="#cb73-4" tabindex="-1"></a>                <span class="fu">group_by</span>(ent) <span class="sc">%&gt;%</span>  </span>
+<span id="cb73-5"><a href="#cb73-5" tabindex="-1"></a>                 <span class="fu">select</span>(vars) <span class="sc">%&gt;%</span></span>
+<span id="cb73-6"><a href="#cb73-6" tabindex="-1"></a>                  <span class="fu">summarise_all</span>(survey_mean, <span class="at">vartype =</span> <span class="cn">NULL</span>)</span>
+<span id="cb73-7"><a href="#cb73-7" tabindex="-1"></a></span>
+<span id="cb73-8"><a href="#cb73-8" tabindex="-1"></a>pob_ent_tot <span class="ot">&lt;-</span> pob_w <span class="sc">%&gt;%</span> </span>
+<span id="cb73-9"><a href="#cb73-9" tabindex="-1"></a>                <span class="fu">group_by</span>(ent) <span class="sc">%&gt;%</span>  </span>
+<span id="cb73-10"><a href="#cb73-10" tabindex="-1"></a>                 <span class="fu">select</span>(vars) <span class="sc">%&gt;%</span></span>
+<span id="cb73-11"><a href="#cb73-11" tabindex="-1"></a>                  <span class="fu">summarise_all</span>(survey_total, <span class="at">vartype =</span> <span class="cn">NULL</span>)</span>
+<span id="cb73-12"><a href="#cb73-12" tabindex="-1"></a></span>
+<span id="cb73-13"><a href="#cb73-13" tabindex="-1"></a>pob_ent <span class="ot">&lt;-</span> pob_ent_por <span class="sc">%&gt;%</span> </span>
+<span id="cb73-14"><a href="#cb73-14" tabindex="-1"></a>            <span class="fu">left_join</span>(., pob_ent_tot, </span>
+<span id="cb73-15"><a href="#cb73-15" tabindex="-1"></a>                       <span class="at">by =</span> <span class="st">&quot;ent&quot;</span>)</span></code></pre></div>
+</div>
+<div id="porcentaje-y-número-de-personas-por-indicador-de-carencia-social-entidad-federativa." class="section level3">
+<h3>Porcentaje y número de personas por indicador de carencia social,
+entidad federativa.</h3>
+<div class="sourceCode" id="cb74"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" tabindex="-1"></a>vars  <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ic_rezedu&quot;</span>, <span class="st">&quot;ic_asalud&quot;</span>, <span class="st">&quot;ic_segsoc&quot;</span>, <span class="st">&quot;ic_cv&quot;</span>, <span class="st">&quot;ic_sbv&quot;</span>, <span class="st">&quot;ic_ali_nc&quot;</span>, <span class="st">&quot;carencias&quot;</span>, <span class="st">&quot;carencias3&quot;</span>, <span class="st">&quot;plp_e&quot;</span>, <span class="st">&quot;plp&quot;</span>)</span>
+<span id="cb74-2"><a href="#cb74-2" tabindex="-1"></a></span>
+<span id="cb74-3"><a href="#cb74-3" tabindex="-1"></a>care_ent_por <span class="ot">&lt;-</span> pob_w <span class="sc">%&gt;%</span> </span>
+<span id="cb74-4"><a href="#cb74-4" tabindex="-1"></a>                 <span class="fu">group_by</span>(ent) <span class="sc">%&gt;%</span>  </span>
+<span id="cb74-5"><a href="#cb74-5" tabindex="-1"></a>                  <span class="fu">select</span>(vars) <span class="sc">%&gt;%</span></span>
+<span id="cb74-6"><a href="#cb74-6" tabindex="-1"></a>                   <span class="fu">summarise_all</span>(survey_mean, <span class="at">vartype =</span> <span class="cn">NULL</span>)</span>
+<span id="cb74-7"><a href="#cb74-7" tabindex="-1"></a></span>
+<span id="cb74-8"><a href="#cb74-8" tabindex="-1"></a>care_ent_tot <span class="ot">&lt;-</span> pob_w <span class="sc">%&gt;%</span> </span>
+<span id="cb74-9"><a href="#cb74-9" tabindex="-1"></a>                 <span class="fu">group_by</span>(ent) <span class="sc">%&gt;%</span>  </span>
+<span id="cb74-10"><a href="#cb74-10" tabindex="-1"></a>                  <span class="fu">select</span>(vars) <span class="sc">%&gt;%</span></span>
+<span id="cb74-11"><a href="#cb74-11" tabindex="-1"></a>                   <span class="fu">summarise_all</span>(survey_total, <span class="at">vartype =</span> <span class="cn">NULL</span>)</span>
+<span id="cb74-12"><a href="#cb74-12" tabindex="-1"></a></span>
+<span id="cb74-13"><a href="#cb74-13" tabindex="-1"></a>pob_ent <span class="ot">&lt;-</span> pob_ent <span class="sc">%&gt;%</span> </span>
+<span id="cb74-14"><a href="#cb74-14" tabindex="-1"></a>            <span class="fu">left_join</span>(., care_ent_por, <span class="at">by =</span> <span class="st">&quot;ent&quot;</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb74-15"><a href="#cb74-15" tabindex="-1"></a>             <span class="fu">left_join</span>(care_ent_tot, <span class="at">by =</span> <span class="st">&quot;ent&quot;</span>)</span></code></pre></div>
+<p><strong>Se guarda la base de datos final </strong></p>
+<div class="sourceCode" id="cb75"><pre class="sourceCode r fold-show"><code class="sourceCode r"><span id="cb75-1"><a href="#cb75-1" tabindex="-1"></a><span class="co">#fwrite(pob_ent, paste0(here::here(), &quot;/Output/Data/indice de pobreza a nivel entidad.csv&quot;), row.names = F)</span></span>
+<span id="cb75-2"><a href="#cb75-2" tabindex="-1"></a><span class="fu">save</span>(pob_ent, <span class="at">file =</span> <span class="fu">paste0</span>(here<span class="sc">::</span><span class="fu">here</span>(), <span class="st">&quot;/Output/Data/indice de pobreza a nivel entidad.RData&quot;</span>))</span></code></pre></div>
 </div>
 </div>
 
