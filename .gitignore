@@ -50,3 +50,4 @@ rsconnect/
 
 Bases de datos/
 Documentos/
+Output/Data/*.csv

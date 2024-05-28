@@ -112,7 +112,6 @@ reticulate::conda_create(envname='Pobreza-2022',
 
 
 **Se intalan la paqueterías de pyton** 
-
 ```{python}
 # Se instalan los paquetes y librerías a utilizar en el programa
 #pip install pandas
@@ -157,7 +156,7 @@ viviendas = pd.read_csv(current_directory + "/Bases de datos/viviendas.csv", low
 
 
 ```{r}
-system("pip install pyreadr")
+system("pip install openpyxl")
 ```
 
 ```{python, eval = FALSE}
@@ -168,5 +167,7 @@ import pyreadr
 import pandas as pd
 concentradohogar = pyreadr.read_r(current_directory + "/Data/concentradohogar.RData")
 ```
+
+
 
 
