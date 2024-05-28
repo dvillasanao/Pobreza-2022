@@ -24,9 +24,24 @@ el índice de pobreza multidimensional.
 
 ### R
 
+**Enlace** :
+<https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html>
+
 <html>
 <body>
 <a href = "https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html" target="_blank">
 <img src="Output/Calculo Script.png" width="80%"> </a>
+</body>
+</html>
+
+### Python
+
+**Enlace** :
+<https://dvillasanao.github.io/Pobreza-2022/Python/02_Calculo-del-IPobreza.html>
+
+<html>
+<body>
+<a href = "https://dvillasanao.github.io/Pobreza-2022/Python/02_Calculo-del-IPobreza.html" target="_blank">
+<img src="Output/Calculo Script Python.png" width="80%"> </a>
 </body>
 </html>

@@ -37,6 +37,8 @@ Se estructuran los cálculos de las diferentes dimensiones que componen el índi
 
 ### R 
 
+**Enlace** : https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html  
+
 <html>
 <body>
   <a href = "https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html" target="_blank">
@@ -44,3 +46,16 @@ Se estructuran los cálculos de las diferentes dimensiones que componen el índi
   </a>
 </body>
 </html>
+
+### Python
+
+**Enlace** : https://dvillasanao.github.io/Pobreza-2022/Python/02_Calculo-del-IPobreza.html
+
+<html>
+<body>
+  <a href = "https://dvillasanao.github.io/Pobreza-2022/Python/02_Calculo-del-IPobreza.html" target="_blank">
+<img src="Output/Calculo Script Python.png" width="80%">
+  </a>
+</body>
+</html>
+
