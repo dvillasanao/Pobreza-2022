@@ -71,6 +71,10 @@ h3 {
     color: #ffffff;
     background: #596AB7
 }
+.top4-tiles a:nth-of-type(1):hover, .top2-tiles a:nth-of-type(1):focus{
+    color: #ffffff;
+    background: #A92AA4
+}
 </style>
 ```
 
@@ -90,7 +94,6 @@ rm(list = ls())
 
 ```{r, echo=FALSE}
 setwd(here::here())
-root.dir = rprojroot::find_rstudio_root_file()
 ```
 🔹 Se define un `conda environment` a utilizar:
 
@@ -241,12 +244,11 @@ rezago_educativo = rezago_educativo[['folioviv', 'foliohog', 'numren', 'edad', '
                                      ]]
 ```
 
-**Se guarda la base de datos**
+**Se guarda la base de datos** 
 ```{python}
 #del [[rezedu]] # Eliminamos el data.frame "rezedu"  
 rezago_educativo.to_csv(current_directory + '/Output/Data/' + 'ic_rezedu22.csv', index = False)
 ```
-
 
 ##### Opción 2  
 
@@ -382,6 +384,220 @@ ocupados['trab'] = 1
 ocupados = ocupados[['folioviv', 'foliohog', 'numren', 'trab'] + [col for col in ocupados.columns if col.startswith('tipo_trab') or col.startswith('ocupa')]]
 ```
 
+**Se guarda la base de datos** 
+```{python}
+ocupados.to_csv(current_directory + '/Output/Data/' + 'ocupados22.csv.csv', index = False)
+```
+
+**Indicador de carencia por acceso a los servicios de salud** 
+
+```{python}
+#Indicador de carencia por acceso a los servicios de salud
+salud = poblacion.copy()
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+salud = salud.loc[~((salud['parentesco'] >= 400) & (salud['parentesco'] < 500) |
+                    (salud['parentesco'] >= 700) & (salud['parentesco'] < 800))]
+
+salud = pd.merge(salud, 
+                  ocupados, 
+                   on = ['folioviv', 'foliohog', 'numren'], 
+                    how = 'left')
+
+#Convirtiendo variables string a numericas
+salud[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 
+       'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_2']
+      ] = salud[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 
+                 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_2']
+                 ].apply(pd.to_numeric, errors = 'coerce')
+
+# PEA (personas de 16 años o más)
+salud['pea'] = np.NAN
+salud.loc[(salud['trab'] == 1) & (salud['edad'] >= 16) & 
+           (~salud['edad'].isna()), 'pea'] = 1 # PEA: ocupada
+salud.loc[((salud['act_pnea1'] == 1) | (salud['act_pnea2'] == 1)) & 
+           (salud['edad'] >= 16) & (~salud['edad'].isna()),'pea'] = 2 # PEA: desocupada
+salud.loc[((salud['edad'] >= 16) & (~salud['edad'].isna()) &
+           (((salud['act_pnea1'] != 1) | (salud['act_pnea1'].isna())) &
+            ((salud['act_pnea2'] != 1) | (salud['act_pnea2'].isna()))) &
+             (((salud['act_pnea1'] >= 2) & (salud['act_pnea1'] <= 6)) |
+              ((salud['act_pnea2'] >= 2) & (salud['act_pnea2'] <= 6)))),'pea'] = 0 # PNEA
+   
+# Tipo de trabajo
+## Ocupación principal
+salud['tipo_trab1'] = np.where(salud['pea'] == 1, 
+                                salud['tipo_trab1'], 
+                                 salud['tipo_trab1']) # Depende de un patrón, jefe o superior 
+salud['tipo_trab1'] = np.where((salud['pea'] == 0) | (salud['pea'] == 2), 
+                                 np.NAN, 
+                                  salud['tipo_trab1']) # No depende de un jefe y recibe o tiene asignado un sueldo
+salud['tipo_trab1'] = np.where(salud['pea'].isna(), 
+                                np.NAN, 
+                                 salud['tipo_trab1']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
+## Ocupación secundaria
+salud['tipo_trab2'] = np.where(salud['pea'] == 1, 
+                                salud['tipo_trab2'], 
+                                 salud['tipo_trab2']) # Depende de un patrón, jefe o superior
+salud['tipo_trab2'] = np.where((salud['pea'] == 0) | (salud['pea'] == 2), 
+                                 np.NAN, 
+                                  salud['tipo_trab2']) # No depende de un jefe y recibe o tiene asignado un sueldo
+salud['tipo_trab2'] = np.where(salud['pea'].isna(), 
+                                np.NAN, 
+                                 salud['tipo_trab2']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
+
+# Servicios médicos prestaciones laborales
+salud['smlab1'] = np.NAN
+## Ocupación principal
+salud.loc[(salud['ocupa1'] == 1), 'smlab1'] = 0 # Sin servicios médicos
+salud.loc[((salud['ocupa1'] == 1) & (salud['atemed'] == 1) &
+           ((salud['inst_1'] == 1) | (salud['inst_2'] == 2) | (salud['inst_3'] == 3) | (salud['inst_4'] == 4)) & 
+            (salud['inscr_1'] == 1), 'smlab1')] = 1 # Con servicios médicos
+
+## Ocupación secundaria
+salud['smlab2'] = np.NAN
+salud.loc[(salud['ocupa2'] == 1), 'smlab2'] = 0 # Sin servicios médicos
+salud.loc[((salud['ocupa2'] == 1) & (salud['atemed'] == 1) &
+           ((salud['inst_1'] == 1) | (salud['inst_2'] == 2) | (salud['inst_3'] == 3) | (salud['inst_4'] == 4)) & 
+            (salud['inscr_1'] == 1), 'smlab2')] = 1 # Con servicios médicos
+
+# Contratación voluntaria de servicios médicos
+salud['smcv'] = np.NAN
+salud.loc[((salud['edad'] >= 12) & (~salud['edad'].isna())), 'smcv'] = 0 # No cuenta
+salud.loc[((salud['atemed'] == 1) & ((salud['inst_1'] == 1) | 
+           (salud['inst_2'] == 2) | (salud['inst_3'] == 3) | 
+            (salud['inst_4'] == 4)) & (salud['inscr_6'] == 6) & 
+             (salud['edad'] >= 12) & (~salud['edad'].isna())), 'smcv'] = 1 # Sí cuenta
+
+# Acceso directo a servicios de salud
+salud['sa_dir'] = np.NAN
+## Ocupación principal
+salud.loc[((salud['tipo_trab1'] == 1) & (salud['smlab1'] == 1)), 'sa_dir'] = 1 # Con acceso
+salud.loc[((salud['tipo_trab1'] == 2) & ((salud['smlab1'] == 1) | (salud['smcv'] == 1))), 'sa_dir'] = 1 # Con acceso
+salud.loc[((salud['tipo_trab1'] == 3) & ((salud['smlab1'] == 1) | (salud['smcv'] == 1))), 'sa_dir'] = 1 # Con acceso
+
+## Ocupación secundaria
+salud.loc[((salud['tipo_trab2'] == 1) & (salud['smlab2'] == 1)), 'sa_dir'] = 1 # Con acceso
+salud.loc[((salud['tipo_trab2'] == 2) & ((salud['smlab2'] == 1) | (salud['smcv'] == 1))), 'sa_dir'] = 1 # Con acceso
+salud.loc[((salud['tipo_trab2'] == 3) & ((salud['smlab2'] == 1) | (salud['smcv'] == 1))), 'sa_dir'] = 1 # Con acceso
+salud.loc[(salud['sa_dir'].isna()), 'sa_dir'] = 0 # Sin acceso
+
+# Núcleos familiares
+salud['par'] = np.NAN
+salud.loc[((salud['parentesco'] >= 100) & (salud['parentesco'] < 200)), 'par'] = 1 # Jefe o jefa del hogar
+salud.loc[((salud['parentesco'] >= 200) & (salud['parentesco'] < 300)), 'par'] = 2 # Cónyuge del  jefe/a
+salud.loc[((salud['parentesco'] >= 300) & (salud['parentesco'] < 400)), 'par'] = 3 # Hijo del jefe/a
+salud.loc[((salud['parentesco'] == 601)), 'par'] = 4 # Padre o Madre del jefe/a
+salud.loc[((salud['parentesco'] == 615)), 'par'] = 5 # Suegro del jefe/a
+salud.loc[(salud['par'].isna()), 'par'] = 6 # Sin acceso
+
+# Asimismo, se utilizará la información relativa a la asistencia a la escuela
+salud['inas_esc'] = np.NAN
+salud.loc[((salud['asis_esc'] == 1)), 'inas_esc'] = 0 # Sí asiste
+salud.loc[((salud['asis_esc'] == 2)), 'inas_esc'] = 1 # No asiste
+
+# En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
+salud['jef'] = np.NAN
+salud.loc[((salud['par'] == 1) & (salud['sa_dir'] == 1)), 'jef'] = 1
+salud.loc[((((salud['inst_2'] == 2) | (salud['inst_3'] == 3)) & (salud['inscr_6'] == 6)) &
+           ((salud['inst_1'].isna()) & (salud['inst_4'].isna()) & (salud['inst_6'].isna())) &
+            ((salud['inscr_1'].isna()) & (salud['inscr_2'].isna()) & (salud['inscr_3'].isna()) &
+             (salud['inscr_4'].isna()) & (salud['inscr_5'].isna()) & (salud['inscr_7'].isna()))), 'jef'] = np.NAN
+
+salud['cony'] = np.NAN
+salud.loc[((salud['par'] == 2) & (salud['sa_dir'] == 1)), 'cony'] = 1
+salud.loc[((((salud['inst_2'] == 2) | (salud['inst_3'] == 3)) & (salud['inscr_6'] == 6)) &
+           ((salud['inst_1'].isna()) & (salud['inst_4'].isna()) & (salud['inst_6'].isna())) &
+            ((salud['inscr_1'].isna()) & (salud['inscr_2'].isna()) & (salud['inscr_3'].isna()) &
+             (salud['inscr_4'].isna()) & (salud['inscr_5'].isna()) & (salud['inscr_7'].isna()))), 'cony'] = np.NAN
+
+salud['hijo'] = np.NAN
+salud.loc[((salud['par'] == 3) & (salud['sa_dir'] == 1)), 'hijo'] = 1
+salud.loc[((((salud['inst_2'] == 2) | (salud['inst_3'] == 3)) & (salud['inscr_6'] == 6)) &
+           ((salud['inst_1'].isna()) & (salud['inst_4'].isna()) & (salud['inst_6'].isna())) &
+            ((salud['inscr_1'].isna()) & (salud['inscr_2'].isna()) & (salud['inscr_3'].isna()) &
+             (salud['inscr_4'].isna()) & (salud['inscr_5'].isna()) & (salud['inscr_7'].isna()))), 'hijo'] = np.NAN
+
+salud = salud.groupby(['folioviv', 'foliohog']).apply(lambda x: pd.Series({'jef_sa': x['jef'].sum(skipna = True),
+                                                                           'cony_sa': x['cony'].sum(skipna = True),
+                                                                           'hijo_sa': x['hijo'].sum(skipna = True)})).reset_index().merge(salud, on = ['folioviv', 'foliohog'])
+
+salud.loc[(salud['jef_sa'] > 0), 'jef_sa'] = 1 # Acceso directo a servicios de salud de la jefatura del hogar
+salud.loc[(salud['cony_sa'] > 0), 'cony_sa'] = 1 # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
+salud.loc[(salud['hijo_sa'] > 0), 'hijo_sa'] = 1 # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
+
+# Otros núcleos familiares: se identifica a la población con acceso a servicios de salud mediante otros núcleos familiares a través de la 
+# afiliación o inscripción a servicios de salud por algún familiar dentro o fuera del hogar, muerte del asegurado o por contratación propia; 
+
+salud['s_salud'] = np.NAN
+salud.loc[((~salud['pop_insabi'].isna()) & (~salud['atemed'].isna())), 's_salud'] = 0 # No cuenta
+salud.loc[((salud['atemed'] == 1) & ((salud['inst_1'] == 1) | (salud['inst_2'] == 2) | (salud['inst_3'] == 3) | (salud['inst_4'] == 4)) &
+           ((salud['inscr_3'] == 3) | (salud['inscr_4'] == 4) | (salud['inscr_6'] == 6) | (salud['inscr_7'] == 7))), 's_salud'] = 1 # Sí cuenta
+
+# Indicador de carencia por servicios de salud
+# Indicador de carencia por acceso a los servicios de salud
+salud['ic_asalud'] = np.NAN
+
+## Acceso directo
+salud.loc[((salud['sa_dir'] == 1)), 'ic_asalud'] = 0 
+
+## Parentesco directo: jefatura
+salud.loc[((salud['par'] == 1) & (salud['cony_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[((salud['par'] == 1) & (salud['pea'] == 0) & (salud['hijo_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+
+## Parentesco directo: cónyuge
+salud.loc[((salud['par'] == 2) & (salud['jef_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[((salud['par'] == 2) & (salud['pea'] == 0) & (salud['hijo_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+
+## Parentesco directo: descendientes
+salud.loc[((salud['par'] == 3) & (salud['edad'] < 16) & (salud['jef_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[((salud['par'] == 3) & (salud['edad'] < 16) & (salud['cony_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[((salud['par'] == 3) & (salud['edad'].between(16, 25)) & (salud['inas_esc'] == 0) & (salud['jef_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[((salud['par'] == 3) & (salud['edad'].between(16, 25)) & (salud['inas_esc'] == 0) & (salud['cony_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+
+## Parentesco directo: ascendientes
+salud.loc[((salud['par'] == 4) & (salud['pea'] == 0) & (salud['jef_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[((salud['par'] == 5) & (salud['pea'] == 0) & (salud['cony_sa'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+
+## Otros núcleos familiares
+salud.loc[((salud['s_salud'] == 1)), 'ic_asalud'] = 0 # No presenta carencia
+
+## Acceso reportado
+salud.loc[((salud['pop_insabi'] == 1) | 
+           ((salud['pop_insabi'] == 2) & (salud['atemed'] == 1) & ((salud['inst_1'] == 1) | 
+            (salud['inst_2'] == 2) | 
+             (salud['inst_3'] == 3) | 
+              (salud['inst_4'] == 4) | 
+               (salud['inst_5'] == 5) | 
+                (salud['inst_6'] == 6))) | 
+                 (salud['segvol_2'] == 2)), 'ic_asalud'] = 0 # No presenta carencia
+salud.loc[(salud['ic_asalud'].isna()), 'ic_asalud'] = 1 # Presenta carencia
+
+# Población con presencia de discapacidad, sea física o mental
+salud['discap'] = np.NAN
+salud.loc[((salud['disc_camin'] == '3') | (salud['disc_camin'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_ver'] == '3') | (salud['disc_ver'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_brazo'] == '3') | (salud['disc_brazo'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_apren'] == '3') | (salud['disc_apren'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_oir'] == '3') | (salud['disc_oir'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_vest'] == '3') | (salud['disc_vest'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_habla'] == '3') | (salud['disc_habla'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_acti'] == '3') | (salud['disc_acti'] == '4')), 'discap'] = 0 # Sin presencia de discapacidad
+salud.loc[((salud['disc_camin'] == '&') | (salud['disc_ver'] == '&') |
+          (salud['disc_brazo'] == '&') | (salud['disc_apren'] == '&') |
+          (salud['disc_oir'] == '&') | (salud['disc_vest'] == '&') &
+          (salud['disc_habla'] == '&') | (salud['disc_acti'] == '&')), 'discap'] = np.NAN # Sin presencia de discapacidad
+salud.loc[((salud['disc_camin'] == '1') | (salud['disc_camin'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_ver'] == '1') | (salud['disc_ver'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_brazo'] == '1') | (salud['disc_brazo'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_apren'] == '1') | (salud['disc_apren'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_oir'] == '1') | (salud['disc_oir'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_vest'] == '1') | (salud['disc_vest'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_habla'] == '1') | (salud['disc_habla'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+salud.loc[((salud['disc_acti'] == '1') | (salud['disc_acti'] == '2')), 'discap'] = 1 # Con presencia de discapacidad
+
+salud = salud[['folioviv', 'foliohog', 'numren', 'sexo', 'pop_insabi', 'atemed', 'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 
+               'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'inscr_8', 'segvol_1', 'segvol_2', 'segvol_3', 
+               'segvol_4', 'segvol_5', 'segvol_6', 'segvol_7', 'sa_dir', 'jef_sa', 'cony_sa', 'hijo_sa', 'ic_asalud', 'discap']]
+```
 
 ##### Opción 2    
 
@@ -391,7 +607,7 @@ import numpy as np
 
 def convert_to_numeric(df):
     cols_to_convert = ['subor', 'indep', 'tiene_suel', 'pago', 'id_trabajo']
-    df[cols_to_convert] = df[cols_to_convert].apply(pd.to_numeric, errors='coerce')
+    df[cols_to_convert] = df[cols_to_convert].apply(pd.to_numeric, errors = 'coerce')
     return df
 
 def add_tipo_trab(df):
@@ -426,284 +642,251 @@ ocupados = (ocupados.copy()
             .pipe(pivot_and_finalize))
 ```
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(ocupados, paste0(here::here(), "/Output/Data/ocupados22.csv"), row.names = F)
-save(ocupados, file = paste0(here::here(), "/Output/Data/ocupados22.RData"))
-```
-
 
 **Indicador de carencia por acceso a los servicios de salud** 
 
-```{r}
-salud <- poblacion %>% 
-          filter(!(parentesco >= 400 & parentesco < 500 | parentesco >= 700 & parentesco < 800)) %>%
-           left_join(., ocupados, by = c("folioviv", "foliohog", "numren")) %>%
-            mutate(
-                   # PEA (personas de 16 años o más)
-                   pea = case_when(.$trab == 1 & (.$edad >= 16 & !is.na(.$edad)) ~ 1, # PEA: ocupada
-                                   (.$act_pnea1 == 1 | .$act_pnea2 == 1) & (.$edad >= 16 & !is.na(.$edad)) ~ 2, # PEA: desocupada
-                                    (.$edad >= 16 & !is.na(.$edad)) & 
-                                     ((.$act_pnea1 != 1 | is.na(.$act_pnea1)) & (.$act_pnea2 != 1 | is.na(.$act_pnea2))) & 
-                                      ((.$act_pnea1 >= 2 & .$act_pnea1 <= 6) | (.$act_pnea2 >= 2 & .$act_pnea2 <= 6)) ~ 0)) %>% # PNEA
-                  # Tipo de trabajo
-                  # Ocupación principal
-                  mutate(tipo_trab1 = case_when(.$pea %in% 1 ~ .$tipo_trab1, # Depende de un patrón, jefe o superior  
-                                                .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab1, # No depende de un jefe y recibe o tiene asignado un sueldo
-                                                 is.na(.$pea) ~ NA), # No depende de un jefe y no recibe o no tiene asignado un sueldo
-                         tipo_trab2 = case_when(.$pea %in% 1 ~ .$tipo_trab2, # Depende de un patrón, jefe o superior  
-                                                .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab2,  # No depende de un jefe y recibe o tiene asignado un sueldo
-                                                 is.na(.$pea) ~ NA)) %>% # No depende de un jefe y no recibe o no tiene asignado un sueldo
-                  # Servicios médicos prestaciones laborales
-                  mutate(
-                         # Ocupación principal
-                         smlab1 = case_when(.$ocupa1 == 1 & .$atemed == 1 & 
-                                            (.$inst_1 == 1 | .$inst_2 == 2 |  .$inst_3 == 3 |.$inst_4 == 4) & 
-                                             (.$inscr_1 == 1) ~ 1, # Con servicios médicos
-                                            .$ocupa1 == 1 ~ 0), # Sin servicios médicos
-                         # Ocupación secundaria
-                         smlab2 = case_when(.$ocupa2 == 1 & .$atemed == 1 & 
-                                             (.$inst_1 == 1 | .$inst_2 == 2 |.$inst_3 == 3 | .$inst_4 == 4) & 
-                                              (.$inscr_1 == 1) ~  1, # Con servicios médicos  
-                                            .$ocupa2 == 1 ~ 0), # Sin servicios médicos
-                          # Contratación voluntaria de servicios médicos
-                         smcv = case_when(.$atemed == 1 & 
-                                           (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
-                                             .$inscr_6 == 6 & (.$edad >= 12 & !is.na(.$edad)) ~  1, # Sí cuenta
-                                           (.$edad >= 12 & !is.na(.$edad)) ~ 0)) %>%  # No cuenta
-                  # Acceso directo a servicios de salud
-                  mutate(sa_dir = case_when(
-                                           # Ocupación principal
-                                           .$tipo_trab1 == 1 & (.$smlab1 == 1) ~ 1, # Con acceso
-                                           .$tipo_trab1 == 2 & (.$smlab1 == 1 | .$smcv == 1) ~ 1, # Con acceso
-                                           .$tipo_trab1 == 3 & (.$smlab1 == 1 | .$smcv == 1) ~ 1, # Con acceso
-                                           # Ocupación secundaria
-                                           .$tipo_trab2==1 & (.$smlab2 == 1) ~ 1, # Con acceso
-                                           .$tipo_trab2==2 & (.$smlab2 == 1 | .$smcv == 1) ~ 1, # Con acceso
-                                           .$tipo_trab2==3 & (.$smlab2 == 1 | .$smcv == 1 ) ~ 1, # Con acceso
-                                            TRUE ~0)) %>% # Sin acceso
-                  # Núcleos familiares
-                  mutate(
-                         par = case_when((.$parentesco >= 100 & .$parentesco < 200) ~ 1, # Jefe o jefa del hogar 
-                                         (.$parentesco >= 200 & .$parentesco < 300) ~ 2, # Cónyuge del  jefe/a 
-                                         (.$parentesco >= 300 & .$parentesco < 400) ~ 3, # Hijo del jefe/a 
-                                          .$parentesco == 601 ~ 4, # Padre o Madre del jefe/a
-                                          .$parentesco == 615 ~ 5, # Suegro del jefe/a
-                                          TRUE ~ 6), # Sin parentesco directo
-                         # Asimismo, se utilizará la información relativa a la asistencia a la escuela
-                         inas_esc = case_when(.$asis_esc == 1 ~ 0,   # Sí asiste
-                                              .$asis_esc == 2 ~ 1 )) %>% # No asiste
-                  # En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
-                  mutate(
-                         jef = case_when(.$par == 1 & .$sa_dir == 1 & 
-                                          (((.$inst_2 == 2 | .$inst_3 == 3) & .$inscr_6 == 6) & 
-                                           (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
-                                            (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
-                                              is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7))) ~ NA_real_,
-                                         .$par == 1 & .$sa_dir == 1 ~ 1),
-                          cony = case_when(.$par == 2 & .$sa_dir == 1 & 
-                                            (((.$inst_2 == 2 | .$inst_3 == 3) & .$inscr_6 == 6) &
-                                             (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
-                                              (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
-                                                is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7))) ~ NA_real_,
-                                           .$par == 2 & .$sa_dir == 1 ~ 1),
-                          hijo = case_when(.$par == 3 & .$sa_dir == 1 & 
-                                            (((.$inst_2==2 | .$inst_3==3) & .$inscr_6==6) & 
-                                             (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) & 
-                                              (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
-                                                is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7) )) ~ NA_real_,
-                                           .$par == 3 & .$sa_dir == 1 ~ 1)) %>%
-                           as.data.table() %>%
-                            group_by(folioviv, foliohog) %>%
-                             mutate(jef_sa = sum(jef, na.rm = TRUE), # Acceso directo a servicios de salud de la jefatura del hogar
-                                    cony_sa = sum(cony, na.rm = TRUE), # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
-                                    hijo_sa = sum(hijo, na.rm = TRUE)) %>% # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
-                              ungroup() %>%
-                  mutate(jef_sa = if_else(.$jef_sa > 0, 1, .$jef_sa),  # Acceso directo a servicios de salud de la jefatura del hogar
-                         cony_sa = if_else(.$cony_sa > 0, 1, .$cony_sa), # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
-                         hijo_sa = if_else(.$hijo_sa > 0, 1, .$hijo_sa), # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
-                         
-                         # Otros núcleos familiares: se identifica a la población con acceso a servicios de salud mediante otros núcleos familiares a través de la 
-                         # afiliación o inscripción a servicios de salud por algún familiar dentro o fuera del hogar, muerte del asegurado o por contratación propia;  
-                         s_salud = case_when(.$atemed == 1 & (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
-                                              (.$inscr_3 == 3| .$inscr_4 == 4 | .$inscr_6 == 6 | .$inscr_7 == 7) ~ 1, # Sí cuenta
-                                             !is.na(.$pop_insabi) & !is.na(.$atemed) ~ 0)) %>%  # No cuenta
-                  # Indicador de carencia por acceso a los servicios de salud
-                  mutate(ic_asalud = case_when(
-                                               # Parentesco directo: jefatura
-                                               .$sa_dir == 1 ~ 0, 
-                                               .$par == 1 & .$cony_sa == 1 ~ 0, # No presenta carencia
-                                               .$par == 1 & .$pea == 0 & .$hijo_sa == 1 ~ 0, # No presenta carencia
-                                               # Parentesco directo: cónyuge
-                                               .$par == 2 & .$jef_sa == 1 ~ 0, # No presenta carencia
-                                               .$par == 2 & .$pea == 0 & .$hijo_sa == 1 ~ 0, # No presenta carencia
-                                               # Parentesco directo: descendientes
-                                               .$par == 3 & .$edad < 16 & .$jef_sa == 1 ~ 0, # No presenta carencia
-                                               .$par == 3 & .$edad < 16 & .$cony_sa == 1 ~ 0, # No presenta carencia
-                                               .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$jef_sa == 1 ~ 0, # No presenta carencia
-                                               .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$cony_sa == 1 ~ 0, # No presenta carencia
-                                               # Parentesco directo: ascendientes
-                                               .$par == 4 & .$pea == 0 & .$jef_sa == 1 ~ 0, # No presenta carencia
-                                               .$par == 5 & .$pea == 0 & .$cony_sa == 1 ~ 0, # No presenta carencia
-                                               # Otros núcleos familiares
-                                               .$s_salud == 1 ~ 0, # No presenta carencia
-                                               # Acceso reportado
-                                               .$pop_insabi == 1 | (.$pop_insabi == 2 & .$atemed == 1 & 
-                                                (.$inst_1 == 1 | .$inst_2 == 2 | inst_3 == 3 | 
-                                                  .$inst_4 == 4 | .$inst_5 == 5 | .$inst_6 == 6)) | 
-                                                   .$segvol_2 == 2 ~ 0, # No presenta carencia
-                                               TRUE ~ 1
-                                               ), # Presenta carencia
-                         # Población con presencia de discapacidad, sea física o mental
-                         discap = case_when(.$disc_camin >= "1" & .$disc_camin<= "2" ~1, # Con presencia de discapacidad
-                                            .$disc_ver >= "1" & .$disc_ver <= "2" ~1, # Con presencia de discapacidad
-                                            .$disc_brazo >= "1" & .$disc_brazo <= "2" ~1, # Con presencia de discapacidad
-                                            .$disc_apren >= "1" & .$disc_apren <= "2" ~1, # Con presencia de discapacidad  
-                                            .$disc_oir >= "1" & .$disc_oir <= "2" ~1, # Con presencia de discapacidad
-                                            .$disc_vest >= "1" & .$disc_vest <= "2" ~1, # Con presencia de discapacidad
-                                            .$disc_habla >= "1" & .$disc_habla <= "2" ~1, # Con presencia de discapacidad 
-                                            .$disc_acti >= "1" & .$disc_acti <= "2"  ~1,  # Con presencia de discapacidad
-                                            .$disc_camin == "&" & .$disc_ver == "&" &
-                                            .$disc_brazo == "&" & .$disc_apren == "&" &
-                                            .$disc_oir == "&" & .$disc_vest == "&" &
-                                            .$disc_habla == "&" & .$disc_acti == "&" ~ NA_real_,
-                                            TRUE ~ 0) # Sin presencia de discapacidad
-                         ) %>%  
-                   select(folioviv, foliohog, numren, sexo, starts_with("sa_"), ends_with("_sa"), pop_insabi, atemed, starts_with("inst_"), 
-                          starts_with("inscr_"), starts_with("segvol_"), ic_asalud, discap, par, inas_esc, jef, cony, pea, act_pnea1, act_pnea2)
+```{python}
+# Funciones auxiliares
+def filtrar_salud(df):
+    return df.loc[~(
+        ((df['parentesco'] >= 400) & (df['parentesco'] < 500)) |
+        ((df['parentesco'] >= 700) & (df['parentesco'] < 800))
+    )]
 
-names(salud)
+def convertir_numericas(df):
+    cols_numericas = ['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2', 'ocupa1', 'atemed', 
+                      'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 
+                      'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 
+                      'asis_esc', 'pop_insabi', 'segvol_2']
+    df[cols_numericas] = df[cols_numericas].apply(pd.to_numeric, errors='coerce')
+    return df
+
+def crear_pea(df):
+    df['pea'] = np.nan
+    df.loc[(df['trab'] == 1) & (df['edad'] >= 16), 'pea'] = 1
+    df.loc[((df['act_pnea1'] == 1) | (df['act_pnea2'] == 1)) & (df['edad'] >= 16), 'pea'] = 2
+    df.loc[(df['edad'] >= 16) & (
+        ((df['act_pnea1'] >= 2) & (df['act_pnea1'] <= 6)) |
+        ((df['act_pnea2'] >= 2) & (df['act_pnea2'] <= 6))
+    ), 'pea'] = 0
+    return df
+
+def procesar_tipos_trabajo(df):
+    df['tipo_trab1'] = np.where(df['pea'] == 1, df['tipo_trab1'], np.nan)
+    df['tipo_trab1'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.nan, df['tipo_trab1'])
+    df['tipo_trab2'] = np.where(df['pea'] == 1, df['tipo_trab2'], np.nan)
+    df['tipo_trab2'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.nan, df['tipo_trab2'])
+    return df
+
+def procesar_servicios_medicos(df):
+    smlab1 = ((df['ocupa1'] == 1) & (df['atemed'] == 1) &
+              ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
+              (df['inscr_1'] == 1))
+    smlab2 = ((df['ocupa2'] == 1) & (df['atemed'] == 1) &
+              ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
+              (df['inscr_1'] == 1))
+    smcv = (df['edad'] >= 12) & (df['atemed'] == 1) & ((df['inst_1'] == 1) | (df['inst_2'] == 2) |
+                                                      (df['inst_3'] == 3) | (df['inst_4'] == 4)) & (df['inscr_6'] == 6)
+    df['smlab1'] = np.where(smlab1, 1, np.nan)
+    df['smlab2'] = np.where(smlab2, 1, np.nan)
+    df['smcv'] = np.where(smcv, 1, np.nan)
+    return df
+  
+# Define una función para calcular las variables auxiliares
+def calcular_variables_auxiliares(data):
+    data['inas_esc'] = np.where(data['asis_esc'] == 1, 0, np.where(data['asis_esc'] == 2, 1, np.nan))
+    data['jef'] = np.where((data['par'] == 1) & (data['sa_dir'] == 1), 1, np.nan)
+    data['cony'] = np.where((data['par'] == 2) & (data['sa_dir'] == 1), 1, np.nan)
+    data['hijo'] = np.where((data['par'] == 3) & (data['sa_dir'] == 1), 1, np.nan)
+    
+    return data
+
+# Define una función para realizar el agrupamiento y cálculo de las variables relacionadas con acceso a servicios de salud
+def calcular_acceso_servicios(data):
+    acceso_directo = data.groupby(['folioviv', 'foliohog']).agg(
+        jef_sa=('jef', lambda x: 1 if x.sum() > 0 else 0),
+        cony_sa=('cony', lambda x: 1 if x.sum() > 0 else 0),
+        hijo_sa=('hijo', lambda x: 1 if x.sum() > 0 else 0)
+    ).reset_index()
+    
+    data = pd.merge(data, acceso_directo, on=['folioviv', 'foliohog'], how='left')
+    
+    data['jef_sa'] = np.where(data['jef_sa'] > 0, 1, 0)
+    data['cony_sa'] = np.where(data['cony_sa'] > 0, 1, 0)
+    data['hijo_sa'] = np.where(data['hijo_sa'] > 0, 1, 0)
+    
+    return data
 ```
 
+```{python}
+# Cargar datos originales
+salud = pobla.copy()
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(salud, paste0(here::here(), "/Output/Data/ic_asalud22.csv"), row.names = F)
-save(salud, file = paste0(here::here(), "/Output/Data/ic_asalud22.RData"))
+# Aplicar transformaciones encadenadas
+salud = salud.pipe(filtrar_salud)\
+            .pipe(convertir_numericas)\
+            .pipe(crear_pea)\
+            .pipe(procesar_tipos_trabajo)\
+            .pipe(procesar_servicios_medicos)
+            
+# Usa funciones de tuberías para encadenar las operaciones
+salud_procesado = (
+    poblacion.copy()
+    .pipe(calcular_variables_auxiliares)
+    .pipe(calcular_acceso_servicios)
+)
+
 ```
 
+#### III. Indicador de carencia por acceso a la seguridad social {.tabset .tabset-pills .top3-tiles}  
 
-#### III. Indicador de carencia por acceso a la seguridad social
+##### Opción 1 {.tabset .tabset-pills .top4-tiles} 
 
-```{r}
+###### Prestaciones laborales
+
+```{python}
 # Prestaciones laborales
-load(file = paste0(here::here(), "/Data/trabajos.RData")) 
+trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False) 
 ```
 
-```{r}
-trabajos <- trabajos %>%
-             mutate(tipo_trab = case_when(
-                                          # Subordinados   
-                                          .$subor == 1 ~ 1,
-                                          # Independientes que reciben un pago
-                                          .$subor == 2 & .$indep == 1 & .$tiene_suel == 1 ~ 2,
-                                          .$subor == 2 & .$indep == 2 & .$pago == 1 ~ 2,
-                                          # Independientes que no reciben un pago
-                                          .$subor == 2 & .$indep == 1 & .$tiene_suel == 2 ~ 3,
-                                          .$subor == 2 & .$indep == 2 & (.$pago == 2 | .$pago == 3) ~ 3) ,
-                    # Ahorro para el retiro o pensión para la vejez (SAR, Afore)
-                    aforlab = case_when(is.na(.$pres_8) ~ 0,
-                                        .$pres_8 == 8 ~ 1),
-                    # Ocupación principal o secundaria
-                    id_trabajo = as.numeric(.$id_trabajo),
-                    ocupa = case_when(.$id_trabajo == 1 ~ 1,
-                                      .$id_trabajo == 2 ~ 1)) %>%
-             # Distinción de prestaciones en trabajo principal y secundario
-             select(folioviv, foliohog, numren, id_trabajo, tipo_trab, aforlab, ocupa) %>% 
-              as.data.table() %>% 
-               dcast(folioviv + foliohog + numren ~ id_trabajo, 
-                      value.var = c("tipo_trab", "aforlab", "ocupa"), 
-                       sep = "", 
-                        fill = 0) %>%
-                # Identificación de la población trabajadora toda la que reporta al menos un empleo en la base de trabajos)
-                 mutate(trab = 1) %>%
-                  select(folioviv, foliohog, numren, trab, tipo_trab1, tipo_trab2, aforlab1, aforlab2, ocupa1, ocupa2)
+```{python}
+prestaciones = trabajos.copy()
+
+#Convirtiendo variables string a numericas
+prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']] = prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
+                                                                                             ].apply(pd.to_numeric, errors = 'coerce')
+
+# Tipo de trabajador: identifica la población subordinada e independiente
+prestaciones['tipo_trab'] = np.NAN
+## Subordinados
+prestaciones.loc[(prestaciones['subor'] == 1), 'tipo_trab'] = 1
+
+## Independientes que reciben un pago
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & (prestaciones['tiene_suel'] == 1)), 'tipo_trab'] = 2
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & (prestaciones['pago'] == 1)), 'tipo_trab'] = 2
+
+## Independientes que no reciben un pago
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & (prestaciones['tiene_suel'] == 2)), 'tipo_trab'] = 3
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & ((prestaciones['pago'] == 2) | (prestaciones['pago'] == 3))), 'tipo_trab'] = 3
+ 
+
+# Ahorro para el retiro o pensión para la vejez (SAR, Afore)
+prestaciones['aforlab'] = np.NAN
+prestaciones.loc[(prestaciones['pres_8'].isna()), 'aforlab'] = 0 
+prestaciones.loc[(prestaciones['pres_8'] == 8), 'aforlab'] = 1 
+
+# Ocupación principal o secundaria
+prestaciones['ocupa'] = np.NAN
+prestaciones.loc[(prestaciones['id_trabajo'] == 1), 'ocupa'] = 1 
+prestaciones.loc[(prestaciones['id_trabajo'] == 2), 'ocupa'] = 1 
+
+# Distinción de prestaciones en trabajo principal y secundario
+prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'id_trabajo', 'tipo_trab', 'aforlab', 'ocupa']]
+
+prestaciones = pd.pivot_table(prestaciones, 
+                               index = ['folioviv', 'foliohog', 'numren'], 
+                                columns = 'id_trabajo', 
+                                 values = ['tipo_trab', 'aforlab', 'ocupa'], 
+                                  aggfunc = np.sum, 
+                                   fill_value = 0)
+prestaciones.columns = [f'{i}{j}' for i, j in prestaciones.columns]
+prestaciones = prestaciones.reset_index()
+
+#Identificación de la población trabajadora (toda la que reporta al menos un empleo en la base de trabajos.csv)
+prestaciones['trab'] = 1
+prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'trab', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'ocupa1', 'ocupa2']]
 ```
 
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(trabajos, paste0(here::here(), "/Output/Data/prestaciones22.csv"), row.names = F)
-save(trabajos, file = paste0(here::here(), "/Output/Data/prestaciones22.RData"))
+**Se guarda la base de datos** 
+```{python}
+prestaciones.to_csv(current_directory + '/Output/Data/' + '/prestaciones22.csv.csv', index = False)
 ```
 
-##### Ingresos por jubilaciones o pensiones
+###### Ingresos por jubilaciones o pensiones
 
-```{r}
+```{python}
 # Ingresos por jubilaciones o pensiones
-load(file = paste0(here::here(), "/Data/ingresos.RData")) 
+pensiones = pd.read_csv(current_directory + "/Bases de datos/ingresos.csv", low_memory = False)
 
-ingresos <- ingresos %>%
-             filter(clave == "P032" | clave == "P033" | clave =="P104" | clave =="P045") 
+pensiones = pensiones[((pensiones['clave'] == 'P032') | (pensiones['clave'] == 'P033') | 
+                       (pensiones['clave'] == 'P104') | (pensiones['clave'] == 'P045'))]
+```
 
+
+```{python}
 # Definición de los deflactores 2022 
-{
-  dic21	<-	0.94753762025
-  ene22	<-	0.95314330024
-  feb22	<-	0.96105102461
-  mar22	<-	0.97056614137
-  abr22	<-	0.97581641802
-  may22	<-	0.97753689329
-  jun22	<-	0.98579194365
-  jul22	<-	0.99309386687
-  ago22	<-	1.00000000000
-  sep22	<-	1.00620340379
-  oct22	<-	1.01189793462
-  nov22	<-	1.01772170303
-  dic22	<-	1.02160690775
-}
-
+dic21 =	0.9475376203	
+ene22 =	0.9531433002
+feb22 =	0.9610510246	
+mar22 =	0.9705661414	
+abr22 =	0.9758164180	
+may22 =	0.9775368933
+jun22 =	0.9857919437	
+jul22 =	0.9930938669
+ago22 =	1.0000000000
+sep22 =	1.0062034038
+oct22 =	1.0118979346
+nov22 =	1.0177217030
+dic22 =	1.0216069077
 ```
 
-```{r}
-pensiones <- ingresos %>%
-              mutate( 
-                     # Se deflactan los ingresos por jubilaciones, pensiones y programas de adultos mayores de acuerdo con el mes de levantamiento
-                     ing_6 = case_when(.$mes_6 == 2 ~ .$ing_6/feb22,
-                                       .$mes_6 == 3 ~ .$ing_6/mar22,
-                                       .$mes_6 == 4 ~ .$ing_6/abr22,
-                                       .$mes_6 == 5 ~ .$ing_6/may22),
-                     ing_5 = case_when(.$mes_5 == 3 ~ .$ing_5/mar22,
-                                       .$mes_5 == 4 ~ .$ing_5/abr22,
-                                       .$mes_5 == 5 ~ .$ing_5/may22,
-                                       .$mes_5 == 6 ~ .$ing_5/jun22),
-                     ing_4 = case_when(.$mes_4 == 4 ~ .$ing_4/abr22,
-                                       .$mes_4 == 5 ~ .$ing_4/may22,
-                                       .$mes_4 == 6 ~ .$ing_4/jun22,
-                                       .$mes_4 == 7 ~ .$ing_4/jul22),
-                     ing_3 = case_when(.$mes_3 == 5 ~ .$ing_3/may22,
-                                       .$mes_3 == 6 ~ .$ing_3/jun22,
-                                       .$mes_3 == 7 ~ .$ing_3/jul22,
-                                       .$mes_3 == 8 ~ .$ing_3/ago22),
-                     ing_2 = case_when(.$mes_2 == 6 ~ .$ing_2/jun22,
-                                       .$mes_2 == 7 ~ .$ing_2/jul22,
-                                       .$mes_2 == 8 ~ .$ing_2/ago22,
-                                       .$mes_2 == 9 ~ .$ing_2/sep22),
-                     ing_1 = case_when(.$mes_1 == 7 ~ .$ing_1/jul22,
-                                       .$mes_1 == 8 ~ .$ing_1/ago22,
-                                       .$mes_1 == 9 ~ .$ing_1/sep22,
-                                       .$mes_1 == 10 ~ .$ing_1/oct22)) %>%
-              mutate(
-                     # Ingreso promedio mensual por jubilaciones y pensiones
-                     ing_pam = case_when(.$clave=="P104" | .$clave=="P045" ~  apply(select(., ing_1, ing_2, ing_3, ing_4, ing_5, ing_6), 1, mean),
-                                         TRUE ~ 0),
-                     # Ingreso promedio mensual por programas de adultos mayores
-                     ing_pens = case_when(.$clave=="P032" | .$clave=="P033" ~ apply(dplyr::select(., ing_1, ing_2, ing_3, ing_4, ing_5, ing_6), 1, mean),
-                                         TRUE ~0))  %>%
-                      group_by(folioviv, foliohog, numren) %>%
-                       mutate(ing_pens = sum(.$ing_pens, na.rm = TRUE),
-                              ing_pam = sum(.$ing_pam, na.rm = TRUE)) %>%
-                        ungroup()
+```{python}
+#Convirtiendo variables string a numericas
+pensiones[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+          ] = pensiones[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']].apply(pd.to_numeric, errors = 'coerce')
+          
+# Se deflactan los ingresos por jubilaciones, pensionesiones y programas de adultos mayores de acuerdo con el mes de levantamiento
+pensiones['ing_6'] = np.where(pensiones['mes_6'].isna(), pensiones['ing_6'] ,
+                      np.where(pensiones['mes_6'] == 2, pensiones['ing_6'] / feb22,
+                       np.where(pensiones['mes_6'] == 3, pensiones['ing_6'] / mar22,
+                        np.where(pensiones['mes_6'] == 4, pensiones['ing_6'] / abr22,
+                         pensiones['ing_6'] / may22))))
+pensiones['ing_5'] = np.where(pensiones['mes_5'].isna(), pensiones['ing_5'] ,
+                      np.where(pensiones['mes_5'] == 3, pensiones['ing_5'] / mar22,
+                       np.where(pensiones['mes_5'] == 4, pensiones['ing_5'] / abr22,
+                        np.where(pensiones['mes_5'] == 5, pensiones['ing_5'] / may22,
+                         pensiones['ing_5'] / jun22))))
+pensiones['ing_4'] = np.where(pensiones['mes_4'].isna(), pensiones['ing_4'] ,
+                      np.where(pensiones['mes_4'] == 4, pensiones['ing_4'] / abr22,
+                       np.where(pensiones['mes_4'] == 5, pensiones['ing_4'] / may22,
+                        np.where(pensiones['mes_4'] == 6, pensiones['ing_4'] / jun22,
+                         pensiones['ing_4'] / jul22 ))))
+pensiones['ing_3'] = np.where(pensiones['mes_3'].isna(), pensiones['ing_3'] ,
+                      np.where(pensiones['mes_3'] == 5, pensiones['ing_3'] / may22,
+                       np.where(pensiones['mes_3'] == 6, pensiones['ing_3'] / jun22,
+                        np.where(pensiones['mes_3'] == 7, pensiones['ing_3'] / jul22,
+                         pensiones['ing_3'] / ago22))))
+pensiones['ing_2'] = np.where(pensiones['mes_2'].isna(), pensiones['ing_2'] ,
+                      np.where(pensiones['mes_2'] == 6, pensiones['ing_2'] / jun22,
+                       np.where(pensiones['mes_2'] == 7, pensiones['ing_2'] / jul22,
+                        np.where(pensiones['mes_2'] == 8, pensiones['ing_2'] / ago22,
+                         pensiones['ing_2'] / sep22))))
+pensiones['ing_1'] = np.where(pensiones['mes_1'].isna(), pensiones['ing_1'] ,
+                      np.where(pensiones['mes_1'] == 7, pensiones['ing_1'] / jul22,
+                       np.where(pensiones['mes_1'] == 8, pensiones['ing_1'] / ago22,
+                        np.where(pensiones['mes_1'] == 9, pensiones['ing_1'] / sep22,
+                         pensiones['ing_1'] / oct22 ))))
+
+# Ingreso promedio mensual por programas de adultos mayores
+pensiones['ing_pam'] = np.where((pensiones['clave'] == 'P104') | (pensiones['clave'] == 'P045'),
+                                  np.apply_along_axis(np.mean, 1, pensiones[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]), 0)
+# Ingreso promedio mensual por jubilaciones y pensiones
+pensiones['ing_pens'] = np.where((pensiones['clave'] == 'P032') | (pensiones['clave'] == 'P033'),
+                                   np.apply_along_axis(np.mean, 1, pensiones[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]), 0)
+
+pensiones = pensiones.groupby(['folioviv', 'foliohog', 'numren'])[['ing_pens', 'ing_pam']].sum(numeric_only = True)
+pensiones = pensiones.reset_index()
 ```
 
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(pensiones, paste0(here::here(), "/Output/Data/pensiones22.csv"), row.names = F)
-save(pensiones, file = paste0(here::here(), "/Output/Data/pensiones22.RData"))
+**Se guarda la base de datos** 
+```{python}
+pensiones.to_csv(current_directory + '/Output/Data/' + '/pensiones22.csv.csv', index = False)
 ```
 
-##### Construcción del indicador
+
+###### Construcción del indicador
 
 **Indicador de carencia por acceso a la seguridad social** 
 
@@ -713,188 +896,657 @@ Se encuentra en situación de carencia por acceso a la seguridad social a la pob
 3. No recibe servicios médicos por parte de algún familiar dentro o fuera del hogar, por muerte del asegurado o por contratación propia.  
 4. No recibe ingreso por parte de un programa de adultos mayores donde el monto sea mayor o igual al valor promedio de la canasta alimentaria rural y urbana.    
 
-```{r}
+```{python}
 # Valor monetario de las líneas de pobreza extrema por ingresos rural y urbana
-lp1_urb <- 2086.21
-lp1_rur <- 1600.18
-lp_pam <- (lp1_urb + lp1_rur)/2
+lp1_urb = 2086.21
+lp1_rur = 1600.18
+lp_pam = (lp1_urb + lp1_rur)/2
 ```
 
  
-```{r}
-seguridad.social <- poblacion %>%
-                     # Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
-                     filter(!(.$parentesco >= 400 & .$parentesco < 500 | .$parentesco >= 700 & .$parentesco < 800)) %>%
-                     # Núcleos familiares
-                     mutate(
-                            par = case_when((.$parentesco >= 100 & .$parentesco < 200) ~ 1, # Jefe o jefa del hogar 
-                                            (.$parentesco >= 200 & .$parentesco < 300) ~ 2, # Cónyuge del  jefe/a 
-                                            (.$parentesco >= 300 & .$parentesco < 400) ~ 3, # Hijo del jefe/a 
-                                             .$parentesco == 601 ~ 4, # Padre o Madre del jefe/a
-                                             .$parentesco == 615 ~ 5, # Suegro del jefe/a
-                                             TRUE ~ 6),  # Sin parentesco directo
-                            # Asimismo, se utilizará la información relativa a la asistencia a la escuela
-                            inas_esc = case_when(.$asis_esc == 1 ~ 0,   # Sí asiste
-                                                 .$asis_esc == 2 ~ 1) # No asiste
-                     ) %>%
-                     # Integración de bases 
-                      left_join(., trabajos, by = c("folioviv", "foliohog", "numren")) %>%
-                      left_join(., pensiones, by = c("folioviv", "foliohog", "numren")) %>%
-                     mutate(
-                            # PEA (personas de 16 años o más)
-                            pea = case_when(.$trab == 1 & (.$edad >= 16 & !is.na(.$edad)) ~ 1, # PEA: ocupada
-                                             (.$act_pnea1 == 1 | .$act_pnea2 == 1) & (.$edad >= 16 & !is.na(.$edad)) ~ 2, # PEA: desocupada
-                                            (.$edad >= 16 & !is.na(.$edad)) & 
-                                             ((.$act_pnea1 != 1 | is.na(.$act_pnea1)) & 
-                                              (.$act_pnea2 != 1 | is.na(.$act_pnea2))) & 
-                                               ((.$act_pnea1 >= 2 & .$act_pnea1 <= 6) | (.$act_pnea2 >= 2 & .$act_pnea2 <= 6))  ~ 0)) %>% # PNEA
-                     mutate(
-                            # Tipo de trabajo
-                            # Ocupación principal
-                            tipo_trab1 = case_when(.$pea %in% 1 ~ .$tipo_trab1, # Depende de un patrón, jefe o superior  
-                                                   .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab1, # No depende de un jefe y recibe o tiene asignado un sueldo
-                                                    is.na(.$pea) ~ NA), # No depende de un jefe y no recibe o no tiene asignado un sueldo
-                            # Ocupación secundaria
-                            tipo_trab2 = case_when(.$pea %in% 1 ~ .$tipo_trab2, # Depende de un patrón, jefe o superior  
-                                                   .$pea %in% 0 | .$pea %in% 2 ~ .$tipo_trab2,  # No depende de un jefe y recibe o tiene asignado un sueldo
-                                                    is.na(.$pea) ~ NA), # No depende de un jefe y no recibe o no tiene asignado un sueldo
-                                           
-                            # Jubilados o pensionados
-                            jub = case_when(.$trabajo_mp == 2 & .$act_pnea1 == 2 | .$act_pnea2 == 2 ~ 1, # Población pensionada o jubilada
-                                            .$ing_pens > 0 &  !is.na(.$ing_pens) ~ 1, # Población pensionada o jubilada
-                                            .$inscr_2 == 2 ~ 1, # Población pensionada o jubilada
-                                            TRUE ~ 0), # Población no pensionada o jubilada
-                            # Prestaciones básicas
-                            # Prestaciones laborales (Servicios médicos)
-               
-                            # Ocupación principal
-                            smlab1 = case_when(.$ocupa1 == 1 & .$atemed == 1 & 
-                                                (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
-                                                 (.$inscr_1 == 1) ~ 1, # Sin servicios médicos
-                                               .$ocupa1 == 1 ~ 0), # Con servicios médicos
-                            # Ocupación secundaria
-                            smlab2 = case_when(.$ocupa2 == 1 & .$atemed == 1 & 
-                                                (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
-                                                 (.$inscr_1 == 1) ~  1, # Sin servicios médicos
-                                               .$ocupa2 == 1 ~ 0), # Con servicios médicos
-                            # Contratación voluntaria: servicios médicos y ahorro para el retiro o pensión para la vejez (SAR, Afore, Haber de retiro)
-              
-                            # Servicios médicos
-                            smcv = case_when(.$atemed == 1 & (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) &
-                                               .$inscr_6 == 6 & (.$edad >= 12 & !is.na(.$edad)) ~ 1, # Sí cuenta
-                                             (.$edad >= 12 & !is.na(.$edad)) ~ 0), # No cuenta
-                            # SAR o Afore
-                            aforecv = case_when(.$segvol_1 == 1 & (.$edad >= 12 & !is.na(.$edad)) ~ 1, # Sí cuenta
-                                                 is.na(.$segvol_1) & (.$edad>=12 & !is.na(.$edad)) ~ 0)) %>% # No cuenta
-                     # Acceso directo a la seguridad social
-                     mutate(
-                            # Acceso directo a la seguridad social
-                            ss_dir = case_when(  
-                                               # Ocupación principal
-                                               .$tipo_trab1 == 1 & .$smlab1 == 1 ~ 1, # Con acceso
-                                               .$tipo_trab1 == 2 & ((.$smlab1 == 1 | .$smcv == 1) & (.$aforlab1 == 1 | .$aforecv == 1)) ~ 1, # Con acceso
-                                               .$tipo_trab1 == 3 & ((.$smlab1 ==1 | .$smcv == 1) & .$aforecv == 1) ~ 1, # Con acceso
-                                               # Ocupación secundaria
-                                               .$tipo_trab2 == 1 & .$smlab2 == 1 ~ 1, # Con acceso
-                                               .$tipo_trab2 == 2 & ((.$smlab2 == 1 | .$smcv == 1) & (.$aforlab2 == 1 | .$aforecv == 1)) ~ 1, # Con acceso  
-                                               .$tipo_trab2 == 3 & ((.$smlab2 == 1 | .$smcv == 1) & .$aforecv == 1) ~ 1, # Con acceso
-                                               # Jubilados y pensionados
-                                               .$jub == 1 ~ 1, # Con acceso
-                                               TRUE ~ 0)
-                            ) %>%  # Sin acceso
-                     # En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
-                     mutate(
-                            jef = case_when(.$par == 1 & .$ss_dir == 1 & 
-                                             (((.$inst_2 == "2" | .$inst_3 == "3") & .$inscr_6 == "6") & 
-                                              (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
-                                               (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
-                                                is.na(.$inscr_4) & is.na(.$inscr_5)  & is.na(.$inscr_7))) ~ NA_real_,
-                                            .$par == 1 & .$ss_dir == 1 ~ 1),
-                            
-                            cony = case_when(.$par == 2 & .$ss_dir == 1 & 
-                                              (((.$inst_2 == "2" | inst_3 == "3") & inscr_6 == "6") &
-                                               (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) &
-                                                (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
-                                                 is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7) )) ~ NA_real_,
-                                             .$par == 2 & .$ss_dir == 1 ~ 1),
-                            
-                            hijo = case_when(.$par == 3 & .$ss_dir == 1 & 
-                                              (((.$inst_2 == "2" | .$inst_3 == "3") & .$inscr_6 == "6") & 
-                                               (is.na(.$inst_1) & is.na(.$inst_4) & is.na(.$inst_6)) & 
-                                               (is.na(.$inscr_1) & is.na(.$inscr_2) & is.na(.$inscr_3) & 
-                                                is.na(.$inscr_4) & is.na(.$inscr_5) & is.na(.$inscr_7) )) ~ NA_real_,
-                                             .$par == 3 & .$ss_dir == 1 & .$jub == 1 & (.$edad > 25 & !is.na(.$edad)) ~ 1,
-                                             .$par == 3 & .$ss_dir == 1 & .$jub == 0 ~ 1)) %>%
-                      as.data.table() %>%
-                       group_by(folioviv, foliohog) %>%
-                        mutate(jef_ss = sum(jef, na.rm = TRUE), # Acceso directo a servicios de salud de la jefatura del hogar
-                               cony_ss = sum(cony, na.rm = TRUE), # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
-                               hijo_ss = sum(hijo, na.rm = TRUE)) %>% # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
-                         ungroup() %>%
-                          mutate(jef_ss = if_else(.$jef_ss > 0, 1, .$jef_ss), # Acceso directo a la seguridad social de la jefatura del hogar
-                                 cony_ss = if_else(.$cony_ss > 0, 1, .$cony_ss), # Acceso directo a la seguridad social de cónyuge de la jefatura del hogar
-                                 hijo_ss = if_else(.$hijo_ss > 0, 1, .$hijo_ss)) %>% # Acceso directo a la seguridad social de hijos(as) de la jefatura del hogar
-                          # Otros núcleos familiares: se identifica a la población con acceso a la seguridad social mediante otros núcleos 
-                          # familiares a través de la afiliación o inscripción a servicios de salud por algún familiar dentro o fuera del 
-                          # hogar, muerte del asegurado o por contratación propia
-  
-                          mutate(s_salud = case_when(.$atemed == 1 & 
-                                                      (.$inst_1 == 1 | .$inst_2 == 2 | .$inst_3 == 3 | .$inst_4 == 4) & 
-                                                        (.$inscr_3 == 3 | .$inscr_4 == 4 | .$inscr_6 == 6 | inscr_7 == 7) ~ 1, # Con acceso
-                                                          !is.na(.$pop_insabi) & !is.na(.$atemed) ~ 0) # Sin acceso
-                                 ) %>% 
-                          # Programas sociales de pensiones para adultos mayores 
+ 
+```{python}
+# Construcción del indicador
+seguridad_social = poblacion.copy()
 
-                          # Se identifica a las personas de 65 años o más que reciben un programa para adultos mayores si el monto recibido 
-                          # es mayor o igual al promedio de la línea de pobreza extrema por ingresos rural y urbana.
-                          mutate(pam = case_when(.$edad >= 65 & !is.na(.$edad) & .$ing_pam >= lp_pam & !is.na(.$ing_pam) ~ 1, # Recibe
-                                                 .$edad >= 65 & !is.na(.$edad) ~ 0) # No recibe
-                                 ) %>% 
-  
-                         # Indicador de carencia por acceso a la seguridad social
-                         
-                          mutate(
-                                 ic_segsoc = case_when(
-                                                       # Acceso directo
-                                                       .$ss_dir == 1 ~ 0, # No presenta carencia
-                                                       # Parentesco directo: jefatura
-                                                       .$par == 1 & .$cony_ss == 1 ~ 0, # No presenta carencia
-                                                       .$par == 1 & .$pea == 0 & .$hijo_ss == 1 ~ 0, # No presenta carencia
-                                                       # Parentesco directo: cónyuge
-                                                       .$par == 2 & .$jef_ss == 1 ~ 0, # No presenta carencia 
-                                                       .$par == 2 & .$pea == 0 & .$hijo_ss == 1 ~ 0, # No presenta carencia
-                                                       # Parentesco directo: descendientes
-                                                       .$par == 3 & .$edad < 16 & .$jef_ss == 1 ~ 0, # No presenta carencia
-                                                       .$par == 3 & .$edad < 16 & .$cony_ss == 1 ~ 0, # No presenta carencia
-                                                       .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$jef_ss == 1 ~ 0, # No presenta carencia
-                                                       .$par == 3 & (.$edad >= 16 & .$edad <= 25) & .$inas_esc == 0 & .$cony_ss == 1 ~ 0, # No presenta carencia
-                                                       # Parentesco directo: ascendientes
-                                                       .$par == 4 & .$pea == 0 & .$jef_ss == 1 ~ 0, # No presenta carencia
-                                                       .$par == 5 & .$pea == 0 & .$cony_ss == 1 ~ 0, # No presenta carencia
-                                                       # Otros núcleos familiares
-                                                       .$s_salud == 1 ~ 0, # No presenta carencia
-                                                       # Programa de adultos mayores
-                                                       .$pam == 1 ~ 0, # No presenta carencia
-                                                        TRUE ~ 1) # Presenta carencia
-                                 ) %>%
-                           select(folioviv, foliohog, numren,starts_with("tipo_trab"), starts_with("aforlab"), starts_with("smlab"), smcv, aforecv, 
-                                  pea, jub, ss_dir, par, ends_with("_ss"), s_salud, pam, ing_pam, ic_segsoc)
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+seguridad_social = seguridad_social[~((seguridad_social['parentesco'] >= 400) & (seguridad_social['parentesco'] < 500) |
+                   (seguridad_social['parentesco'] >= 700) & (seguridad_social['parentesco'] < 800))]
+
+# Integración de bases
+seguridad_social = pd.merge(seguridad_social, prestaciones, 
+                             on = ['folioviv', 'foliohog', 'numren'], 
+                              how = 'left')
+seguridad_social = pd.merge(seguridad_social, pensiones, 
+                    on = ['folioviv', 'foliohog', 'numren'], 
+                     how = 'left')
+
+#Convirtiendo variables string a numericas
+seguridad_social[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'trabajo_mp',
+                  'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 
+                  'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']
+                 ] = seguridad_social[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'trabajo_mp',
+                                       'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 
+                                       'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']].apply(pd.to_numeric, errors = 'coerce')
+
+# PEA (personas de 16 años o más)
+seguridad_social['pea'] = np.NAN
+seguridad_social.loc[(seguridad_social['trab'] == 1) & (seguridad_social['edad'] >= 16) & 
+                      (~seguridad_social['edad'].isna()), 'pea'] = 1 # PEA: ocupada
+seguridad_social.loc[((seguridad_social['act_pnea1'] == 1) | (seguridad_social['act_pnea2'] == 1)) & 
+                      (seguridad_social['edad'] >= 16) & (~seguridad_social['edad'].isna()), 'pea'] = 2 # PEA: desocupada
+seguridad_social.loc[((seguridad_social['edad'] >= 16) & (~seguridad_social['edad'].isna()) &
+                      (((seguridad_social['act_pnea1'] != 1) | (seguridad_social['act_pnea1'].isna())) &
+                       ((seguridad_social['act_pnea2'] != 1) | (seguridad_social['act_pnea2'].isna()))) &
+                        (((seguridad_social['act_pnea1'] >= 2) & (seguridad_social['act_pnea1'] <= 6)) |
+                         ((seguridad_social['act_pnea2'] >= 2) & (seguridad_social['act_pnea2'] <= 6)))), 'pea'] = 0 # PNEA
+
+# Acceso directo a la seguridad social
+## Ocupación principal
+seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'] == 1, 
+                                           seguridad_social['tipo_trab1'], 
+                                            seguridad_social['tipo_trab1']) # Depende de un patrón, jefe o superior 
+seguridad_social['tipo_trab1'] = np.where((seguridad_social['pea'] == 0) | (seguridad_social['pea'] == 2), 
+                                            np.NAN, 
+                                             seguridad_social['tipo_trab1']) # No depende de un jefe y recibe o tiene asignado un sueldo
+seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'].isna(), 
+                                           np.NAN, 
+                                            seguridad_social['tipo_trab1']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
+## Ocupación secundaria
+seguridad_social['tipo_trab2'] = np.where(seguridad_social['pea'] == 1, 
+                                           seguridad_social['tipo_trab2'], 
+                                            seguridad_social['tipo_trab2']) # Depende de un patrón, jefe o superior
+seguridad_social['tipo_trab2'] = np.where((seguridad_social['pea'] == 0) | (seguridad_social['pea'] == 2), 
+                                            np.NAN, 
+                                             seguridad_social['tipo_trab2']) # No depende de un jefe y recibe o tiene asignado un sueldo
+seguridad_social['tipo_trab2'] = np.where(seguridad_social['pea'].isna(), 
+                                           np.NAN, 
+                                            seguridad_social['tipo_trab2']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
+## Jubilados y pensionados
+seguridad_social['jub'] = np.NAN
+seguridad_social.loc[((seguridad_social['trabajo_mp'] == 2) & ((seguridad_social['act_pnea1'] == 2) | 
+                      (seguridad_social['act_pnea2'] == 2))), 'jub'] = 1 # Población pensionada o jubilada
+seguridad_social.loc[((seguridad_social['ing_pens'] > 0) & (~seguridad_social['ing_pens'].isna())), 'jub'] = 1 # Población pensionada o jubilada
+seguridad_social.loc[(seguridad_social['inscr_2'] == 2), 'jub'] = 1 # Población pensionada o jubilada
+seguridad_social.loc[(seguridad_social['jub'].isna()), 'jub'] = 0 # Población no pensionada o jubilada
+
+# Prestaciones básicas
+
+# Prestaciones laborales (Servicios médicos)
+## Ocupación principal
+seguridad_social['smlab1'] = np.NAN
+seguridad_social.loc[(seguridad_social['ocupa1'] == 1), 'smlab1'] = 0 # Con servicios médicos
+seguridad_social.loc[((seguridad_social['ocupa1'] == 1) & (seguridad_social['atemed'] == 1) & 
+                      ((seguridad_social['inst_1'] == 1) | (seguridad_social['inst_2'] == 2) | 
+                       (seguridad_social['inst_3'] == 3) | (seguridad_social['inst_4'] == 4)) & 
+                        (seguridad_social['inscr_1'] == 1)), 'smlab1'] = 1 # Sin servicios médicos
+## Ocupación secundaria
+seguridad_social['smlab2'] = np.NAN
+seguridad_social.loc[(seguridad_social['ocupa2'] == 1), 'smlab2'] = 0 # Con servicios médicos
+seguridad_social.loc[((seguridad_social['ocupa2'] == 1) & (seguridad_social['atemed'] == 1) & 
+                      ((seguridad_social['inst_1'] == 1) | (seguridad_social['inst_2'] == 2) | 
+                       (seguridad_social['inst_3'] == 3) | (seguridad_social['inst_4'] == 4)) & 
+                        (seguridad_social['inscr_1'] == 1)), 'smlab2'] = 1 # Sin servicios médicos
+
+# Contratación voluntaria: servicios médicos y ahorro para el retiro o pensión para la vejez (SAR, Afore, Haber de retiro)
+## Servicios médicos
+seguridad_social['smcv'] = np.NAN
+seguridad_social.loc[((seguridad_social['edad'] >= 12) & (~seguridad_social['edad'].isna())), 'smcv'] = 0 # No cuenta
+seguridad_social.loc[((seguridad_social['atemed'] == 1) & ((seguridad_social['inst_1'] == 1) |
+                      (seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3) |
+                       (seguridad_social['inst_4'] == 4)) & (seguridad_social['inscr_6'] == 6) & 
+                        ((seguridad_social['edad'] >= 12) & (~seguridad_social['edad'].isna()))), 'smcv'] = 1 # Sí cuenta
+                        
+## SAR o Afore
+seguridad_social['aforecv'] = np.NAN              
+seguridad_social.loc[((seguridad_social['segvol_1'].isna()) & ((seguridad_social['edad'] >= 12) & 
+                      (~seguridad_social['edad'].isna()))), 'aforecv'] = 0 # No cuenta    
+seguridad_social.loc[((seguridad_social['segvol_1'] == 1) & ((seguridad_social['edad'] >= 12) & 
+                      (~seguridad_social['edad'].isna()))), 'aforecv'] = 1 # Sí cuenta 
+                      
+## Acceso directo a la seguridad social
+seguridad_social['ss_dir'] = np.NAN
+seguridad_social.loc[(seguridad_social['ss_dir'].isna()), 'ss_dir'] = 0 # Sin acceso
+
+## Ocupación principal
+seguridad_social.loc[((seguridad_social['tipo_trab1'] == 1) & (seguridad_social['smlab1'] == 1)), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab1'] == 2) & ((seguridad_social['smlab1'] == 1) |
+                      (seguridad_social['smcv'] == 1)) & ((seguridad_social['aforlab1'] == 1) | 
+                       (seguridad_social['aforecv'] == 1))), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab1'] == 3) & ((seguridad_social['smlab1'] == 1) | 
+                       (seguridad_social['smcv'] == 1)) & (seguridad_social['aforecv'] == 1)), 'ss_dir'] = 1 # Con acceso
+
+## Ocupación secundaria
+seguridad_social.loc[((seguridad_social['tipo_trab2'] == 1) & (seguridad_social['smlab2'] == 1)), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab2'] == 2) & ((seguridad_social['smlab2'] == 1) | 
+                      (seguridad_social['smcv'] == 1)) & ((seguridad_social['aforlab2'] == 1) | 
+                       (seguridad_social['aforecv'] == 1))), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab2'] == 3) & ((seguridad_social['smlab2'] == 1) | 
+                       (seguridad_social['smcv'] == 1)) & (seguridad_social['aforecv'] == 1)), 'ss_dir'] = 1 # Con acceso   
+
+## Jubilados y pensionados
+seguridad_social.loc[(seguridad_social['jub'] == 1), 'ss_dir'] = 1 # Con acceso 
+
+## Núcleos familiares   
+seguridad_social['par'] = np.NAN
+seguridad_social.loc[((seguridad_social['parentesco'] >= 100) & (seguridad_social['parentesco'] < 200)), 'par'] = 1 # Jefe o jefa del hogar
+seguridad_social.loc[((seguridad_social['parentesco'] >= 200) & (seguridad_social['parentesco'] < 300)), 'par'] = 2 # Cónyuge del  jefe/a
+seguridad_social.loc[((seguridad_social['parentesco'] >= 300) & (seguridad_social['parentesco'] < 400)), 'par'] = 3 # Hijo del jefe/a
+seguridad_social.loc[((seguridad_social['parentesco'] == 601)), 'par'] = 4 # Padre o Madre del jefe/a
+seguridad_social.loc[((seguridad_social['parentesco'] == 615)), 'par'] = 5 # Suegro del jefe/a
+seguridad_social.loc[(seguridad_social['par'].isna()), 'par'] = 6 # Sin acceso
+
+# Asimismo, se utilizará la información relativa a la asistencia a la escuela
+seguridad_social['inas_esc'] = np.NAN
+seguridad_social.loc[((seguridad_social['asis_esc'] == 1)), 'inas_esc'] = 0 # Sí asiste
+seguridad_social.loc[((seguridad_social['asis_esc'] == 2)), 'inas_esc'] = 1 # No asiste
+
+# En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
+seguridad_social['jef'] = np.NAN
+seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['ss_dir'] == 1)), 'jef'] = 1
+seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) & 
+                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
+                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
+                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'jef'] = np.NAN
+
+seguridad_social['cony'] = np.NAN
+seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['ss_dir'] == 1)), 'cony'] = 1
+seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) &
+                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
+                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
+                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'cony'] = np.NAN
+
+seguridad_social['hijo'] = np.NAN
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['ss_dir'] == 1) & (seguridad_social['jub'] == 1) & 
+                      ((seguridad_social['edad'] > 25) & (~seguridad_social['edad'].isna()))), 'hijo'] = 1
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['ss_dir'] == 1) & (seguridad_social['jub'] == 0)), 'hijo'] = 1
+seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) &
+                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
+                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
+                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'hijo'] = np.NAN
+
+seguridad_social = seguridad_social.groupby(['folioviv', 'foliohog']
+                                           ).apply(lambda x: pd.Series({'jef_ss': x['jef'].sum(skipna=True),
+                                                                        'cony_ss': x['cony'].sum(skipna=True),
+                                                                        'hijo_ss': x['hijo'].sum(skipna=True)})
+                                                                      ).reset_index().merge(seguridad_social, 
+                                                                                             on = ['folioviv', 'foliohog'])
+
+seguridad_social.loc[(seguridad_social['jef_ss'] > 0), 'jef_ss'] = 1 # Acceso directo a servicios de salud de la jefatura del hogar
+seguridad_social.loc[(seguridad_social['cony_ss'] > 0), 'cony_ss'] = 1 # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
+seguridad_social.loc[(seguridad_social['hijo_ss'] > 0), 'hijo_ss'] = 1 # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
+
+# Otros núcleos familiares: se identifica a la población con acceso a la seguridad social mediante otros núcleos familiares a través de la afiliación o inscripción 
+#a servicios de salud por algún familiar dentro o fuera del hogar, muerte del asegurado o por contratación propia.
+
+seguridad_social['s_salud'] = np.NAN
+seguridad_social.loc[((~seguridad_social['pop_insabi'].isna()) & (~seguridad_social['atemed'].isna())), 's_salud'] = 0 # Sin acceso
+seguridad_social.loc[((seguridad_social['atemed'] == 1) & ((seguridad_social['inst_1'] == 1) |
+                      (seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3) | 
+                       (seguridad_social['inst_4'] == 4)) & ((seguridad_social['inscr_3'] == 3) | 
+                        (seguridad_social['inscr_4'] == 4) | (seguridad_social['inscr_6'] == 6) | 
+                         (seguridad_social['inscr_7'] == 7))), 's_salud'] = 1 # Con acceso
+
+# Programas sociales de pensiones para adultos mayores
+seguridad_social['pam'] = np.NAN
+seguridad_social.loc[((seguridad_social['edad'] >= 65) & (~seguridad_social['edad'].isna())), 'pam'] = 0 # No recibe
+seguridad_social.loc[((seguridad_social['edad'] >= 65) & (~seguridad_social['edad'].isna()) & 
+                      (seguridad_social['ing_pam'] >= lp_pam) & (~seguridad_social['ing_pam'].isna())), 'pam'] = 1 # Recibe
+
+#Indicador de carencia por acceso a la seguridad social
+seguridad_social['ic_segsoc'] = np.NAN
+## Acceso directo
+seguridad_social.loc[(seguridad_social['ss_dir'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: jefatura
+seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['pea'] == 0) & 
+                      (seguridad_social['hijo_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: cónyuge
+seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['pea'] == 0) & 
+                      (seguridad_social['hijo_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: descendientes
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'] < 16) & 
+                      (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'] < 16) & 
+                      (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'].between(16, 25)) & 
+                      (seguridad_social['inas_esc'] == 0) & (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'].between(16, 25)) & 
+                      (seguridad_social['inas_esc'] == 0) & (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: ascendientes
+seguridad_social.loc[((seguridad_social['par'] == 4) & (seguridad_social['pea'] == 0) &
+                      (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 5) & (seguridad_social['pea'] == 0) & 
+                      (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Otros núcleos familiares
+seguridad_social.loc[(seguridad_social['s_salud'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Programa de adultos mayores
+seguridad_social.loc[(seguridad_social['pam'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[(seguridad_social['ic_segsoc'].isna()), 'ic_segsoc'] = 1 # Presenta carencia
+
+seguridad_social = seguridad_social[['folioviv', 'foliohog', 'numren', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'pea', 'jub', 
+'smlab1', 'smlab2', 'smcv', 'aforecv', 'ss_dir', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 's_salud', 'pam', 'ing_pam', 'ic_segsoc']]
 ```
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(seguridad.social, paste0(here::here(), "/Output/Data/ic_segsoc22.csv"), row.names = F)
-save(seguridad.social, file = paste0(here::here(), "/Output/Data/ic_segsoc22.RData"))
+**Se guarda la base de datos** 
+```{python}
+seguridad_social.to_csv(current_directory + '/Output/Data/' + '/ic_segsoc22.csv.csv', index = False)
 ```
 
+##### Opción 2 {.tabset .tabset-pills .top4-tiles} 
+
+###### Prestaciones laborales
+
+```{python}
+# Prestaciones laborales
+trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False) 
+```
+
+```{python}
+prestaciones = trabajos.copy()
+
+#Convirtiendo variables string a numericas
+prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']] = prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
+                                                                                             ].apply(pd.to_numeric, errors = 'coerce')
+
+# Tipo de trabajador: identifica la población subordinada e independiente
+prestaciones['tipo_trab'] = np.NAN
+## Subordinados
+prestaciones.loc[(prestaciones['subor'] == 1), 'tipo_trab'] = 1
+
+## Independientes que reciben un pago
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & (prestaciones['tiene_suel'] == 1)), 'tipo_trab'] = 2
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & (prestaciones['pago'] == 1)), 'tipo_trab'] = 2
+
+## Independientes que no reciben un pago
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & (prestaciones['tiene_suel'] == 2)), 'tipo_trab'] = 3
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & ((prestaciones['pago'] == 2) | (prestaciones['pago'] == 3))), 'tipo_trab'] = 3
+ 
+
+# Ahorro para el retiro o pensión para la vejez (SAR, Afore)
+prestaciones['aforlab'] = np.NAN
+prestaciones.loc[(prestaciones['pres_8'].isna()), 'aforlab'] = 0 
+prestaciones.loc[(prestaciones['pres_8'] == 8), 'aforlab'] = 1 
+
+# Ocupación principal o secundaria
+prestaciones['ocupa'] = np.NAN
+prestaciones.loc[(prestaciones['id_trabajo'] == 1), 'ocupa'] = 1 
+prestaciones.loc[(prestaciones['id_trabajo'] == 2), 'ocupa'] = 1 
+
+# Distinción de prestaciones en trabajo principal y secundario
+prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'id_trabajo', 'tipo_trab', 'aforlab', 'ocupa']]
+
+prestaciones = pd.pivot_table(prestaciones, 
+                               index = ['folioviv', 'foliohog', 'numren'], 
+                                columns = 'id_trabajo', 
+                                 values = ['tipo_trab', 'aforlab', 'ocupa'], 
+                                  aggfunc = np.sum, 
+                                   fill_value = 0)
+prestaciones.columns = [f'{i}{j}' for i, j in prestaciones.columns]
+prestaciones = prestaciones.reset_index()
+
+#Identificación de la población trabajadora (toda la que reporta al menos un empleo en la base de trabajos.csv)
+prestaciones['trab'] = 1
+prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'trab', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'ocupa1', 'ocupa2']]
+```
+
+
+**Se guarda la base de datos** 
+```{python}
+prestaciones.to_csv(current_directory + '/Output/Data/' + '/prestaciones22.csv.csv', index = False)
+```
+
+###### Ingresos por jubilaciones o pensiones
+
+```{python}
+# Ingresos por jubilaciones o pensiones
+pensiones = pd.read_csv(current_directory + "/Bases de datos/ingresos.csv", low_memory = False)
+
+pensiones = pensiones[((pensiones['clave'] == 'P032') | (pensiones['clave'] == 'P033') | 
+                       (pensiones['clave'] == 'P104') | (pensiones['clave'] == 'P045'))]
+```
+
+
+```{python}
+# Definición de los deflactores 2022 
+dic21 =	0.9475376203	
+ene22 =	0.9531433002
+feb22 =	0.9610510246	
+mar22 =	0.9705661414	
+abr22 =	0.9758164180	
+may22 =	0.9775368933
+jun22 =	0.9857919437	
+jul22 =	0.9930938669
+ago22 =	1.0000000000
+sep22 =	1.0062034038
+oct22 =	1.0118979346
+nov22 =	1.0177217030
+dic22 =	1.0216069077
+```
+
+```{python}
+#Convirtiendo variables string a numericas
+pensiones[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+          ] = pensiones[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']].apply(pd.to_numeric, errors = 'coerce')
+          
+# Se deflactan los ingresos por jubilaciones, pensionesiones y programas de adultos mayores de acuerdo con el mes de levantamiento
+pensiones['ing_6'] = np.where(pensiones['mes_6'].isna(), pensiones['ing_6'] ,
+                      np.where(pensiones['mes_6'] == 2, pensiones['ing_6'] / feb22,
+                       np.where(pensiones['mes_6'] == 3, pensiones['ing_6'] / mar22,
+                        np.where(pensiones['mes_6'] == 4, pensiones['ing_6'] / abr22,
+                         pensiones['ing_6'] / may22))))
+pensiones['ing_5'] = np.where(pensiones['mes_5'].isna(), pensiones['ing_5'] ,
+                      np.where(pensiones['mes_5'] == 3, pensiones['ing_5'] / mar22,
+                       np.where(pensiones['mes_5'] == 4, pensiones['ing_5'] / abr22,
+                        np.where(pensiones['mes_5'] == 5, pensiones['ing_5'] / may22,
+                         pensiones['ing_5'] / jun22))))
+pensiones['ing_4'] = np.where(pensiones['mes_4'].isna(), pensiones['ing_4'] ,
+                      np.where(pensiones['mes_4'] == 4, pensiones['ing_4'] / abr22,
+                       np.where(pensiones['mes_4'] == 5, pensiones['ing_4'] / may22,
+                        np.where(pensiones['mes_4'] == 6, pensiones['ing_4'] / jun22,
+                         pensiones['ing_4'] / jul22 ))))
+pensiones['ing_3'] = np.where(pensiones['mes_3'].isna(), pensiones['ing_3'] ,
+                      np.where(pensiones['mes_3'] == 5, pensiones['ing_3'] / may22,
+                       np.where(pensiones['mes_3'] == 6, pensiones['ing_3'] / jun22,
+                        np.where(pensiones['mes_3'] == 7, pensiones['ing_3'] / jul22,
+                         pensiones['ing_3'] / ago22))))
+pensiones['ing_2'] = np.where(pensiones['mes_2'].isna(), pensiones['ing_2'] ,
+                      np.where(pensiones['mes_2'] == 6, pensiones['ing_2'] / jun22,
+                       np.where(pensiones['mes_2'] == 7, pensiones['ing_2'] / jul22,
+                        np.where(pensiones['mes_2'] == 8, pensiones['ing_2'] / ago22,
+                         pensiones['ing_2'] / sep22))))
+pensiones['ing_1'] = np.where(pensiones['mes_1'].isna(), pensiones['ing_1'] ,
+                      np.where(pensiones['mes_1'] == 7, pensiones['ing_1'] / jul22,
+                       np.where(pensiones['mes_1'] == 8, pensiones['ing_1'] / ago22,
+                        np.where(pensiones['mes_1'] == 9, pensiones['ing_1'] / sep22,
+                         pensiones['ing_1'] / oct22 ))))
+
+# Ingreso promedio mensual por programas de adultos mayores
+pensiones['ing_pam'] = np.where((pensiones['clave'] == 'P104') | (pensiones['clave'] == 'P045'),
+                                  np.apply_along_axis(np.mean, 1, pensiones[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]), 0)
+# Ingreso promedio mensual por jubilaciones y pensiones
+pensiones['ing_pens'] = np.where((pensiones['clave'] == 'P032') | (pensiones['clave'] == 'P033'),
+                                   np.apply_along_axis(np.mean, 1, pensiones[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]), 0)
+
+pensiones = pensiones.groupby(['folioviv', 'foliohog', 'numren'])[['ing_pens', 'ing_pam']].sum(numeric_only = True)
+pensiones = pensiones.reset_index()
+```
+
+
+**Se guarda la base de datos** 
+```{python}
+pensiones.to_csv(current_directory + '/Output/Data/' + '/pensiones22.csv.csv', index = False)
+```
+
+
+###### Construcción del indicador
+
+**Indicador de carencia por acceso a la seguridad social** 
+
+Se encuentra en situación de carencia por acceso a la seguridad social a la población que:    
+1. No disponga de acceso directo a la seguridad social.   
+2. No cuente con parentesco directo con alguna persona dentro del hogar que tenga acceso directo.    
+3. No recibe servicios médicos por parte de algún familiar dentro o fuera del hogar, por muerte del asegurado o por contratación propia.  
+4. No recibe ingreso por parte de un programa de adultos mayores donde el monto sea mayor o igual al valor promedio de la canasta alimentaria rural y urbana.    
+
+```{python}
+# Valor monetario de las líneas de pobreza extrema por ingresos rural y urbana
+lp1_urb = 2086.21
+lp1_rur = 1600.18
+lp_pam = (lp1_urb + lp1_rur)/2
+```
+
+ 
+ 
+```{python}
+# Construcción del indicador
+seguridad_social = poblacion.copy()
+
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+seguridad_social = seguridad_social[~((seguridad_social['parentesco'] >= 400) & (seguridad_social['parentesco'] < 500) |
+                   (seguridad_social['parentesco'] >= 700) & (seguridad_social['parentesco'] < 800))]
+
+# Integración de bases
+seguridad_social = pd.merge(seguridad_social, prestaciones, 
+                             on = ['folioviv', 'foliohog', 'numren'], 
+                              how = 'left')
+seguridad_social = pd.merge(seguridad_social, pensiones, 
+                    on = ['folioviv', 'foliohog', 'numren'], 
+                     how = 'left')
+
+#Convirtiendo variables string a numericas
+seguridad_social[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'trabajo_mp',
+                  'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 
+                  'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']
+                 ] = seguridad_social[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'trabajo_mp',
+                                       'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 
+                                       'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']].apply(pd.to_numeric, errors = 'coerce')
+
+# PEA (personas de 16 años o más)
+seguridad_social['pea'] = np.NAN
+seguridad_social.loc[(seguridad_social['trab'] == 1) & (seguridad_social['edad'] >= 16) & 
+                      (~seguridad_social['edad'].isna()), 'pea'] = 1 # PEA: ocupada
+seguridad_social.loc[((seguridad_social['act_pnea1'] == 1) | (seguridad_social['act_pnea2'] == 1)) & 
+                      (seguridad_social['edad'] >= 16) & (~seguridad_social['edad'].isna()), 'pea'] = 2 # PEA: desocupada
+seguridad_social.loc[((seguridad_social['edad'] >= 16) & (~seguridad_social['edad'].isna()) &
+                      (((seguridad_social['act_pnea1'] != 1) | (seguridad_social['act_pnea1'].isna())) &
+                       ((seguridad_social['act_pnea2'] != 1) | (seguridad_social['act_pnea2'].isna()))) &
+                        (((seguridad_social['act_pnea1'] >= 2) & (seguridad_social['act_pnea1'] <= 6)) |
+                         ((seguridad_social['act_pnea2'] >= 2) & (seguridad_social['act_pnea2'] <= 6)))), 'pea'] = 0 # PNEA
+
+# Acceso directo a la seguridad social
+## Ocupación principal
+seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'] == 1, 
+                                           seguridad_social['tipo_trab1'], 
+                                            seguridad_social['tipo_trab1']) # Depende de un patrón, jefe o superior 
+seguridad_social['tipo_trab1'] = np.where((seguridad_social['pea'] == 0) | (seguridad_social['pea'] == 2), 
+                                            np.NAN, 
+                                             seguridad_social['tipo_trab1']) # No depende de un jefe y recibe o tiene asignado un sueldo
+seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'].isna(), 
+                                           np.NAN, 
+                                            seguridad_social['tipo_trab1']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
+## Ocupación secundaria
+seguridad_social['tipo_trab2'] = np.where(seguridad_social['pea'] == 1, 
+                                           seguridad_social['tipo_trab2'], 
+                                            seguridad_social['tipo_trab2']) # Depende de un patrón, jefe o superior
+seguridad_social['tipo_trab2'] = np.where((seguridad_social['pea'] == 0) | (seguridad_social['pea'] == 2), 
+                                            np.NAN, 
+                                             seguridad_social['tipo_trab2']) # No depende de un jefe y recibe o tiene asignado un sueldo
+seguridad_social['tipo_trab2'] = np.where(seguridad_social['pea'].isna(), 
+                                           np.NAN, 
+                                            seguridad_social['tipo_trab2']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
+## Jubilados y pensionados
+seguridad_social['jub'] = np.NAN
+seguridad_social.loc[((seguridad_social['trabajo_mp'] == 2) & ((seguridad_social['act_pnea1'] == 2) | 
+                      (seguridad_social['act_pnea2'] == 2))), 'jub'] = 1 # Población pensionada o jubilada
+seguridad_social.loc[((seguridad_social['ing_pens'] > 0) & (~seguridad_social['ing_pens'].isna())), 'jub'] = 1 # Población pensionada o jubilada
+seguridad_social.loc[(seguridad_social['inscr_2'] == 2), 'jub'] = 1 # Población pensionada o jubilada
+seguridad_social.loc[(seguridad_social['jub'].isna()), 'jub'] = 0 # Población no pensionada o jubilada
+
+# Prestaciones básicas
+
+# Prestaciones laborales (Servicios médicos)
+## Ocupación principal
+seguridad_social['smlab1'] = np.NAN
+seguridad_social.loc[(seguridad_social['ocupa1'] == 1), 'smlab1'] = 0 # Con servicios médicos
+seguridad_social.loc[((seguridad_social['ocupa1'] == 1) & (seguridad_social['atemed'] == 1) & 
+                      ((seguridad_social['inst_1'] == 1) | (seguridad_social['inst_2'] == 2) | 
+                       (seguridad_social['inst_3'] == 3) | (seguridad_social['inst_4'] == 4)) & 
+                        (seguridad_social['inscr_1'] == 1)), 'smlab1'] = 1 # Sin servicios médicos
+## Ocupación secundaria
+seguridad_social['smlab2'] = np.NAN
+seguridad_social.loc[(seguridad_social['ocupa2'] == 1), 'smlab2'] = 0 # Con servicios médicos
+seguridad_social.loc[((seguridad_social['ocupa2'] == 1) & (seguridad_social['atemed'] == 1) & 
+                      ((seguridad_social['inst_1'] == 1) | (seguridad_social['inst_2'] == 2) | 
+                       (seguridad_social['inst_3'] == 3) | (seguridad_social['inst_4'] == 4)) & 
+                        (seguridad_social['inscr_1'] == 1)), 'smlab2'] = 1 # Sin servicios médicos
+
+# Contratación voluntaria: servicios médicos y ahorro para el retiro o pensión para la vejez (SAR, Afore, Haber de retiro)
+## Servicios médicos
+seguridad_social['smcv'] = np.NAN
+seguridad_social.loc[((seguridad_social['edad'] >= 12) & (~seguridad_social['edad'].isna())), 'smcv'] = 0 # No cuenta
+seguridad_social.loc[((seguridad_social['atemed'] == 1) & ((seguridad_social['inst_1'] == 1) |
+                      (seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3) |
+                       (seguridad_social['inst_4'] == 4)) & (seguridad_social['inscr_6'] == 6) & 
+                        ((seguridad_social['edad'] >= 12) & (~seguridad_social['edad'].isna()))), 'smcv'] = 1 # Sí cuenta
+                        
+## SAR o Afore
+seguridad_social['aforecv'] = np.NAN              
+seguridad_social.loc[((seguridad_social['segvol_1'].isna()) & ((seguridad_social['edad'] >= 12) & 
+                      (~seguridad_social['edad'].isna()))), 'aforecv'] = 0 # No cuenta    
+seguridad_social.loc[((seguridad_social['segvol_1'] == 1) & ((seguridad_social['edad'] >= 12) & 
+                      (~seguridad_social['edad'].isna()))), 'aforecv'] = 1 # Sí cuenta 
+                      
+## Acceso directo a la seguridad social
+seguridad_social['ss_dir'] = np.NAN
+seguridad_social.loc[(seguridad_social['ss_dir'].isna()), 'ss_dir'] = 0 # Sin acceso
+
+## Ocupación principal
+seguridad_social.loc[((seguridad_social['tipo_trab1'] == 1) & (seguridad_social['smlab1'] == 1)), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab1'] == 2) & ((seguridad_social['smlab1'] == 1) |
+                      (seguridad_social['smcv'] == 1)) & ((seguridad_social['aforlab1'] == 1) | 
+                       (seguridad_social['aforecv'] == 1))), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab1'] == 3) & ((seguridad_social['smlab1'] == 1) | 
+                       (seguridad_social['smcv'] == 1)) & (seguridad_social['aforecv'] == 1)), 'ss_dir'] = 1 # Con acceso
+
+## Ocupación secundaria
+seguridad_social.loc[((seguridad_social['tipo_trab2'] == 1) & (seguridad_social['smlab2'] == 1)), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab2'] == 2) & ((seguridad_social['smlab2'] == 1) | 
+                      (seguridad_social['smcv'] == 1)) & ((seguridad_social['aforlab2'] == 1) | 
+                       (seguridad_social['aforecv'] == 1))), 'ss_dir'] = 1 # Con acceso
+seguridad_social.loc[((seguridad_social['tipo_trab2'] == 3) & ((seguridad_social['smlab2'] == 1) | 
+                       (seguridad_social['smcv'] == 1)) & (seguridad_social['aforecv'] == 1)), 'ss_dir'] = 1 # Con acceso   
+
+## Jubilados y pensionados
+seguridad_social.loc[(seguridad_social['jub'] == 1), 'ss_dir'] = 1 # Con acceso 
+
+## Núcleos familiares   
+seguridad_social['par'] = np.NAN
+seguridad_social.loc[((seguridad_social['parentesco'] >= 100) & (seguridad_social['parentesco'] < 200)), 'par'] = 1 # Jefe o jefa del hogar
+seguridad_social.loc[((seguridad_social['parentesco'] >= 200) & (seguridad_social['parentesco'] < 300)), 'par'] = 2 # Cónyuge del  jefe/a
+seguridad_social.loc[((seguridad_social['parentesco'] >= 300) & (seguridad_social['parentesco'] < 400)), 'par'] = 3 # Hijo del jefe/a
+seguridad_social.loc[((seguridad_social['parentesco'] == 601)), 'par'] = 4 # Padre o Madre del jefe/a
+seguridad_social.loc[((seguridad_social['parentesco'] == 615)), 'par'] = 5 # Suegro del jefe/a
+seguridad_social.loc[(seguridad_social['par'].isna()), 'par'] = 6 # Sin acceso
+
+# Asimismo, se utilizará la información relativa a la asistencia a la escuela
+seguridad_social['inas_esc'] = np.NAN
+seguridad_social.loc[((seguridad_social['asis_esc'] == 1)), 'inas_esc'] = 0 # Sí asiste
+seguridad_social.loc[((seguridad_social['asis_esc'] == 2)), 'inas_esc'] = 1 # No asiste
+
+# En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
+seguridad_social['jef'] = np.NAN
+seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['ss_dir'] == 1)), 'jef'] = 1
+seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) & 
+                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
+                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
+                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'jef'] = np.NAN
+
+seguridad_social['cony'] = np.NAN
+seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['ss_dir'] == 1)), 'cony'] = 1
+seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) &
+                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
+                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
+                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'cony'] = np.NAN
+
+seguridad_social['hijo'] = np.NAN
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['ss_dir'] == 1) & (seguridad_social['jub'] == 1) & 
+                      ((seguridad_social['edad'] > 25) & (~seguridad_social['edad'].isna()))), 'hijo'] = 1
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['ss_dir'] == 1) & (seguridad_social['jub'] == 0)), 'hijo'] = 1
+seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) &
+                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
+                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
+                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'hijo'] = np.NAN
+
+seguridad_social = seguridad_social.groupby(['folioviv', 'foliohog']
+                                           ).apply(lambda x: pd.Series({'jef_ss': x['jef'].sum(skipna=True),
+                                                                        'cony_ss': x['cony'].sum(skipna=True),
+                                                                        'hijo_ss': x['hijo'].sum(skipna=True)})
+                                                                      ).reset_index().merge(seguridad_social, 
+                                                                                             on = ['folioviv', 'foliohog'])
+
+seguridad_social.loc[(seguridad_social['jef_ss'] > 0), 'jef_ss'] = 1 # Acceso directo a servicios de salud de la jefatura del hogar
+seguridad_social.loc[(seguridad_social['cony_ss'] > 0), 'cony_ss'] = 1 # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
+seguridad_social.loc[(seguridad_social['hijo_ss'] > 0), 'hijo_ss'] = 1 # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
+
+# Otros núcleos familiares: se identifica a la población con acceso a la seguridad social mediante otros núcleos familiares a través de la afiliación o inscripción 
+#a servicios de salud por algún familiar dentro o fuera del hogar, muerte del asegurado o por contratación propia.
+
+seguridad_social['s_salud'] = np.NAN
+seguridad_social.loc[((~seguridad_social['pop_insabi'].isna()) & (~seguridad_social['atemed'].isna())), 's_salud'] = 0 # Sin acceso
+seguridad_social.loc[((seguridad_social['atemed'] == 1) & ((seguridad_social['inst_1'] == 1) |
+                      (seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3) | 
+                       (seguridad_social['inst_4'] == 4)) & ((seguridad_social['inscr_3'] == 3) | 
+                        (seguridad_social['inscr_4'] == 4) | (seguridad_social['inscr_6'] == 6) | 
+                         (seguridad_social['inscr_7'] == 7))), 's_salud'] = 1 # Con acceso
+
+# Programas sociales de pensiones para adultos mayores
+seguridad_social['pam'] = np.NAN
+seguridad_social.loc[((seguridad_social['edad'] >= 65) & (~seguridad_social['edad'].isna())), 'pam'] = 0 # No recibe
+seguridad_social.loc[((seguridad_social['edad'] >= 65) & (~seguridad_social['edad'].isna()) & 
+                      (seguridad_social['ing_pam'] >= lp_pam) & (~seguridad_social['ing_pam'].isna())), 'pam'] = 1 # Recibe
+
+#Indicador de carencia por acceso a la seguridad social
+seguridad_social['ic_segsoc'] = np.NAN
+## Acceso directo
+seguridad_social.loc[(seguridad_social['ss_dir'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: jefatura
+seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['pea'] == 0) & 
+                      (seguridad_social['hijo_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: cónyuge
+seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['pea'] == 0) & 
+                      (seguridad_social['hijo_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: descendientes
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'] < 16) & 
+                      (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'] < 16) & 
+                      (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'].between(16, 25)) & 
+                      (seguridad_social['inas_esc'] == 0) & (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'].between(16, 25)) & 
+                      (seguridad_social['inas_esc'] == 0) & (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Parentesco directo: ascendientes
+seguridad_social.loc[((seguridad_social['par'] == 4) & (seguridad_social['pea'] == 0) &
+                      (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[((seguridad_social['par'] == 5) & (seguridad_social['pea'] == 0) & 
+                      (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Otros núcleos familiares
+seguridad_social.loc[(seguridad_social['s_salud'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
+
+## Programa de adultos mayores
+seguridad_social.loc[(seguridad_social['pam'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
+seguridad_social.loc[(seguridad_social['ic_segsoc'].isna()), 'ic_segsoc'] = 1 # Presenta carencia
+
+seguridad_social = seguridad_social[['folioviv', 'foliohog', 'numren', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'pea', 'jub', 
+'smlab1', 'smlab2', 'smcv', 'aforecv', 'ss_dir', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 's_salud', 'pam', 'ing_pam', 'ic_segsoc']]
+```
+
+**Se guarda la base de datos** 
+```{python}
+seguridad_social.to_csv(current_directory + '/Output/Data/' + '/ic_segsoc22.csv.csv', index = False)
+```
 
 #### IV. Indicador de carencia por calidad y espacios de la vivienda 
 
 ##### Material de construcción de la vivienda
 
-```{r}
-load(file = paste0(here::here(), "/Data/viviendas.RData")) 
-load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
+```{python}
+viviendas = pd.read_csv(current_directory + "/Bases de datos/viviendas.csv", low_memory = False)
+concentradohogar = pd.read_csv(current_directory + "/Bases de datos/concentradohogar.csv", low_memory = False)
 ```
 
 **Indicador de carencia por calidad y espacios de la vivienda**  
@@ -906,44 +1558,57 @@ Se considera en situación de carencia por calidad y espacios de la vivienda a l
 3. El material de los muros de la vivienda es de embarro o bajareque, de carrizo, bambú o palma, de lámina de cartón, metálica o asbesto, o material de desecho.    
 4. La razón de personas por cuarto (hacinamiento) es mayor que `2.5`.      
 
-```{r}
-calidad.viviendas <- viviendas %>% 
-                      left_join(., concentradohogar,  by = c("folioviv")) %>% 
-                       mutate(
-                              icv_pisos = as.numeric(.$mat_pisos), # Material de los pisos de la vivienda
-                              icv_techos = as.numeric(.$mat_techos), # Material de los techos de la vivienda
-                              icv_muros = as.numeric(.$mat_pared), # Material de muros en la vivienda
-                              num_ind = .$tot_resid, # Número de residentes en la vivienda
-                              num_cua = .$num_cuarto # Número de cuartos en la vivienda
-                              ) %>% 
-                       mutate(
-                              # Indicador de carencia por material de piso de la vivienda
-                              icv_pisos = case_when(.$icv_pisos >= 2 ~ 0,
-                                                    .$icv_pisos == 1 ~ 1),
-                              # Indicador de carencia por material de techos de la vivienda
-                              icv_techos = case_when(.$icv_techos >= 3 ~ 0,
-                                                     .$icv_techos <= 2 ~ 1),
-                              # Indicador de carencia por material de muros de la vivienda
-                              icv_muros = case_when(.$icv_muros >= 6 ~ 0,
-                                                    .$icv_muros <= 5 ~ 1),
-              
-                              # Espacios en la vivienda (Hacinamiento)
-                              # Índice de hacinamiento
-                              cv_hac = .$num_ind/.$num_cua) %>%
-                       # Indicador de carencia por hacinamiento en la vivienda
-                       mutate(
-                              icv_hac = case_when(
-                                                  .$cv_hac > 2.5 & !is.na(.$cv_hac) ~ 1,
-                                                  .$cv_hac <= 2.5 ~ 0)
-                              ) %>%
-                      # Indicador de carencia por calidad y espacios de la vivienda 
+```{python}
+calidad_viviendas = viviendas.copy()
 
-                      mutate(
-                             ic_cv = case_when(
-                                               is.na(.$icv_pisos) | is.na(.$icv_techos) | is.na(.$icv_muros) | is.na(.$icv_hac) ~ NA_real_,
-                                               .$icv_pisos == 1 | .$icv_techos == 1 | .$icv_muros == 1 | .$icv_hac == 1 ~ 1,     # Con carencia
-                                               .$icv_pisos == 0 & .$icv_techos == 0 & .$icv_muros == 0 & .$icv_hac == 0 ~ 0)) %>% # Sin carencia
-                       select(folioviv, foliohog, icv_pisos, icv_techos, icv_muros, icv_hac, ic_cv) 
+calidad_viviendas = pd.merge(calidad_viviendas, concentradohogar, 
+                             on = ['folioviv'], 
+                              how = 'left')
+
+#Convirtiendo variables string a numericas
+calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']
+      ] = calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']].apply(pd.to_numeric, errors='coerce')
+
+# Indicador de carencia por material de piso de la vivienda
+## Material de los pisos de la vivienda
+calidad_viviendas['icv_pisos'] = np.NAN
+calidad_viviendas.loc[(calidad_viviendas['mat_pisos'] >= 2), 'icv_pisos'] = 0
+calidad_viviendas.loc[(calidad_viviendas['mat_pisos'] == 1), 'icv_pisos'] = 1
+
+# Indicador de carencia por material de techos de la vivienda
+## Material de los techos de la vivienda
+calidad_viviendas['icv_techos'] = np.NAN
+calidad_viviendas.loc[(calidad_viviendas['mat_techos'] >= 3), 'icv_techos'] = 0
+calidad_viviendas.loc[(calidad_viviendas['mat_techos'] <= 2), 'icv_techos'] = 1
+
+# Indicador de carencia por material de muros de la vivienda
+## Material de muros en la vivienda
+calidad_viviendas['icv_muros'] = np.NAN
+calidad_viviendas.loc[(calidad_viviendas['mat_pared'] >= 6), 'icv_muros'] = 0
+calidad_viviendas.loc[(calidad_viviendas['mat_pared'] <= 5), 'icv_muros'] = 1
+
+# Espacios en la vivienda (Hacinamiento)
+## Número de residentes en la vivienda
+calidad_viviendas['num_ind'] = calidad_viviendas['tot_resid']
+
+## Número de cuartos en la vivienda
+calidad_viviendas['num_cua'] = calidad_viviendas['num_cuarto']
+
+## Índice de hacinamiento
+calidad_viviendas['cv_hac'] = calidad_viviendas['num_ind']/calidad_viviendas['num_cua']
+
+## Indicador de carencia por hacinamiento en la vivienda
+calidad_viviendas['icv_hac'] = np.NAN
+calidad_viviendas.loc[((calidad_viviendas['cv_hac'] > 2.5) & (~calidad_viviendas['cv_hac'].isna())), 'icv_hac'] = 1
+calidad_viviendas.loc[(calidad_viviendas['cv_hac'] <= 2.5), 'icv_hac'] = 0
+       
+# Indicador de carencia por calidad y espacios de la vivienda
+calidad_viviendas['ic_cv'] = np.NAN
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 1) | (calidad_viviendas['icv_techos'] == 1) | (calidad_viviendas['icv_muros'] == 1) | (calidad_viviendas['icv_hac'] == 1)), 'ic_cv'] = 1 # Con carencia
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 0) & (calidad_viviendas['icv_techos'] == 0) & (calidad_viviendas['icv_muros'] == 0) & (calidad_viviendas['icv_hac'] == 0)), 'ic_cv'] = 0 # Sin carencia  
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'].isna()) | (calidad_viviendas['icv_techos'].isna()) | (calidad_viviendas['icv_muros'].isna()) | (calidad_viviendas['icv_hac'].isna())), 'ic_cv'] = np.NAN
+            
+calidad_viviendas = calidad_viviendas[['folioviv', 'foliohog', 'icv_pisos', 'icv_techos', 'icv_muros', 'icv_hac', 'ic_cv']]    
 ```
 
 
@@ -2012,10 +2677,10 @@ pobreza <- pobreza %>%
                    ### Intensidad de la privación social: pobres extremos
                    int_pobe = .$profun * .$pobreza_e,
                    
-                   ### Intensidad de la privación social: población vulnerable por carencias
+                   ### Intensidad de la privación social: Población vulnerable por carencias
                    int_vulcar = .$profun * .$vul_car,
                    
-                   ### Intensidad de la privación social: población con carencias sociales
+                   ### Intensidad de la privación social: Población con carencias sociales
                    int_caren = .$profun * .$carencias) %>% 
              select( folioviv, foliohog, numren, est_dis.x, upm.x, factor.x, tam_loc, rururb, ent, ubica_geo, edad.x, sexo, parentesco.x,
                      ic_rezedu, anac_e, inas_esc.x, niv_ed, ic_asalud, ic_segsoc,sa_dir, ss_dir, s_salud.x, par.x, jef_ss, cony_ss,
