@@ -1,0 +1,111 @@
+---
+title: "Bases de datos"
+subtitle: 'Índice de pobreza 2022'
+author: "Diana Villasana Ocampo"
+output:
+   html_document:
+      highlight: tango
+      theme: flatly
+      toc: yes
+      toc_depth: 2
+      toc_float:
+        collapsed: yes
+---
+
+\usepackage{color}
+
+```{=html}
+<style>
+code.r{
+  font-size: 10px;
+}
+pre {
+  font-size: 12px
+}
+</style>
+
+<style>
+body {
+text-align: justify;
+font-style: normal;
+font-family: "Montserrat";
+font-size: 12px
+}
+h1.title {
+  font-size: 40px;
+  color: #000D3B;
+}
+h1 {
+  color: #B6854D;
+}
+h2 {
+  color: #172984;
+}
+h3 {
+  color: #172984;
+}
+</style>
+```
+
+```{=html}
+<style>
+.nav>li>a {
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+    color: #0A2687;
+}
+.nav-pills>li.active>a, .nav-pills>li.active>a:hover, .nav-pills>li.active>a:focus {
+    color: #ffffff;
+    background-color: #09C2BC;
+}
+</style>
+```
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache = FALSE, cache.lazy = FALSE, 
+                         eval = FALSE, class.source = "fold-show")
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+options(digits = 2, encoding = "UTF8")
+options(reticulate.repl.quiet = TRUE) #Python REPL in the R session, which can be used to interactively run Python code. All code executed within the REPL is run within the Python main module, and any generated Python objects will persist in the Python session
+modo_notdebug = TRUE #es para separar las configuraciones de lo que sería un despliegue a producción y un ambiente local, el ALLOWED_HOST es un settings para definir los dominios permitidos cuando estará en modo producción,
+```   
+ 
+
+```{r, echo=FALSE}
+rm(list = ls())
+```
+
+```{r, echo=FALSE}
+setwd(here::here())
+```
+
+
+```{r}
+library(reticulate)
+```
+
+**Se intalan la paqueterías de pyton** 
+
+```{python}
+import pandas as pd # manipulación de datos
+```
+
+Todas las bases de datos de la ENIGH 2022 deben estar en formato `.CSV`   
+
+En este programa se utilizan las siguientes bases, nombrándolas de la siguiente forma:
+
+- Base de población: poblacion.csv  
+- Base de trabajos: trabajos.csv  
+- Base de ingresos: ingresos.csv  
+- Base de viviendas: viviendas.csv   
+- Base de hogares: hogares.csv   
+- Base de concentrado: concentradohogar.csv   
+- Base de no monetario hogar: gastoshogar.csv   
+- Base de no monetario personas: gastospersona.csv   
+
+
+```{r}
+
+```
+
