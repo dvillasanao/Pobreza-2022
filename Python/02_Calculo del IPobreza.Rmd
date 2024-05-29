@@ -36,13 +36,28 @@ h1.title {
   color: #000D3B;
 }
 h1 {
+  font-size: 30px;
   color: #B6854D;
 }
 h2 {
+ font-size: 27px;
   color: #172984;
 }
 h3 {
+  font-size: 20px;
   color: #172984;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 16px;
+}
+h7 {
+  font-size: 16px;
 }
 </style>
 ```
@@ -740,14 +755,14 @@ salud_procesado = (
 
 #### III. Indicador de carencia por acceso a la seguridad social {.tabset .tabset-pills .top3-tiles}  
 
-##### Opción 1 {.tabset .tabset-pills .top4-tiles} 
-
-###### Prestaciones laborales
-
 ```{python}
 # Prestaciones laborales
 trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False) 
 ```
+
+##### Opción 1 {.tabset .tabset-pills .top4-tiles} 
+
+###### Prestaciones laborales
 
 ```{python}
 prestaciones = trabajos.copy()
@@ -1145,16 +1160,12 @@ seguridad_social.to_csv(current_directory + '/Output/Data/' + '/ic_segsoc22.csv.
 ###### Prestaciones laborales
 
 ```{python}
-# Prestaciones laborales
-trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False) 
-```
-
-```{python}
 prestaciones = trabajos.copy()
 
 #Convirtiendo variables string a numericas
-prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']] = prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
-                                                                                             ].apply(pd.to_numeric, errors = 'coerce')
+prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
+             ] = prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
+                              ].apply(pd.to_numeric, errors = 'coerce')
 
 # Tipo de trabajador: identifica la población subordinada e independiente
 prestaciones['tipo_trab'] = np.NAN
@@ -1162,12 +1173,16 @@ prestaciones['tipo_trab'] = np.NAN
 prestaciones.loc[(prestaciones['subor'] == 1), 'tipo_trab'] = 1
 
 ## Independientes que reciben un pago
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & (prestaciones['tiene_suel'] == 1)), 'tipo_trab'] = 2
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & (prestaciones['pago'] == 1)), 'tipo_trab'] = 2
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & 
+                  (prestaciones['tiene_suel'] == 1)), 'tipo_trab'] = 2
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & 
+                  (prestaciones['pago'] == 1)), 'tipo_trab'] = 2
 
 ## Independientes que no reciben un pago
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & (prestaciones['tiene_suel'] == 2)), 'tipo_trab'] = 3
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & ((prestaciones['pago'] == 2) | (prestaciones['pago'] == 3))), 'tipo_trab'] = 3
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & 
+                  (prestaciones['tiene_suel'] == 2)), 'tipo_trab'] = 3
+prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & 
+                  ((prestaciones['pago'] == 2) | (prestaciones['pago'] == 3))), 'tipo_trab'] = 3
  
 
 # Ahorro para el retiro o pensión para la vejez (SAR, Afore)
@@ -1303,7 +1318,6 @@ lp1_rur = 1600.18
 lp_pam = (lp1_urb + lp1_rur)/2
 ```
 
- 
  
 ```{python}
 # Construcción del indicador
@@ -1540,14 +1554,16 @@ seguridad_social = seguridad_social[['folioviv', 'foliohog', 'numren', 'tipo_tra
 seguridad_social.to_csv(current_directory + '/Output/Data/' + '/ic_segsoc22.csv.csv', index = False)
 ```
 
-#### IV. Indicador de carencia por calidad y espacios de la vivienda 
-
-##### Material de construcción de la vivienda
+#### IV. Indicador de carencia por calidad y espacios de la vivienda {.tabset .tabset-pills .top3-tiles}  
 
 ```{python}
 viviendas = pd.read_csv(current_directory + "/Bases de datos/viviendas.csv", low_memory = False)
 concentradohogar = pd.read_csv(current_directory + "/Bases de datos/concentradohogar.csv", low_memory = False)
 ```
+
+##### Opción 1 
+
+###### Material de construcción de la vivienda  
 
 **Indicador de carencia por calidad y espacios de la vivienda**  
 
@@ -1562,12 +1578,13 @@ Se considera en situación de carencia por calidad y espacios de la vivienda a l
 calidad_viviendas = viviendas.copy()
 
 calidad_viviendas = pd.merge(calidad_viviendas, concentradohogar, 
-                             on = ['folioviv'], 
-                              how = 'left')
+                              on = ['folioviv'], 
+                               how = 'left')
 
 #Convirtiendo variables string a numericas
 calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']
-      ] = calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']].apply(pd.to_numeric, errors='coerce')
+                  ] = calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']
+                                        ].apply(pd.to_numeric, errors = 'coerce')
 
 # Indicador de carencia por material de piso de la vivienda
 ## Material de los pisos de la vivienda
@@ -1595,7 +1612,7 @@ calidad_viviendas['num_ind'] = calidad_viviendas['tot_resid']
 calidad_viviendas['num_cua'] = calidad_viviendas['num_cuarto']
 
 ## Índice de hacinamiento
-calidad_viviendas['cv_hac'] = calidad_viviendas['num_ind']/calidad_viviendas['num_cua']
+calidad_viviendas['cv_hac'] = calidad_viviendas['num_ind'] / calidad_viviendas['num_cua']
 
 ## Indicador de carencia por hacinamiento en la vivienda
 calidad_viviendas['icv_hac'] = np.NAN
@@ -1604,22 +1621,106 @@ calidad_viviendas.loc[(calidad_viviendas['cv_hac'] <= 2.5), 'icv_hac'] = 0
        
 # Indicador de carencia por calidad y espacios de la vivienda
 calidad_viviendas['ic_cv'] = np.NAN
-calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 1) | (calidad_viviendas['icv_techos'] == 1) | (calidad_viviendas['icv_muros'] == 1) | (calidad_viviendas['icv_hac'] == 1)), 'ic_cv'] = 1 # Con carencia
-calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 0) & (calidad_viviendas['icv_techos'] == 0) & (calidad_viviendas['icv_muros'] == 0) & (calidad_viviendas['icv_hac'] == 0)), 'ic_cv'] = 0 # Sin carencia  
-calidad_viviendas.loc[((calidad_viviendas['icv_pisos'].isna()) | (calidad_viviendas['icv_techos'].isna()) | (calidad_viviendas['icv_muros'].isna()) | (calidad_viviendas['icv_hac'].isna())), 'ic_cv'] = np.NAN
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 1) | 
+                       (calidad_viviendas['icv_techos'] == 1) | 
+                        (calidad_viviendas['icv_muros'] == 1) | 
+                         (calidad_viviendas['icv_hac'] == 1)), 'ic_cv'] = 1 # Con carencia
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 0) & 
+                       (calidad_viviendas['icv_techos'] == 0) & 
+                        (calidad_viviendas['icv_muros'] == 0) & 
+                         (calidad_viviendas['icv_hac'] == 0)), 'ic_cv'] = 0 # Sin carencia  
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'].isna()) | 
+                       (calidad_viviendas['icv_techos'].isna()) |
+                        (calidad_viviendas['icv_muros'].isna()) | 
+                         (calidad_viviendas['icv_hac'].isna())), 'ic_cv'] = np.NAN
             
 calidad_viviendas = calidad_viviendas[['folioviv', 'foliohog', 'icv_pisos', 'icv_techos', 'icv_muros', 'icv_hac', 'ic_cv']]    
 ```
 
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(calidad.viviendas, paste0(here::here(), "/Output/Data/ic_cev22.csv"), row.names = F)
-save(calidad.viviendas, file = paste0(here::here(), "/Output/Data/ic_cev22.RData"))
+**Se guarda la base de datos** 
+```{python}
+calidad_viviendas.to_csv(current_directory + '/Output/Data/' + '/ic_cev22.csv.csv', index = False)
+```
+
+##### Opción 2  
+
+###### Material de construcción de la vivienda  
+
+**Indicador de carencia por calidad y espacios de la vivienda**  
+
+Se considera en situación de carencia por calidad y espacios de la vivienda a las personas que residan en viviendas que presenten, al menos, una de las siguientes características:     
+  
+1. El material de los pisos de la vivienda es de tierra   
+2. El material del techo de la vivienda es de lámina de cartón o desechos.   
+3. El material de los muros de la vivienda es de embarro o bajareque, de carrizo, bambú o palma, de lámina de cartón, metálica o asbesto, o material de desecho.    
+4. La razón de personas por cuarto (hacinamiento) es mayor que `2.5`.      
+
+```{python}
+calidad_viviendas = viviendas.copy()
+
+calidad_viviendas = pd.merge(calidad_viviendas, concentradohogar, 
+                              on = ['folioviv'], 
+                               how = 'left')
+
+#Convirtiendo variables string a numericas
+calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']
+                  ] = calidad_viviendas[['mat_pisos', 'mat_techos', 'mat_pared', 'tot_resid', 'num_cuarto']
+                                        ].apply(pd.to_numeric, errors = 'coerce')
+
+# Indicador de carencia por material de piso de la vivienda
+## Material de los pisos de la vivienda
+calidad_viviendas['icv_pisos'] = np.NAN
+calidad_viviendas.loc[(calidad_viviendas['mat_pisos'] >= 2), 'icv_pisos'] = 0
+calidad_viviendas.loc[(calidad_viviendas['mat_pisos'] == 1), 'icv_pisos'] = 1
+
+# Indicador de carencia por material de techos de la vivienda
+## Material de los techos de la vivienda
+calidad_viviendas['icv_techos'] = np.NAN
+calidad_viviendas.loc[(calidad_viviendas['mat_techos'] >= 3), 'icv_techos'] = 0
+calidad_viviendas.loc[(calidad_viviendas['mat_techos'] <= 2), 'icv_techos'] = 1
+
+# Indicador de carencia por material de muros de la vivienda
+## Material de muros en la vivienda
+calidad_viviendas['icv_muros'] = np.NAN
+calidad_viviendas.loc[(calidad_viviendas['mat_pared'] >= 6), 'icv_muros'] = 0
+calidad_viviendas.loc[(calidad_viviendas['mat_pared'] <= 5), 'icv_muros'] = 1
+
+# Espacios en la vivienda (Hacinamiento)
+## Número de residentes en la vivienda
+calidad_viviendas['num_ind'] = calidad_viviendas['tot_resid']
+
+## Número de cuartos en la vivienda
+calidad_viviendas['num_cua'] = calidad_viviendas['num_cuarto']
+
+## Índice de hacinamiento
+calidad_viviendas['cv_hac'] = calidad_viviendas['num_ind'] / calidad_viviendas['num_cua']
+
+## Indicador de carencia por hacinamiento en la vivienda
+calidad_viviendas['icv_hac'] = np.NAN
+calidad_viviendas.loc[((calidad_viviendas['cv_hac'] > 2.5) & (~calidad_viviendas['cv_hac'].isna())), 'icv_hac'] = 1
+calidad_viviendas.loc[(calidad_viviendas['cv_hac'] <= 2.5), 'icv_hac'] = 0
+       
+# Indicador de carencia por calidad y espacios de la vivienda
+calidad_viviendas['ic_cv'] = np.NAN
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 1) | 
+                       (calidad_viviendas['icv_techos'] == 1) | 
+                        (calidad_viviendas['icv_muros'] == 1) | 
+                         (calidad_viviendas['icv_hac'] == 1)), 'ic_cv'] = 1 # Con carencia
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'] == 0) & 
+                       (calidad_viviendas['icv_techos'] == 0) & 
+                        (calidad_viviendas['icv_muros'] == 0) & 
+                         (calidad_viviendas['icv_hac'] == 0)), 'ic_cv'] = 0 # Sin carencia  
+calidad_viviendas.loc[((calidad_viviendas['icv_pisos'].isna()) | 
+                       (calidad_viviendas['icv_techos'].isna()) |
+                        (calidad_viviendas['icv_muros'].isna()) | 
+                         (calidad_viviendas['icv_hac'].isna())), 'ic_cv'] = np.NAN
+            
+calidad_viviendas = calidad_viviendas[['folioviv', 'foliohog', 'icv_pisos', 'icv_techos', 'icv_muros', 'icv_hac', 'ic_cv']]    
 ```
 
 
-#### V. Indicador de carencia por acceso a los servicios básicos de la vivienda   
+#### V. Indicador de carencia por acceso a los servicios básicos de la vivienda {.tabset .tabset-pills .top3-tiles}    
 
 **Indicador de carencia por acceso a los servicios básicos en la vivienda**   
 
@@ -1630,160 +1731,339 @@ Se considera en situación de carencia por servicios básicos en la vivienda a l
 3. No disponen de energía eléctrica.   
 4. El combustible que se usa para cocinar o calentar los alimentos es leña o carbón sin chimenea.   
 
-```{r}
-servicios.basicos <- concentradohogar %>% 
-                      left_join(., viviendas, by = c("folioviv")) %>% 
-                       mutate(
-                              # Indicador de carencia por acceso al agua
-                              isb_agua = case_when(.$procaptar == 1 & .$disp_agua == "4" ~ 0,
-                                                 .$disp_agua >= 3 & !is.na(.$disp_agua) ~ 1,
-                                                 .$disp_agua <= 2 & !is.na(.$disp_agua) ~ 0),
-                              # Indicador de carencia por servicio de drenaje
-                              isb_dren = case_when(.$drenaje >= 3 ~1,
-                                                 .$drenaje <= 2 ~0),
-                              # Indicador de carencia por servicios de electricidad
-                              isb_luz = case_when(.$disp_elect >= 5 ~1,
-                                                .$disp_elect <= 4 ~0),
-                              # Indicador de carencia por combustible para cocinar
-                              combus = as.numeric(.$combustible),
-                              estufa = as.numeric(.$estufa_chi),
-                              isb_combus = case_when((.$combus == 1 | .$combus == 2) & .$estufa == 2 ~ 1, 
-                                                     (.$combus == 1 | .$combus == 2) & .$estufa == 1 ~ 0,
-                                                       .$combus >= 3 & .$combus <= 6 ~ 0)) %>%
-                              # Indicador de carencia por acceso a los servicios básicos en la vivienda
-                       mutate(
-                              ic_sbv = case_when(
-                                                 is.na(.$isb_agua) | is.na(.$isb_dren) | is.na(.$isb_luz) | is.na(.$isb_combus) ~ NA_real_,
-                                                 .$isb_agua == 1 | .$isb_dren == 1 | .$isb_luz == 1 | .$isb_combus == 1 ~ 1, # Con carencia
-                                                 .$isb_agua == 0 & .$isb_dren == 0 & .$isb_luz == 0 & .$isb_combus == 0 ~ 0)) %>% # Sin carencia
-                       select(folioviv, foliohog, isb_agua, isb_dren, isb_luz, isb_combus, ic_sbv)
-  
-```
-**Se guarda la base de datos**
-```{r}
-#fwrite(servicios.basicos, paste0(here::here(), "/Output/Data/ic_sbv22.csv"), row.names = F)
-save(servicios.basicos, file = paste0(here::here(), "/Output/Data/ic_sbv22.RData"))
+```{python}
+viviendas = pd.read_csv(current_directory + "/Bases de datos/viviendas.csv", low_memory = False)
+concentradohogar = pd.read_csv(current_directory + "/Bases de datos/concentradohogar.csv", low_memory = False)
 ```
 
-#### VI. Indicador de carencia por acceso a la alimentación nutritiva y de calidad  
+##### Opción 1  
+
+```{python}
+servicios_basicos = pd.merge(concentradohogar, 
+                              viviendas, 
+                               on = ['folioviv'], 
+                                how = 'left')                  
+
+#Convirtiendo variables string a numericas
+servicios_basicos[['procaptar', 'disp_agua', 'drenaje', 'disp_elect', 'combustible', 'estufa_chi']
+                  ] = servicios_basicos[['procaptar', 'disp_agua', 'drenaje', 'disp_elect', 'combustible', 'estufa_chi']
+                                        ].apply(pd.to_numeric, errors = 'coerce')
+
+# Indicador de carencia por acceso al agua
+servicios_basicos['isb_agua'] = np.NAN
+servicios_basicos.loc[((servicios_basicos['disp_agua'] >= 3) & 
+                       (~servicios_basicos['disp_agua'].isna())), 'isb_agua'] = 1
+servicios_basicos.loc[((servicios_basicos['procaptar'] == 1) & 
+                       (servicios_basicos['disp_agua'] == 4)), 'isb_agua'] = 0
+servicios_basicos.loc[((servicios_basicos['disp_agua'] <= 2) & 
+                       (~servicios_basicos['disp_agua'].isna())), 'isb_agua'] = 0
+
+# Indicador de carencia por servicio de drenaje
+servicios_basicos['isb_dren'] = np.NAN
+servicios_basicos.loc[(servicios_basicos['drenaje'] >= 3), 'isb_dren'] = 1
+servicios_basicos.loc[(servicios_basicos['drenaje'] <= 2), 'isb_dren'] = 0
+
+# Indicador de carencia por servicios de electricidad
+servicios_basicos['isb_luz'] = np.NAN
+servicios_basicos.loc[(servicios_basicos['disp_elect'] >= 5), 'isb_luz'] = 1
+servicios_basicos.loc[(servicios_basicos['disp_elect'] <= 4), 'isb_luz'] = 0
+
+# Indicador de carencia por combustible para cocinar
+servicios_basicos['combus'] = servicios_basicos['combustible']
+servicios_basicos['estufa'] = servicios_basicos['estufa_chi']
+servicios_basicos['isb_combus'] = np.NAN
+servicios_basicos.loc[(((servicios_basicos['combus'] == 1) | 
+                       (servicios_basicos['combus'] == 2)) & 
+                        (servicios_basicos['estufa'] == 2)), 'isb_combus'] = 1
+servicios_basicos.loc[(((servicios_basicos['combus'] == 1) | 
+                       (servicios_basicos['combus'] == 2)) & 
+                        (servicios_basicos['estufa'] == 1)), 'isb_combus'] = 0
+servicios_basicos.loc[(servicios_basicos['combus'].between(3, 6)), 'isb_combus'] = 0
+
+# Indicador de carencia por acceso a los servicios básicos en la vivienda
+servicios_basicos['ic_sbv'] = np.NAN
+servicios_basicos.loc[((servicios_basicos['isb_agua'] == 1) | 
+                       (servicios_basicos['isb_dren'] == 1) | 
+                        (servicios_basicos['isb_luz'] == 1) | 
+                         (servicios_basicos['isb_combus'] == 1)), 'ic_sbv'] = 1 # Con carencia
+servicios_basicos.loc[((servicios_basicos['isb_agua'] == 0) & 
+                       (servicios_basicos['isb_dren'] == 0) & 
+                        (servicios_basicos['isb_luz'] == 0) & 
+                         (servicios_basicos['isb_combus'] == 0)), 'ic_sbv'] = 0 # Sin carencia 
+servicios_basicos.loc[((servicios_basicos['isb_agua'].isna()) | 
+                       (servicios_basicos['isb_dren'].isna()) | 
+                        (servicios_basicos['isb_luz'].isna()) | 
+                         (servicios_basicos['isb_combus'].isna())), 'ic_sbv'] = np.NAN
+
+servicios_basicos = servicios_basicos[['folioviv', 'foliohog', 'isb_agua', 'isb_dren', 'isb_luz', 'isb_combus', 'ic_sbv']]
+```
+
+**Se guarda la base de datos** 
+```{python}
+servicios_basicos.to_csv(current_directory + '/Output/Data/' + '/ic_sbv22.csv.csv', index = False)
+```
+
+##### Opción 2  
+
+```{python}
+servicios_basicos = pd.merge(concentradohogar, 
+                              viviendas, 
+                               on = ['folioviv'], 
+                                how = 'left')                  
+
+#Convirtiendo variables string a numericas
+servicios_basicos[['procaptar', 'disp_agua', 'drenaje', 'disp_elect', 'combustible', 'estufa_chi']
+                  ] = servicios_basicos[['procaptar', 'disp_agua', 'drenaje', 'disp_elect', 'combustible', 'estufa_chi']
+                                        ].apply(pd.to_numeric, errors = 'coerce')
+
+# Indicador de carencia por acceso al agua
+servicios_basicos['isb_agua'] = np.NAN
+servicios_basicos.loc[((servicios_basicos['disp_agua'] >= 3) & 
+                       (~servicios_basicos['disp_agua'].isna())), 'isb_agua'] = 1
+servicios_basicos.loc[((servicios_basicos['procaptar'] == 1) & 
+                       (servicios_basicos['disp_agua'] == 4)), 'isb_agua'] = 0
+servicios_basicos.loc[((servicios_basicos['disp_agua'] <= 2) & 
+                       (~servicios_basicos['disp_agua'].isna())), 'isb_agua'] = 0
+
+# Indicador de carencia por servicio de drenaje
+servicios_basicos['isb_dren'] = np.NAN
+servicios_basicos.loc[(servicios_basicos['drenaje'] >= 3), 'isb_dren'] = 1
+servicios_basicos.loc[(servicios_basicos['drenaje'] <= 2), 'isb_dren'] = 0
+
+# Indicador de carencia por servicios de electricidad
+servicios_basicos['isb_luz'] = np.NAN
+servicios_basicos.loc[(servicios_basicos['disp_elect'] >= 5), 'isb_luz'] = 1
+servicios_basicos.loc[(servicios_basicos['disp_elect'] <= 4), 'isb_luz'] = 0
+
+# Indicador de carencia por combustible para cocinar
+servicios_basicos['combus'] = servicios_basicos['combustible']
+servicios_basicos['estufa'] = servicios_basicos['estufa_chi']
+servicios_basicos['isb_combus'] = np.NAN
+servicios_basicos.loc[(((servicios_basicos['combus'] == 1) | 
+                       (servicios_basicos['combus'] == 2)) & 
+                        (servicios_basicos['estufa'] == 2)), 'isb_combus'] = 1
+servicios_basicos.loc[(((servicios_basicos['combus'] == 1) | 
+                       (servicios_basicos['combus'] == 2)) & 
+                        (servicios_basicos['estufa'] == 1)), 'isb_combus'] = 0
+servicios_basicos.loc[(servicios_basicos['combus'].between(3, 6)), 'isb_combus'] = 0
+
+# Indicador de carencia por acceso a los servicios básicos en la vivienda
+servicios_basicos['ic_sbv'] = np.NAN
+servicios_basicos.loc[((servicios_basicos['isb_agua'] == 1) | 
+                       (servicios_basicos['isb_dren'] == 1) | 
+                        (servicios_basicos['isb_luz'] == 1) | 
+                         (servicios_basicos['isb_combus'] == 1)), 'ic_sbv'] = 1 # Con carencia
+servicios_basicos.loc[((servicios_basicos['isb_agua'] == 0) & 
+                       (servicios_basicos['isb_dren'] == 0) & 
+                        (servicios_basicos['isb_luz'] == 0) & 
+                         (servicios_basicos['isb_combus'] == 0)), 'ic_sbv'] = 0 # Sin carencia 
+servicios_basicos.loc[((servicios_basicos['isb_agua'].isna()) | 
+                       (servicios_basicos['isb_dren'].isna()) | 
+                        (servicios_basicos['isb_luz'].isna()) | 
+                         (servicios_basicos['isb_combus'].isna())), 'ic_sbv'] = np.NAN
+
+servicios_basicos = servicios_basicos[['folioviv', 'foliohog', 'isb_agua', 'isb_dren', 'isb_luz', 'isb_combus', 'ic_sbv']]
+```
+
+#### VI. Indicador de carencia por acceso a la alimentación nutritiva y de calidad {.tabset .tabset-pills .top3-tiles}  
+
+##### Opción 1 {.tabset .tabset-pills .top4-tiles} 
  
-```{r}
-menores.alimentacion <- poblacion %>%
-                         # Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
-                         filter(!(parentesco >= 400 & parentesco < 500 | parentesco >= 700 & parentesco < 800)) %>% 
-                          # Indicador de hogares con menores de 18 años
-                          mutate(men = case_when(.$edad >= 0 & .$edad <= 17 ~ 1, 
-                                                 TRUE ~ NA)) %>%
-                           as.data.frame() %>%
-                           # group_by(folioviv, foliohog) %>%
-                             summarise(men = sum(men, na.rm = TRUE), .by = c(folioviv, foliohog)) %>%
-                              ungroup() %>%
-                               mutate(id_men = case_when(.$men >= 1 & !is.na(.$men) ~ 1, 
-                                                         .$men == 0 ~ 0)) %>%
-                                select(folioviv, foliohog, id_men)
- # Nota: no concuerda la suma de los menores de edad con la función summarise y la función DT
- #menores <- as.data.table(menores.alimentacion)[, lapply(.SD, sum, na.rm = TRUE), 
- #                                                by =.(folioviv, foliohog), .SDcols = c("men")] %>%
+###### Grado de inseguridad alimentaria
+
+```{python}
+menores_alimentacion = poblacion.copy()
+
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+menores_alimentacion = menores_alimentacion[~((menores_alimentacion['parentesco'] >= 400) & 
+                                              (menores_alimentacion['parentesco'] < 500) |
+                                               (menores_alimentacion['parentesco'] >= 700) & 
+                                                (menores_alimentacion['parentesco'] < 800))]
+
+# Indicador de hogares con menores_alimentacion de 18 años
+menores_alimentacion['men'] = np.NAN
+menores_alimentacion.loc[(menores_alimentacion['edad'].between(0, 17)), 'men'] = 1
+
+menores_alimentacion = menores_alimentacion.groupby(['folioviv', 'foliohog'])['men'].sum().dropna().reset_index()
+
+menores_alimentacion['id_men'] = np.NAN
+menores_alimentacion.loc[((menores_alimentacion['men'] >= 1) & 
+                          (~menores_alimentacion['men'].isna())), 'id_men'] = 1
+menores_alimentacion.loc[(menores_alimentacion['men'] == 0), 'id_men'] = 0
+
+menores_alimentacion = menores_alimentacion[['folioviv', 'foliohog', 'id_men']]
 ```
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(smenores.alimentacion, paste0(here::here(), "/Output/Data/menores22.csv"), row.names = F)
-save(menores.alimentacion, file = paste0(here::here(), "/Output/Data/menores22.RData"))
+**Se guarda la base de datos** 
+```{python}
+menores_alimentacion.to_csv(current_directory + '/Output/Data/' + '/menores22.csv.csv', index = False)
 ```
 
+####### Grado de inseguridad alimentaria 
 
-##### Grado de inseguridad alimentaria
-
-```{r}
-load(file = paste0(here::here(), "/Data/hogares.RData")) 
+```{python}
+hogares = pd.read_csv(current_directory + "/Bases de datos/hogares.csv", low_memory = False)
 ```
 
-```{r}
-alimentacion <- hogares %>% 
-                 # Parte 1. Grado de inseguridad alimentaria
-                 mutate(
-                        # Seis preguntas para hogares sin población menor a 18 años
-                        # Algún adulto tuvo una alimentación basada en muy poca variedad de alimentos
-                        ia_1ad = case_when(.$acc_alim4 == 2 ~ 0, # No
-                                           .$acc_alim4 == 1 ~ 1, # Sí
-                                           is.na(.$acc_alim4) ~ 0), # No
-                        # Algún adulto dejó de desayunar, comer o cenar
-                        ia_2ad = case_when(.$acc_alim5 == 2 ~ 0,  # No
-                                           .$acc_alim5 == 1 ~ 1, # Sí
-                                           is.na(.$acc_alim5) ~ 0),  # No
-                        # Algún adulto comió menos de lo que debía comer
-                        ia_3ad = case_when(.$acc_alim6 == 2 ~ 0,  # No
-                                           .$acc_alim6 == 1 ~ 1, # Sí
-                                           is.na(.$acc_alim6) ~ 0),  # No
-                        # El hogar se quedó sin comida
-                        ia_4ad = case_when(.$acc_alim2 == 2 ~ 0,  # No
-                                           .$acc_alim2 == 1 ~ 1, # Sí
-                                           is.na(.$acc_alim2) ~ 0), # No
-                        # Algún adulto sintió hambre pero no comió
-                        ia_5ad = case_when(.$acc_alim7 == 2 ~ 0, # No
-                                           .$acc_alim7 == 1 ~ 1, # Sí
-                                           is.na(.$acc_alim7) ~ 0), # No
-                        # Algún adulto solo comió una vez al día o dejó de comer todo un día
-                        ia_6ad = case_when(.$acc_alim8 == 2 ~ 0,  # No
-                                           .$acc_alim8 == 1 ~ 1, # Sí
-                                           is.na(.$acc_alim8) ~ 0), # No
+```{python}
+alimentacion = hogares.copy()
+
+#Convirtiendo variables string a numericas
+alimentacion[['acc_alim2', 'acc_alim4', 'acc_alim5', 'acc_alim6', 'acc_alim7', 'acc_alim8', 'acc_alim11', 'acc_alim12', 
+              'acc_alim13', 'acc_alim14', 'acc_alim15', 'acc_alim16']
+             ] = alimentacion[['acc_alim2', 'acc_alim4', 'acc_alim5', 'acc_alim6', 'acc_alim7', 'acc_alim8',
+                               'acc_alim11', 'acc_alim12', 'acc_alim13', 'acc_alim14', 'acc_alim15', 'acc_alim16']
+                               ].apply(pd.to_numeric, errors = 'coerce')
+                  
+                  
+# Parte 1. Grado de inseguridad alimentaria 
+# Seis preguntas para hogares sin población menor a 18 años
+
+## Algún adulto tuvo una alimentación basada en muy poca variedad de alimentos
+alimentacion['ia_1ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim4'] == 2), 'ia_1ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim4'].isna()), 'ia_1ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim4'] == 1), 'ia_1ad'] = 1 # Sí
+
+## Algún adulto dejó de desayunar, comer o cenar
+alimentacion['ia_2ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim5'] == 2), 'ia_2ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim5'].isna()), 'ia_2ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim5'] == 1), 'ia_2ad'] = 1 # Sí
+
+## Algún adulto comió menos de lo que debía comer
+alimentacion['ia_3ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim6'] == 2), 'ia_3ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim6'].isna()), 'ia_3ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim6'] == 1), 'ia_3ad'] = 1 # Sí
+
+## El hogar se quedó sin comida
+alimentacion['ia_4ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim2'] == 2), 'ia_4ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim2'].isna()), 'ia_4ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim2'] == 1), 'ia_4ad'] = 1 # Sí
+
+## Algún adulto sintió hambre pero no comió
+alimentacion['ia_5ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim7'] == 2), 'ia_5ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim7'].isna()), 'ia_5ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim7'] == 1), 'ia_5ad'] = 1 # Sí
+
+## Algún adulto solo comió una vez al día o dejó de comer todo un día
+alimentacion['ia_6ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim8'] == 2), 'ia_6ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim8'].isna()), 'ia_6ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim8'] == 1), 'ia_6ad'] = 1 # Sí    
+
+# Seis preguntas para hogares sin población menor a 18 años
             
-                        # Seis preguntas para hogares sin población menor a 18 años
-            
-                        # Alguien de 0 a 17 años tuvo una alimentación basada en muy poca variedad de alimentos
-                        ia_7men = case_when(.$acc_alim11 == 2 ~ 0, # No
-                                            .$acc_alim11 == 1 ~ 1, # Sí
-                                            is.na(.$acc_alim11) ~ 0), # No
-                        # Alguien de 0 a 17 años comió menos de lo que debía
-                        ia_8men = case_when(.$acc_alim12 == 2 ~ 0, # No
-                                            .$acc_alim12 == 1 ~ 1, # Sí
-                                            is.na(.$acc_alim12) ~ 0), # No
-                        # Se tuvo que disminuir la cantidad servida en las comidas a alguien de 0 a 17 años
-                        ia_9men = case_when(.$acc_alim13 == 2 ~ 0, # No
-                                            .$acc_alim13 == 1 ~ 1, # Sí
-                                            is.na(.$acc_alim13) ~ 0), # No
-                        # Alguien de 0 a 17 años sintió hambre pero no comió
-                        ia_10men  =case_when(.$acc_alim14 == 2 ~ 0, # No
-                                             .$acc_alim14 == 1 ~ 1, # Sí
-                                             is.na(.$acc_alim14) ~ 0), # No
-                        # Alguien de 0 a 17 años se acostó con hambre
-                        ia_11men = case_when(.$acc_alim15 == 2 ~ 0, # No
-                                             .$acc_alim15 == 1 ~ 1, # Sí
-                                             is.na(.$acc_alim15) ~ 0), # No
-                        # Alguien de 0 a 17 años comió una vez al día o dejó de comer todo un día
-                        ia_12men = case_when(.$acc_alim16 == 2 ~ 0, # No
-                                             .$acc_alim16 == 1 ~ 1, # Sí
-                                             is.na(.$acc_alim16) ~ 0) # No
-                        ) %>%
-                 # Construcción de la escala de inseguridad alimentaria
-                 left_join(., menores.alimentacion, by = c("folioviv", "foliohog")) %>%
-                  mutate(
-                         # Escala para hogares sin menores de 18 años
-                         tot_iaad = case_when(id_men == 0 ~ .$ia_1ad + .$ia_2ad + .$ia_3ad + .$ia_4ad + .$ia_5ad + .$ia_6ad),
-                         # Escala para hogares con menores de 18 años
-                         tot_iamen = case_when(id_men == 1 ~ .$ia_1ad + .$ia_2ad + .$ia_3ad + .$ia_4ad + .$ia_5ad + .$ia_6ad + .$ia_7men + .$ia_8men + .$ia_9men + .$ia_10men + .$ia_11men + .$ia_12men)) %>% 
-                  mutate(
-                         # Grado de inseguridad alimentaria
-                         ins_ali = case_when(
-                                             # Seguridad alimentaria  
-                                             .$tot_iaad == 0 | .$tot_iamen == 0 ~ 0, 
-                                             # Inseguridad alimentaria leve
-                                             .$tot_iaad == 1 | .$tot_iaad == 2 | .$tot_iamen == 1 | .$tot_iamen == 2 | .$tot_iamen == 3 ~ 1,
-                                             # Inseguridad alimentaria moderada
-                                             .$tot_iaad == 3 | .$tot_iaad == 4 | .$tot_iamen == 4 | .$tot_iamen == 5 | .$tot_iamen == 6 | .$tot_iamen == 7 ~ 2,
-                                             # Inseguridad alimentaria severa
-                                             .$tot_iaad == 5 | .$tot_iaad == 6 | .$tot_iamen >= 8 & !is.na(.$tot_iamen) ~ 3)) %>%
-                  # Se genera el indicador de carencia por acceso a la alimentación que  considera en situación de carencia a la población en hogares que  
-                  # presenten inseguridad alimentaria moderada o severa.
+## Alguien de 0 a 17 años tuvo una alimentación basada en muy poca variedad de alimentos
+alimentacion['ia_7men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim11'] == 2), 'ia_7men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim11'].isna()), 'ia_7men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim11'] == 1), 'ia_7men'] = 1 # Sí 
 
-                  mutate(
-                         # Indicador de carencia por acceso a la alimentación  
-                         ic_ali = case_when(.$ins_ali == 2 | .$ins_ali == 3 ~ 1, # Con carencia
-                                            .$ins_ali == 0 | .$ins_ali == 1 ~ 0)) # Sin carencia
+## Alguien de 0 a 17 años comió menos de lo que debía
+alimentacion['ia_8men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim12'] == 2), 'ia_8men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim12'].isna()), 'ia_8men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim12'] == 1), 'ia_8men'] = 1 # Sí 
+
+## Se tuvo que disminuir la cantidad servida en las comidas a alguien de 0 a 17 años
+alimentacion['ia_9men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim13'] == 2), 'ia_9men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim13'].isna()), 'ia_9men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim13'] == 1), 'ia_9men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años sintió hambre pero no comió
+alimentacion['ia_10men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim14'] == 2), 'ia_10men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim14'].isna()), 'ia_10men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim14'] == 1), 'ia_10men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años se acostó con hambre
+alimentacion['ia_11men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim15'] == 2), 'ia_11men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim15'].isna()), 'ia_11men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim15'] == 1), 'ia_11men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años comió una vez al día o dejó de comer todo un día
+alimentacion['ia_12men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim16'] == 2), 'ia_12men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim16'].isna()), 'ia_12men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim16'] == 1), 'ia_12men'] = 1 # Sí 
+
+alimentacion = pd.merge(alimentacion, menores_alimentacion, 
+                         on = ['folioviv', 'foliohog'], 
+                          how = 'left')
+
+#Convirtiendo variables string a numericas
+alimentacion[['id_men', 'ia_1ad', 'ia_2ad', 'ia_3ad', 'ia_4ad', 'ia_5ad', 'ia_6ad', 'ia_7men', 'ia_8men',
+              'ia_9men', 'ia_10men', 'ia_11men', 'ia_12men', 'alim17_1', 'alim17_2', 'alim17_3', 'alim17_4',
+              'alim17_5', 'alim17_6', 'alim17_7', 'alim17_8', 'alim17_9','alim17_10', 'alim17_11', 'alim17_12']
+             ] = alimentacion[['id_men', 'ia_1ad', 'ia_2ad', 'ia_3ad', 'ia_4ad', 'ia_5ad', 'ia_6ad', 'ia_7men',
+                               'ia_8men', 'ia_9men', 'ia_10men', 'ia_11men', 'ia_12men', 'alim17_1', 'alim17_2',
+                               'alim17_3', 'alim17_4', 'alim17_5', 'alim17_6', 'alim17_7', 'alim17_8', 'alim17_9',
+                               'alim17_10', 'alim17_11', 'alim17_12']
+                               ].apply(pd.to_numeric, errors = 'coerce')
+
+# Construcción de la escala de inseguridad alimentaria
+
+# Escala para hogares sin menores de 18 años
+alimentacion['tot_iaad'] = np.NAN 
+alimentacion.loc[(alimentacion['id_men'] == 0), 'tot_iaad'] = (alimentacion['ia_1ad']
+                                                               ) + (alimentacion['ia_2ad']
+                                                               ) + (alimentacion['ia_3ad']
+                                                               ) + (alimentacion['ia_4ad']
+                                                               ) + (alimentacion['ia_5ad']
+                                                               ) + (alimentacion['ia_6ad'])
+# Escala para hogares con menores de 18 años
+alimentacion['tot_iamen'] = np.NAN 
+alimentacion.loc[(alimentacion['id_men'] == 1), 'tot_iamen'] = (alimentacion['ia_1ad']
+                                                                ) + (alimentacion['ia_2ad']
+                                                                ) + (alimentacion['ia_3ad']
+                                                                ) + (alimentacion['ia_4ad']
+                                                                ) +  (alimentacion['ia_5ad']
+                                                                ) + (alimentacion['ia_6ad']
+                                                                ) + (alimentacion['ia_7men']
+                                                                ) +  (alimentacion['ia_8men']
+                                                                ) + (alimentacion['ia_9men']
+                                                                ) + (alimentacion['ia_10men']
+                                                                ) + (alimentacion['ia_11men']
+                                                                ) + (alimentacion['ia_12men'])
+
+## Grado de inseguridad alimentaria
+alimentacion['ins_ali'] = np.NAN
+
+## Seguridad alimentaria 
+alimentacion.loc[((alimentacion['tot_iaad'] == 0) | 
+                  (alimentacion['tot_iamen'] == 0)), 'ins_ali'] = 0
+
+## Inseguridad alimentaria leve
+alimentacion.loc[((alimentacion['tot_iaad'] == 1) | (alimentacion['tot_iaad'] == 2) | 
+                  (alimentacion['tot_iamen'] == 1) | (alimentacion['tot_iamen'] == 2) | 
+                   (alimentacion['tot_iamen'] == 3)), 'ins_ali'] = 1
+
+## Inseguridad alimentaria moderada
+alimentacion.loc[((alimentacion['tot_iaad'] == 3) | (alimentacion['tot_iaad'] == 4) | 
+                  (alimentacion['tot_iamen'] == 4) | (alimentacion['tot_iamen'] == 5) | 
+                   (alimentacion['tot_iamen'] == 6) | (alimentacion['tot_iamen'] == 7)), 'ins_ali'] = 2
+
+## Inseguridad alimentaria severa
+alimentacion.loc[((alimentacion['tot_iaad'] == 5) | (alimentacion['tot_iaad'] == 6) | 
+                  (alimentacion['tot_iamen'] >= 8) & (~alimentacion['tot_iamen'].isna())), 'ins_ali'] = 3   
+
+# Se genera el indicador de carencia por acceso a la alimentación que considera en situación de carencia a la población en hogares que presenten inseguridad alimentaria moderada o severa
+
+#Indicador de carencia por acceso a la alimentación
+alimentacion['ic_ali'] = np.NAN
+alimentacion.loc[((alimentacion['ins_ali'] == 2) | 
+                  (alimentacion['ins_ali'] == 3)), 'ic_ali'] = 1 # Con carencia
+alimentacion.loc[((alimentacion['ins_ali'] == 0) | 
+                  (alimentacion['ins_ali'] == 1)), 'ic_ali'] = 0 # Sin carencia
 ```
 
-##### Limitación en el consumo de alimentos  
+###### Limitación en el consumo de alimentos  
 
 Se considera el número de días que se consumieron cada uno de los 12 grupos  de alimentos por el ponderador utilizado por el Programa Mundial de Alimentos (`PMA`) de las Naciones Unidas:   
 
@@ -1800,38 +2080,48 @@ Se considera el número de días que se consumieron cada uno de los 12 grupos  d
 El ponderador para el `Grupo 1` es 2, para el `Grupo 2` es 3, para el `Grupo 3` y `Grupo 4` es 1, para el `Grupo 5` y `Grupo 6` es 4, para el `Grupo 7` y `Grupo 8` es 0.5, y para el `Grupo 9` es 0.    
 
 
-```{r}
-alimentacion <- alimentacion %>%
-                 mutate(
-                        cpond1 = if_else(.$alim17_1 > .$alim17_2, .$alim17_1, .$alim17_2) * 2,
-                        cpond3  = .$alim17_3  * 1,
-                        cpond4  = .$alim17_4  * 1,
-                        cpond5  = apply(.[,c("alim17_5", "alim17_6", "alim17_7")], 1, max) * 4,
-                        cpond8  = .$alim17_8  * 3   ,
-                        cpond9  = .$alim17_9  * 4   ,
-                        cpond10 = .$alim17_10 * 0.5 ,
-                        cpond11 = .$alim17_11 * 0.5 ,
-                        cpond12 = .$alim17_12 * 0 
-                        ) %>%
-                 mutate(
-                        # Puntaje total de consumo ponderado de alimentos, indica el número ponderado 
-                        # de grupos de alimentos que se consumieron en los últimos siete días     
-                        tot_cpond = .$cpond1 + .$cpond3 + .$cpond4 + .$cpond5 + .$cpond8 + .$cpond9 + .$cpond10 + .$cpond11 + .$cpond12
-                        ) %>%
-                 mutate(
-                        # Se categoriza la dieta consumida en los hogares
-                        # Dieta consumida en los hogares              
-                        dch = case_when(.$tot_cpond >=  0 & .$tot_cpond <= 28   ~ 1,  # Pobre 
-                                        .$tot_cpond >  28 & .$tot_cpond <= 42   ~ 2,  # Limítrofe
-                                        .$tot_cpond >  42 & !is.na(.$tot_cpond) ~ 3)) %>% # Aceptable
-                 mutate(
-                        # Limitación en el consumo de Alimentos
-                        lca = case_when(.$dch == 1 | .$dch == 2 ~ 1,   # Limitado
-                                        .$dch == 3 ~ 0))           # No
+```{python}
+alimentacion['cpond1'] = np.where(alimentacion['alim17_1'] > alimentacion['alim17_2'],
+                                   alimentacion['alim17_1'],
+                                    alimentacion['alim17_2']) * 2
+alimentacion['cpond3'] = alimentacion['alim17_3'] * 1
+alimentacion['cpond4'] = alimentacion['alim17_4'] * 1
+alimentacion['cpond5'] = alimentacion[['alim17_5', 'alim17_6', 'alim17_7']].apply(lambda row: max(row), axis = 1) * 4
+alimentacion['cpond8'] = alimentacion['alim17_8'] * 3
+alimentacion['cpond9'] = alimentacion['alim17_9'] * 4
+alimentacion['cpond10'] = alimentacion['alim17_10'] * 0.5
+alimentacion['cpond11'] = alimentacion['alim17_11'] * 0.5
+alimentacion['cpond12'] = alimentacion['alim17_12'] * 0
+
+# Puntaje total de consumo ponderado de alimentos, indica el número ponderado de grupos de alimentos que se consumieron en los últimos siete días.   
+alimentacion['tot_cpond'] = alimentacion['cpond1' 
+                             ] + alimentacion['cpond3'
+                             ] + alimentacion['cpond4'
+                             ] + alimentacion['cpond5'
+                             ] + alimentacion['cpond8'
+                             ] + alimentacion['cpond9'
+                             ] + alimentacion['cpond10'
+                             ] + alimentacion['cpond11'
+                             ] + alimentacion['cpond12']
+
+# Se categoriza la dieta consumida en los hogares
+## Dieta consumida en los hogares
+alimentacion['dch'] = np.NAN
+alimentacion.loc[(alimentacion['tot_cpond'].between(0, 28)), 'dch'] = 1 # Pobre
+alimentacion.loc[((alimentacion['tot_cpond'] > 28) &
+                  (alimentacion['tot_cpond'] <= 42)), 'dch'] = 2 # Limítrofe
+alimentacion.loc[((alimentacion['tot_cpond'] > 42) &
+                  (~alimentacion['tot_cpond'].isna())), 'dch'] = 3 # Aceptable
+
+## Limitación en el consumo de Alimentos
+alimentacion['lca'] = np.NAN
+alimentacion.loc[((alimentacion['dch'] == 1) |
+                  (alimentacion['dch'] == 2)), 'lca'] = 1 # Limitado
+alimentacion.loc[(alimentacion['dch'] == 3), 'lca'] = 0 # No limitado
 ```
 
 
-##### Indicador de carencia por acceso a la alimentación nutritiva y de calidad   
+###### Indicador de carencia por acceso a la alimentación nutritiva y de calidad   
 
 Se considera en situación de carencia por acceso a la alimentación nutritiva y de calidad a la población en hogares que presenten, al menos, una de las siguientes características:
   
@@ -1839,20 +2129,300 @@ Se considera en situación de carencia por acceso a la alimentación nutritiva y
 2. Limitación en el consumo de alimentos.  
 
 
-```{r}
-alimentacion <- alimentacion %>%
-                 mutate(
-                        ic_ali_nc = case_when(.$ic_ali == 0 & .$lca == 0 ~ 0, # Sin carencia
-                                              (.$ic_ali == 1 | .$lca == 1) &
-                                               (!is.na(.$ic_ali) & !is.na(.$lca)) ~ 1)) %>% # Con carencia
-                  select(folioviv, foliohog, id_men, starts_with("ia_"), tot_iaad, tot_iamen, ins_ali, dch, lca, ic_ali, ic_ali_nc)
+```{python}
+alimentacion['ic_ali_nc'] = np.NAN
+alimentacion.loc[((alimentacion['ic_ali'] == 0) &
+                    (alimentacion['lca'] == 0)), 'ic_ali_nc'] = 0 # Sin carencia
+alimentacion.loc[((alimentacion['ic_ali'] == 1) |
+                  (alimentacion['lca'] == 1) &
+                   ((~alimentacion['ic_ali'].isna()) &
+                    (~alimentacion['lca'].isna()))), 'ic_ali_nc'] = 1 # Con carencia
+
+alimentacion = alimentacion[['folioviv', 'foliohog', 'ia_1ad', 'ia_2ad', 'ia_3ad', 'ia_4ad', 'ia_5ad', 'ia_6ad',
+                             'ia_7men', 'ia_8men', 'ia_9men', 'ia_10men', 'ia_11men', 'ia_12men', 'id_men',
+                             'tot_iaad', 'tot_iamen', 'ins_ali', 'dch', 'lca', 'ic_ali', 'ic_ali_nc']]
 ```
 
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(alimentacion, paste0(here::here(), "/Output/Data/ic_ali22.csv"), row.names = F)
-save(alimentacion, file = paste0(here::here(), "/Output/Data/ic_ali22.RData"))
+**Se guarda la base de datos** 
+```{python}
+alimentacion.to_csv(current_directory + '/Output/Data/' + '/ic_ali22.csv.csv', index = False)
+```
+
+##### Opción 2 {.tabset .tabset-pills .top4-tiles} 
+ 
+###### Grado de inseguridad alimentaria
+
+```{python}
+menores_alimentacion = poblacion.copy()
+
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+menores_alimentacion = menores_alimentacion[~((menores_alimentacion['parentesco'] >= 400) & 
+                                              (menores_alimentacion['parentesco'] < 500) |
+                                               (menores_alimentacion['parentesco'] >= 700) & 
+                                                (menores_alimentacion['parentesco'] < 800))]
+
+# Indicador de hogares con menores_alimentacion de 18 años
+menores_alimentacion['men'] = np.NAN
+menores_alimentacion.loc[(menores_alimentacion['edad'].between(0, 17)), 'men'] = 1
+
+menores_alimentacion = menores_alimentacion.groupby(['folioviv', 'foliohog'])['men'].sum().dropna().reset_index()
+
+menores_alimentacion['id_men'] = np.NAN
+menores_alimentacion.loc[((menores_alimentacion['men'] >= 1) & 
+                          (~menores_alimentacion['men'].isna())), 'id_men'] = 1
+menores_alimentacion.loc[(menores_alimentacion['men'] == 0), 'id_men'] = 0
+
+menores_alimentacion = menores_alimentacion[['folioviv', 'foliohog', 'id_men']]
+```
+
+**Se guarda la base de datos** 
+```{python}
+menores_alimentacion.to_csv(current_directory + '/Output/Data/' + '/menores22.csv.csv', index = False)
+```
+
+####### Grado de inseguridad alimentaria 
+
+```{python}
+hogares = pd.read_csv(current_directory + "/Bases de datos/hogares.csv", low_memory = False)
+```
+
+```{python}
+alimentacion = hogares.copy()
+
+#Convirtiendo variables string a numericas
+alimentacion[['acc_alim2', 'acc_alim4', 'acc_alim5', 'acc_alim6', 'acc_alim7', 'acc_alim8', 'acc_alim11', 'acc_alim12', 
+              'acc_alim13', 'acc_alim14', 'acc_alim15', 'acc_alim16']
+             ] = alimentacion[['acc_alim2', 'acc_alim4', 'acc_alim5', 'acc_alim6', 'acc_alim7', 'acc_alim8',
+                               'acc_alim11', 'acc_alim12', 'acc_alim13', 'acc_alim14', 'acc_alim15', 'acc_alim16']
+                               ].apply(pd.to_numeric, errors = 'coerce')
+                  
+                  
+# Parte 1. Grado de inseguridad alimentaria 
+# Seis preguntas para hogares sin población menor a 18 años
+
+## Algún adulto tuvo una alimentación basada en muy poca variedad de alimentos
+alimentacion['ia_1ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim4'] == 2), 'ia_1ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim4'].isna()), 'ia_1ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim4'] == 1), 'ia_1ad'] = 1 # Sí
+
+## Algún adulto dejó de desayunar, comer o cenar
+alimentacion['ia_2ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim5'] == 2), 'ia_2ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim5'].isna()), 'ia_2ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim5'] == 1), 'ia_2ad'] = 1 # Sí
+
+## Algún adulto comió menos de lo que debía comer
+alimentacion['ia_3ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim6'] == 2), 'ia_3ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim6'].isna()), 'ia_3ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim6'] == 1), 'ia_3ad'] = 1 # Sí
+
+## El hogar se quedó sin comida
+alimentacion['ia_4ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim2'] == 2), 'ia_4ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim2'].isna()), 'ia_4ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim2'] == 1), 'ia_4ad'] = 1 # Sí
+
+## Algún adulto sintió hambre pero no comió
+alimentacion['ia_5ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim7'] == 2), 'ia_5ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim7'].isna()), 'ia_5ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim7'] == 1), 'ia_5ad'] = 1 # Sí
+
+## Algún adulto solo comió una vez al día o dejó de comer todo un día
+alimentacion['ia_6ad'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim8'] == 2), 'ia_6ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim8'].isna()), 'ia_6ad'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim8'] == 1), 'ia_6ad'] = 1 # Sí    
+
+# Seis preguntas para hogares sin población menor a 18 años
+            
+## Alguien de 0 a 17 años tuvo una alimentación basada en muy poca variedad de alimentos
+alimentacion['ia_7men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim11'] == 2), 'ia_7men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim11'].isna()), 'ia_7men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim11'] == 1), 'ia_7men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años comió menos de lo que debía
+alimentacion['ia_8men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim12'] == 2), 'ia_8men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim12'].isna()), 'ia_8men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim12'] == 1), 'ia_8men'] = 1 # Sí 
+
+## Se tuvo que disminuir la cantidad servida en las comidas a alguien de 0 a 17 años
+alimentacion['ia_9men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim13'] == 2), 'ia_9men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim13'].isna()), 'ia_9men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim13'] == 1), 'ia_9men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años sintió hambre pero no comió
+alimentacion['ia_10men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim14'] == 2), 'ia_10men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim14'].isna()), 'ia_10men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim14'] == 1), 'ia_10men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años se acostó con hambre
+alimentacion['ia_11men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim15'] == 2), 'ia_11men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim15'].isna()), 'ia_11men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim15'] == 1), 'ia_11men'] = 1 # Sí 
+
+## Alguien de 0 a 17 años comió una vez al día o dejó de comer todo un día
+alimentacion['ia_12men'] = np.NAN
+alimentacion.loc[(alimentacion['acc_alim16'] == 2), 'ia_12men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim16'].isna()), 'ia_12men'] = 0 # No
+alimentacion.loc[(alimentacion['acc_alim16'] == 1), 'ia_12men'] = 1 # Sí 
+
+alimentacion = pd.merge(alimentacion, menores_alimentacion, 
+                         on = ['folioviv', 'foliohog'], 
+                          how = 'left')
+
+#Convirtiendo variables string a numericas
+alimentacion[['id_men', 'ia_1ad', 'ia_2ad', 'ia_3ad', 'ia_4ad', 'ia_5ad', 'ia_6ad', 'ia_7men', 'ia_8men',
+              'ia_9men', 'ia_10men', 'ia_11men', 'ia_12men', 'alim17_1', 'alim17_2', 'alim17_3', 'alim17_4',
+              'alim17_5', 'alim17_6', 'alim17_7', 'alim17_8', 'alim17_9','alim17_10', 'alim17_11', 'alim17_12']
+             ] = alimentacion[['id_men', 'ia_1ad', 'ia_2ad', 'ia_3ad', 'ia_4ad', 'ia_5ad', 'ia_6ad', 'ia_7men',
+                               'ia_8men', 'ia_9men', 'ia_10men', 'ia_11men', 'ia_12men', 'alim17_1', 'alim17_2',
+                               'alim17_3', 'alim17_4', 'alim17_5', 'alim17_6', 'alim17_7', 'alim17_8', 'alim17_9',
+                               'alim17_10', 'alim17_11', 'alim17_12']
+                               ].apply(pd.to_numeric, errors = 'coerce')
+
+# Construcción de la escala de inseguridad alimentaria
+
+# Escala para hogares sin menores de 18 años
+alimentacion['tot_iaad'] = np.NAN 
+alimentacion.loc[(alimentacion['id_men'] == 0), 'tot_iaad'] = (alimentacion['ia_1ad']
+                                                               ) + (alimentacion['ia_2ad']
+                                                               ) + (alimentacion['ia_3ad']
+                                                               ) + (alimentacion['ia_4ad']
+                                                               ) + (alimentacion['ia_5ad']
+                                                               ) + (alimentacion['ia_6ad'])
+# Escala para hogares con menores de 18 años
+alimentacion['tot_iamen'] = np.NAN 
+alimentacion.loc[(alimentacion['id_men'] == 1), 'tot_iamen'] = (alimentacion['ia_1ad']
+                                                                ) + (alimentacion['ia_2ad']
+                                                                ) + (alimentacion['ia_3ad']
+                                                                ) + (alimentacion['ia_4ad']
+                                                                ) +  (alimentacion['ia_5ad']
+                                                                ) + (alimentacion['ia_6ad']
+                                                                ) + (alimentacion['ia_7men']
+                                                                ) +  (alimentacion['ia_8men']
+                                                                ) + (alimentacion['ia_9men']
+                                                                ) + (alimentacion['ia_10men']
+                                                                ) + (alimentacion['ia_11men']
+                                                                ) + (alimentacion['ia_12men'])
+
+## Grado de inseguridad alimentaria
+alimentacion['ins_ali'] = np.NAN
+
+## Seguridad alimentaria 
+alimentacion.loc[((alimentacion['tot_iaad'] == 0) | 
+                  (alimentacion['tot_iamen'] == 0)), 'ins_ali'] = 0
+
+## Inseguridad alimentaria leve
+alimentacion.loc[((alimentacion['tot_iaad'] == 1) | (alimentacion['tot_iaad'] == 2) | 
+                  (alimentacion['tot_iamen'] == 1) | (alimentacion['tot_iamen'] == 2) | 
+                   (alimentacion['tot_iamen'] == 3)), 'ins_ali'] = 1
+
+## Inseguridad alimentaria moderada
+alimentacion.loc[((alimentacion['tot_iaad'] == 3) | (alimentacion['tot_iaad'] == 4) | 
+                  (alimentacion['tot_iamen'] == 4) | (alimentacion['tot_iamen'] == 5) | 
+                   (alimentacion['tot_iamen'] == 6) | (alimentacion['tot_iamen'] == 7)), 'ins_ali'] = 2
+
+## Inseguridad alimentaria severa
+alimentacion.loc[((alimentacion['tot_iaad'] == 5) | (alimentacion['tot_iaad'] == 6) | 
+                  (alimentacion['tot_iamen'] >= 8) & (~alimentacion['tot_iamen'].isna())), 'ins_ali'] = 3   
+
+# Se genera el indicador de carencia por acceso a la alimentación que considera en situación de carencia a la población en hogares que presenten inseguridad alimentaria moderada o severa
+
+#Indicador de carencia por acceso a la alimentación
+alimentacion['ic_ali'] = np.NAN
+alimentacion.loc[((alimentacion['ins_ali'] == 2) | 
+                  (alimentacion['ins_ali'] == 3)), 'ic_ali'] = 1 # Con carencia
+alimentacion.loc[((alimentacion['ins_ali'] == 0) | 
+                  (alimentacion['ins_ali'] == 1)), 'ic_ali'] = 0 # Sin carencia
+```
+
+###### Limitación en el consumo de alimentos  
+
+Se considera el número de días que se consumieron cada uno de los 12 grupos  de alimentos por el ponderador utilizado por el Programa Mundial de Alimentos (`PMA`) de las Naciones Unidas:   
+
+`Grupo 1`: (maíz, avena, arroz, sorgo, mijo, pan y otros cereales) y (yuca, papas, camotes y otros tubérculos)  
+`Grupo 2`: frijoles, chícharos, cacahuates, nueces  
+`Grupo 3`: vegetales y hojas  
+`Grupo 4`: frutas  
+`Grupo 5`: carne de res, cabra, aves, cerdo, huevos y pescado  
+`Grupo 6`: leche, yogur y otros lácteos  
+`Grupo 7`: azúcares y productos azucarados  
+`Grupo 8`: aceites, grasas y mantequilla  
+`Grupo 9`: especias, té, café, sal, polvo de pescado, pequeñas cantidades de leche para el té  
+
+El ponderador para el `Grupo 1` es 2, para el `Grupo 2` es 3, para el `Grupo 3` y `Grupo 4` es 1, para el `Grupo 5` y `Grupo 6` es 4, para el `Grupo 7` y `Grupo 8` es 0.5, y para el `Grupo 9` es 0.    
+
+
+```{python}
+alimentacion['cpond1'] = np.where(alimentacion['alim17_1'] > alimentacion['alim17_2'],
+                                   alimentacion['alim17_1'],
+                                    alimentacion['alim17_2']) * 2
+alimentacion['cpond3'] = alimentacion['alim17_3'] * 1
+alimentacion['cpond4'] = alimentacion['alim17_4'] * 1
+alimentacion['cpond5'] = alimentacion[['alim17_5', 'alim17_6', 'alim17_7']].apply(lambda row: max(row), axis = 1) * 4
+alimentacion['cpond8'] = alimentacion['alim17_8'] * 3
+alimentacion['cpond9'] = alimentacion['alim17_9'] * 4
+alimentacion['cpond10'] = alimentacion['alim17_10'] * 0.5
+alimentacion['cpond11'] = alimentacion['alim17_11'] * 0.5
+alimentacion['cpond12'] = alimentacion['alim17_12'] * 0
+
+# Puntaje total de consumo ponderado de alimentos, indica el número ponderado de grupos de alimentos que se consumieron en los últimos siete días.   
+alimentacion['tot_cpond'] = alimentacion['cpond1' 
+                             ] + alimentacion['cpond3'
+                             ] + alimentacion['cpond4'
+                             ] + alimentacion['cpond5'
+                             ] + alimentacion['cpond8'
+                             ] + alimentacion['cpond9'
+                             ] + alimentacion['cpond10'
+                             ] + alimentacion['cpond11'
+                             ] + alimentacion['cpond12']
+
+# Se categoriza la dieta consumida en los hogares
+## Dieta consumida en los hogares
+alimentacion['dch'] = np.NAN
+alimentacion.loc[(alimentacion['tot_cpond'].between(0, 28)), 'dch'] = 1 # Pobre
+alimentacion.loc[((alimentacion['tot_cpond'] > 28) &
+                  (alimentacion['tot_cpond'] <= 42)), 'dch'] = 2 # Limítrofe
+alimentacion.loc[((alimentacion['tot_cpond'] > 42) &
+                  (~alimentacion['tot_cpond'].isna())), 'dch'] = 3 # Aceptable
+
+## Limitación en el consumo de Alimentos
+alimentacion['lca'] = np.NAN
+alimentacion.loc[((alimentacion['dch'] == 1) |
+                  (alimentacion['dch'] == 2)), 'lca'] = 1 # Limitado
+alimentacion.loc[(alimentacion['dch'] == 3), 'lca'] = 0 # No limitado
+```
+
+
+###### Indicador de carencia por acceso a la alimentación nutritiva y de calidad   
+
+Se considera en situación de carencia por acceso a la alimentación nutritiva y de calidad a la población en hogares que presenten, al menos, una de las siguientes características:
+  
+1. Grado inseguridad alimentaria moderada o severa.   
+2. Limitación en el consumo de alimentos.  
+
+
+```{python}
+alimentacion['ic_ali_nc'] = np.NAN
+alimentacion.loc[((alimentacion['ic_ali'] == 0) &
+                    (alimentacion['lca'] == 0)), 'ic_ali_nc'] = 0 # Sin carencia
+alimentacion.loc[((alimentacion['ic_ali'] == 1) |
+                  (alimentacion['lca'] == 1) &
+                   ((~alimentacion['ic_ali'].isna()) &
+                    (~alimentacion['lca'].isna()))), 'ic_ali_nc'] = 1 # Con carencia
+
+alimentacion = alimentacion[['folioviv', 'foliohog', 'ia_1ad', 'ia_2ad', 'ia_3ad', 'ia_4ad', 'ia_5ad', 'ia_6ad',
+                             'ia_7men', 'ia_8men', 'ia_9men', 'ia_10men', 'ia_11men', 'ia_12men', 'id_men',
+                             'tot_iaad', 'tot_iamen', 'ins_ali', 'dch', 'lca', 'ic_ali', 'ic_ali_nc']]
 ```
 
 
@@ -2713,7 +3283,7 @@ save(pobreza, file = paste0(here::here(), "/Output/Data/pobreza_22.RData"))
 
 ## Resultados 
 
-###  Nivel nacional 
+### Nivel nacional 
 
 ```{r}
 pob_w <- pobreza %>% 
@@ -2748,7 +3318,7 @@ colnames(nac) <- c("Porcentaje", "Millones de personas")
 
 
 
-###  Porcentaje y número de personas por indicador de pobreza, entidad federativa.   
+### Porcentaje y número de personas por indicador de pobreza, entidad federativa.   
 
 ```{r}
 vars  <- c("pobreza", "pobreza_m", "pobreza_e", "vul_car", "vul_ing", "no_pobv")
@@ -2769,7 +3339,7 @@ pob_ent <- pob_ent_por %>%
 ```
 
 
-###  Porcentaje y número de personas por indicador de carencia social, entidad federativa.    
+### Porcentaje y número de personas por indicador de carencia social, entidad federativa.    
 
 ```{r}
 vars  <- c("ic_rezedu", "ic_asalud", "ic_segsoc", "ic_cv", "ic_sbv", "ic_ali_nc", "carencias", "carencias3", "plp_e", "plp")
