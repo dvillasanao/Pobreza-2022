@@ -241,13 +241,15 @@ rezago_educativo.loc[(rezago_educativo['anac_e'] >= 1998) & (rezago_educativo['e
                       
 # No presenta carencia
 rezago_educativo.loc[(rezago_educativo['edad'].between(0, 2)), 'ic_rezedu'] = 0 # No presenta carencia
-rezago_educativo.loc[(rezago_educativo['anac_e'] >= 1998) & (rezago_educativo['edad'].between(3, 21)) & 
+rezago_educativo.loc[(rezago_educativo['anac_e'] >= 1998) & (rezago_educativo['edad'].between(3, 21)) &
                       (rezago_educativo['inas_esc'] == 0), 'ic_rezedu'] = 0 # No presenta carencia
 rezago_educativo.loc[(rezago_educativo['niv_ed'] == 3), 'ic_rezedu'] = 0 # No presenta carencia
-rezago_educativo.loc[((rezago_educativo['anac_e'] >= 1982) & (rezago_educativo['anac_e'] <= 1997)) & (rezago_educativo['edad'] >= 16) &
-                      ((rezago_educativo['niv_ed'] >= 2) & (~rezago_educativo['niv_ed'].isna())), 'ic_rezedu'] = 0 # No presenta carencia
-rezago_educativo.loc[(rezago_educativo['anac_e'] <= 1981) & (rezago_educativo['edad'] >= 16) &
-                      rezago_educativoativo['niv_ed'] >= 1) & (~rezago_educativo['niv_ed'].isna())), 'ic_rezedu'] = 0 # No presenta carencia
+rezago_educativo.loc[((rezago_educativo['anac_e'] >= 1982) & (rezago_educativo['anac_e'] <= 1997)) &
+                       (rezago_educativo['edad'] >= 16) & ((rezago_educativo['niv_ed'] >= 2) &
+                        (~rezago_educativo['niv_ed'].isna())), 'ic_rezedu'] = 0 # No presenta carencia
+rezago_educativo.loc[(rezago_educativo['anac_e'] <= 1981) &
+                      (rezago_educativo['edad'] >= 16) &
+                       ((rezago_educativo['niv_ed'] >= 1) & (~rezago_educativo['niv_ed'].isna())), 'ic_rezedu'] = 0 # No presenta carencia
                       
 # Hablante de lengua indígena
 rezago_educativo['hli'] = np.NAN
@@ -341,6 +343,11 @@ rezedu = (poblacion.copy()
           )
 ```
 
+**Se guarda la base de datos** 
+```{python}
+#del [[rezedu]] # Eliminamos el data.frame "rezedu"  
+rezedu.to_csv(current_directory + '/Output/Data/' + 'ic_rezedu22_2.csv', index = False)
+```
 
 #### II. Indicador de carencia por acceso a los servicios de salud  {.tabset .tabset-pills .top3-tiles}       
 
@@ -614,7 +621,17 @@ salud = salud[['folioviv', 'foliohog', 'numren', 'sexo', 'pop_insabi', 'atemed',
                'segvol_4', 'segvol_5', 'segvol_6', 'segvol_7', 'sa_dir', 'jef_sa', 'cony_sa', 'hijo_sa', 'ic_asalud', 'discap']]
 ```
 
-##### Opción 2    
+
+```{python}
+salud.to_csv(current_directory + '/Output/Data/' + '/ic_asalud22.csv', index = False)
+```
+
+##### Opción 2  
+
+```{python}
+#del [[trabajos]] # Eliminamos el data.frame "trabajos" 
+ocupados = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False)
+```
 
 ```{python}
 import pandas as pd
@@ -642,7 +659,7 @@ def add_ocupa(df):
 def pivot_and_finalize(df):
     df = df[['folioviv', 'foliohog', 'numren', 'id_trabajo', 'tipo_trab', 'ocupa']]
     df = pd.pivot_table(df, index=['folioviv', 'foliohog', 'numren'], columns='id_trabajo', 
-                        values=['tipo_trab', 'ocupa'], aggfunc=np.sum, fill_value=0)
+                        values=['tipo_trab', 'ocupa'], aggfunc = np.sum, fill_value=0)
     df.columns = [f'{i}{j}' for i, j in df.columns]
     df = df.reset_index()
     df['trab'] = 1
@@ -657,100 +674,252 @@ ocupados = (ocupados.copy()
             .pipe(pivot_and_finalize))
 ```
 
+**Se guarda la base de datos** 
+```{python}
+ocupados.to_csv(current_directory + '/Output/Data/' + 'ocupados22_2.csv', index = False)
+```
 
 **Indicador de carencia por acceso a los servicios de salud** 
 
 ```{python}
-# Funciones auxiliares
-def filtrar_salud(df):
-    return df.loc[~(
-        ((df['parentesco'] >= 400) & (df['parentesco'] < 500)) |
-        ((df['parentesco'] >= 700) & (df['parentesco'] < 800))
-    )]
+import pandas as pd
+import numpy as np
 
-def convertir_numericas(df):
-    cols_numericas = ['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2', 'ocupa1', 'atemed', 
-                      'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 
-                      'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 
-                      'asis_esc', 'pop_insabi', 'segvol_2']
-    df[cols_numericas] = df[cols_numericas].apply(pd.to_numeric, errors='coerce')
+def filter_poblacion(df):
+    return df.loc[~((df['parentesco'] >= 400) & (df['parentesco'] < 500) |
+                       (df['parentesco'] >= 700) & (df['parentesco'] < 800))]
+
+def merge_ocupados(df, ocupados):
+    return pd.merge(df, ocupados, 
+                     on = ['folioviv', 'foliohog', 'numren'], 
+                      how = 'left')
+
+def convert_to_numeric(df, columns):
+    return df[columns].apply(pd.to_numeric, errors = 'coerce')
+
+def define_pea(df):
+    df['pea'] = np.NAN
+    df.loc[(df['trab'] == 1) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 1
+    df.loc[((df['act_pnea1'] == 1) | (df['act_pnea2'] == 1)) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 2
+    df.loc[((df['edad'] >= 16) & (~df['edad'].isna()) &
+               (((df['act_pnea1'] != 1) | (df['act_pnea1'].isna())) &
+                ((df['act_pnea2'] != 1) | (df['act_pnea2'].isna()))) &
+               (((df['act_pnea1'] >= 2) & (df['act_pnea1'] <= 6)) |
+                ((df['act_pnea2'] >= 2) & (df['act_pnea2'] <= 6)))), 'pea'] = 0
     return df
 
-def crear_pea(df):
-    df['pea'] = np.nan
-    df.loc[(df['trab'] == 1) & (df['edad'] >= 16), 'pea'] = 1
-    df.loc[((df['act_pnea1'] == 1) | (df['act_pnea2'] == 1)) & (df['edad'] >= 16), 'pea'] = 2
-    df.loc[(df['edad'] >= 16) & (
-        ((df['act_pnea1'] >= 2) & (df['act_pnea1'] <= 6)) |
-        ((df['act_pnea2'] >= 2) & (df['act_pnea2'] <= 6))
-    ), 'pea'] = 0
-    return df
-
-def procesar_tipos_trabajo(df):
-    df['tipo_trab1'] = np.where(df['pea'] == 1, df['tipo_trab1'], np.nan)
-    df['tipo_trab1'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.nan, df['tipo_trab1'])
-    df['tipo_trab2'] = np.where(df['pea'] == 1, df['tipo_trab2'], np.nan)
-    df['tipo_trab2'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.nan, df['tipo_trab2'])
-    return df
-
-def procesar_servicios_medicos(df):
-    smlab1 = ((df['ocupa1'] == 1) & (df['atemed'] == 1) &
-              ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
-              (df['inscr_1'] == 1))
-    smlab2 = ((df['ocupa2'] == 1) & (df['atemed'] == 1) &
-              ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
-              (df['inscr_1'] == 1))
-    smcv = (df['edad'] >= 12) & (df['atemed'] == 1) & ((df['inst_1'] == 1) | (df['inst_2'] == 2) |
-                                                      (df['inst_3'] == 3) | (df['inst_4'] == 4)) & (df['inscr_6'] == 6)
-    df['smlab1'] = np.where(smlab1, 1, np.nan)
-    df['smlab2'] = np.where(smlab2, 1, np.nan)
-    df['smcv'] = np.where(smcv, 1, np.nan)
+def define_tipo_trab(df):
+    df['tipo_trab1'] = np.where(df['pea'] == 1, df['tipo_trab1'], df['tipo_trab1'])
+    df['tipo_trab1'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.NAN, df['tipo_trab1'])
+    df['tipo_trab1'] = np.where(df['pea'].isna(), np.NAN, df['tipo_trab1'])
+    df['tipo_trab2'] = np.where(df['pea'] == 1, df['tipo_trab2'], df['tipo_trab2'])
+    df['tipo_trab2'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.NAN, df['tipo_trab2'])
+    df['tipo_trab2'] = np.where(df['pea'].isna(), np.NAN, df['tipo_trab2'])
     return df
   
-# Define una función para calcular las variables auxiliares
-def calcular_variables_auxiliares(data):
-    data['inas_esc'] = np.where(data['asis_esc'] == 1, 0, np.where(data['asis_esc'] == 2, 1, np.nan))
-    data['jef'] = np.where((data['par'] == 1) & (data['sa_dir'] == 1), 1, np.nan)
-    data['cony'] = np.where((data['par'] == 2) & (data['sa_dir'] == 1), 1, np.nan)
-    data['hijo'] = np.where((data['par'] == 3) & (data['sa_dir'] == 1), 1, np.nan)
-    
-    return data
+def servicios_medicos_ocupacion_principal(df):
+    df['smlab1'] = np.NAN
+    df.loc[(df['ocupa1'] == 1), 'smlab1'] = 0
+    df.loc[((df['ocupa1'] == 1) & (df['atemed'] == 1) &
+            ((df['inst_1'] == 1) | (df['inst_2'] == 2) | 
+             (df['inst_3'] == 3) | (df['inst_4'] == 4)) & 
+              (df['inscr_1'] == 1)), 'smlab1'] = 1
+    return df
 
-# Define una función para realizar el agrupamiento y cálculo de las variables relacionadas con acceso a servicios de salud
-def calcular_acceso_servicios(data):
-    acceso_directo = data.groupby(['folioviv', 'foliohog']).agg(
-        jef_sa=('jef', lambda x: 1 if x.sum() > 0 else 0),
-        cony_sa=('cony', lambda x: 1 if x.sum() > 0 else 0),
-        hijo_sa=('hijo', lambda x: 1 if x.sum() > 0 else 0)
-    ).reset_index()
-    
-    data = pd.merge(data, acceso_directo, on=['folioviv', 'foliohog'], how='left')
-    
-    data['jef_sa'] = np.where(data['jef_sa'] > 0, 1, 0)
-    data['cony_sa'] = np.where(data['cony_sa'] > 0, 1, 0)
-    data['hijo_sa'] = np.where(data['hijo_sa'] > 0, 1, 0)
-    
-    return data
-```
+def servicios_medicos_ocupacion_secundaria(df):
+    df['smlab2'] = np.NAN
+    df.loc[(df['ocupa2'] == 1), 'smlab2'] = 0
+    df.loc[(df['ocupa2'] == 1) & (df['atemed'] == 1) &
+            ((df['inst_1'] == 1) | (df['inst_2'] == 2) | 
+              (df['inst_3'] == 3) | (df['inst_4'] == 4)) & 
+               (df['inscr_1'] == 1), 'smlab2'] = 1
+    return df
 
-```{python}
-# Cargar datos originales
-salud = pobla.copy()
+def contratacion_voluntaria_servicios_medicos(df):
+    df['smcv'] = np.NAN
+    df.loc[((df['edad'] >= 12) & (~df['edad'].isna())), 'smcv'] = 0
+    df.loc[((df['atemed'] == 1) &
+            ((df['inst_1'] == 1) | (df['inst_2'] == 2) | 
+              (df['inst_3'] == 3) | (df['inst_4'] == 4)) & 
+               (df['inscr_6'] == 6) & (df['edad'] >= 12) & 
+                (~df['edad'].isna())), 'smcv'] = 1
+    return df
 
-# Aplicar transformaciones encadenadas
-salud = salud.pipe(filtrar_salud)\
-            .pipe(convertir_numericas)\
-            .pipe(crear_pea)\
-            .pipe(procesar_tipos_trabajo)\
-            .pipe(procesar_servicios_medicos)
-            
-# Usa funciones de tuberías para encadenar las operaciones
-salud_procesado = (
-    poblacion.copy()
-    .pipe(calcular_variables_auxiliares)
-    .pipe(calcular_acceso_servicios)
+def acceso_directo_servicios_salud(df):
+    df['sa_dir'] = np.NAN
+    # Ocupación principal 
+    df.loc[((df['tipo_trab1'] == 1) & (df['smlab1'] == 1)), 'sa_dir'] = 1
+    df.loc[((df['tipo_trab1'] == 2) & ((df['smlab1'] == 1) | (df['smcv'] == 1))), 'sa_dir'] = 1
+    df.loc[((df['tipo_trab1'] == 3) & ((df['smlab1'] == 1) | (df['smcv'] == 1))), 'sa_dir'] = 1
+    # Ocupación secundaria
+    df.loc[((df['tipo_trab2'] == 1) & (df['smlab2'] == 1)), 'sa_dir'] = 1
+    df.loc[((df['tipo_trab2'] == 2) & ((df['smlab2'] == 1) | (df['smcv'] == 1))), 'sa_dir'] = 1
+    df.loc[((df['tipo_trab2'] == 3) & ((df['smlab2'] == 1) | (df['smcv'] == 1))), 'sa_dir'] = 1
+    df.loc[(df['sa_dir'].isna()), 'sa_dir'] = 0
+    return df
+
+def definir_nucleos_familiares(df):
+    df['par'] = np.NAN
+    df.loc[((df['parentesco'] >= 100) & (df['parentesco'] < 200)), 'par'] = 1
+    df.loc[((df['parentesco'] >= 200) & (df['parentesco'] < 300)), 'par'] = 2
+    df.loc[((df['parentesco'] >= 300) & (df['parentesco'] < 400)), 'par'] = 3
+    df.loc[(df['parentesco'] == 601), 'par'] = 4
+    df.loc[(df['parentesco'] == 615), 'par'] = 5
+    df.loc[(df['par'].isna()), 'par'] = 6
+    return df
+  
+def asistencia_escuela(df):
+    df['inas_esc'] = np.NAN
+    df.loc[(df['asis_esc'] == 1), 'inas_esc'] = 0
+    df.loc[(df['asis_esc'] == 2), 'inas_esc'] = 1
+    return df
+
+def identificar_jefes_conyuges_hijos(df):
+    df['jef'] = np.NAN
+    df.loc[(df['par'] == 1) & (df['sa_dir'] == 1), 'jef'] = 1
+    df.loc[((((df['inst_2'] == 2) | (df['inst_3'] == 3)) & (df['inscr_6'] == 6)) &
+            ((df['inst_1'].isna()) & (df['inst_4'].isna()) & (df['inst_6'].isna())) &
+             ((df['inscr_1'].isna()) & (df['inscr_2'].isna()) & (df['inscr_3'].isna()) &
+              (df['inscr_4'].isna()) & (df['inscr_5'].isna()) & (df['inscr_7'].isna()))), 'jef'] = np.NAN
+
+    df['cony'] = np.NAN
+    df.loc[(df['par'] == 2) & (df['sa_dir'] == 1), 'cony'] = 1
+    df.loc[((((df['inst_2'] == 2) | (df['inst_3'] == 3)) & (df['inscr_6'] == 6)) &
+            ((df['inst_1'].isna()) & (df['inst_4'].isna()) & (df['inst_6'].isna())) &
+             ((df['inscr_1'].isna()) & (df['inscr_2'].isna()) & (df['inscr_3'].isna()) &
+              (df['inscr_4'].isna()) & (df['inscr_5'].isna()) & (df['inscr_7'].isna()))), 'cony'] = np.NAN
+
+    df['hijo'] = np.NAN
+    df.loc[(df['par'] == 3) & (df['sa_dir'] == 1), 'hijo'] = 1
+    df.loc[((((df['inst_2'] == 2) | (df['inst_3'] == 3)) & (df['inscr_6'] == 6)) &
+            ((df['inst_1'].isna()) & (df['inst_4'].isna()) & (df['inst_6'].isna())) &
+             ((df['inscr_1'].isna()) & (df['inscr_2'].isna()) & (df['inscr_3'].isna()) &
+              (df['inscr_4'].isna()) & (df['inscr_5'].isna()) & (df['inscr_7'].isna()))), 'hijo'] = np.NAN
+    return df
+
+def calcular_acceso_servicios(df):
+    df_agg = (df.groupby(['folioviv', 'foliohog']).apply(lambda x: pd.Series({'jef_sa': x['jef'].sum(skipna = True),
+                                                                              'cony_sa': x['cony'].sum(skipna = True),
+                                                                              'hijo_sa': x['hijo'].sum(skipna = True)})
+                                                                              ).reset_index())
+    df = df_agg.merge(df, on=['folioviv', 'foliohog'])
+    df.loc[df['jef_sa'] > 0, 'jef_sa'] = 1
+    df.loc[df['cony_sa'] > 0, 'cony_sa'] = 1
+    df.loc[df['hijo_sa'] > 0, 'hijo_sa'] = 1
+    return df
+
+def acceso_servicios_salud(df):
+    df['s_salud'] = np.NAN
+    df.loc[(~df['pop_insabi'].isna()) & 
+            (~df['atemed'].isna()), 's_salud'] = 0
+    df.loc[(df['atemed'] == 1) & ((df['inst_1'] == 1) |
+            (df['inst_2'] == 2) | 
+             (df['inst_3'] == 3) | (df['inst_4'] == 4)) & 
+              ((df['inscr_3'] == 3) | (df['inscr_4'] == 4) | 
+               (df['inscr_6'] == 6) | (df['inscr_7'] == 7)), 's_salud'] = 1
+    return df
+
+def indicador_carencia_acceso_salud(df):
+    df['ic_asalud'] = np.NAN
+
+    # Acceso directo
+    df.loc[(df['sa_dir'] == 1), 'ic_asalud'] = 0 
+
+    # Parentesco directo: jefatura
+    df.loc[(df['par'] == 1) & (df['cony_sa'] == 1), 'ic_asalud'] = 0
+    df.loc[(df['par'] == 1) & (df['pea'] == 0) & (df['hijo_sa'] == 1), 'ic_asalud'] = 0
+
+    # Parentesco directo: cónyuge
+    df.loc[(df['par'] == 2) & (df['jef_sa'] == 1), 'ic_asalud'] = 0
+    df.loc[(df['par'] == 2) & (df['pea'] == 0) & (df['hijo_sa'] == 1), 'ic_asalud'] = 0
+
+    # Parentesco directo: descendientes
+    df.loc[(df['par'] == 3) & (df['edad'] < 16) & (df['jef_sa'] == 1), 'ic_asalud'] = 0
+    df.loc[(df['par'] == 3) & (df['edad'] < 16) & (df['cony_sa'] == 1), 'ic_asalud'] = 0
+    df.loc[(df['par'] == 3) & (df['edad'].between(16, 25)) & (df['inas_esc'] == 0) & (df['jef_sa'] == 1), 'ic_asalud'] = 0
+    df.loc[(df['par'] == 3) & (df['edad'].between(16, 25)) & (df['inas_esc'] == 0) & (df['cony_sa'] == 1), 'ic_asalud'] = 0
+
+    # Parentesco directo: ascendientes
+    df.loc[(df['par'] == 4) & (df['pea'] == 0) & (df['jef_sa'] == 1), 'ic_asalud'] = 0
+    df.loc[(df['par'] == 5) & (df['pea'] == 0) & (df['cony_sa'] == 1), 'ic_asalud'] = 0
+
+    # Otros núcleos familiares
+    df.loc[(df['s_salud'] == 1), 'ic_asalud'] = 0
+
+    # Acceso reportado
+    df.loc[(df['pop_insabi'] == 1) | ((df['pop_insabi'] == 2) & (df['atemed'] == 1) & 
+                                      ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | 
+                                       (df['inst_4'] == 4) | (df['inst_5'] == 5) | (df['inst_6'] == 6))) | 
+                                        (df['segvol_2'] == 2), 'ic_asalud'] = 0
+    df.loc[df['ic_asalud'].isna(), 'ic_asalud'] = 1
+    return df
+
+def presencia_discapacidad(df):
+    df['discap'] = np.NAN
+    df.loc[(df['disc_camin'] == '3') | (df['disc_camin'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_ver'] == '3') | (df['disc_ver'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_brazo'] == '3') | (df['disc_brazo'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_apren'] == '3') | (df['disc_apren'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_oir'] == '3') | (df['disc_oir'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_vest'] == '3') | (df['disc_vest'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_habla'] == '3') | (df['disc_habla'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_acti'] == '3') | (df['disc_acti'] == '4'), 'discap'] = 0
+    df.loc[(df['disc_camin'] == '&') | (df['disc_ver'] == '&') |
+            (df['disc_brazo'] == '&') | (df['disc_apren'] == '&') |
+             (df['disc_oir'] == '&') | (df['disc_vest'] == '&') &
+              (df['disc_habla'] == '&') | (df['disc_acti'] == '&'), 'discap'] = np.NAN
+    df.loc[(df['disc_camin'] == '1') | (df['disc_camin'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_ver'] == '1') | (df['disc_ver'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_brazo'] == '1') | (df['disc_brazo'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_apren'] == '1') | (df['disc_apren'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_oir'] == '1') | (df['disc_oir'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_vest'] == '1') | (df['disc_vest'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_habla'] == '1') | (df['disc_habla'] == '2'), 'discap'] = 1
+    df.loc[(df['disc_acti'] == '1') | (df['disc_acti'] == '2'), 'discap'] = 1
+    return df
+
+def seleccionar_columnas(df):
+    columnas = ['folioviv', 'foliohog', 'numren', 'sexo', 'pop_insabi', 'atemed', 'inst_1', 'inst_2', 'inst_3', 'inst_4', 
+                'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'inscr_8', 
+                'segvol_1', 'segvol_2', 'segvol_3', 'segvol_4', 'segvol_5', 'segvol_6', 'segvol_7', 'sa_dir', 'jef_sa', 
+                'cony_sa', 'hijo_sa', 'ic_asalud', 'discap']
+    return df[columnas]
+
+# Aplicando el pipeline
+salud = (
+         poblacion.copy()
+        .pipe(filter_poblacion)
+        .pipe(merge_ocupados, ocupados)
 )
 
+# Convirtiendo variables string a numéricas
+numeric_columns = ['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2', 'ocupa1', 'ocupa2', 'atemed', 
+                   'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 
+                   'inscr_1', 'inscr_2', 'inscr_3', 'inscr_4', 'inscr_5', 'inscr_6', 
+                   'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_2']
+salud[numeric_columns] = convert_to_numeric(salud, numeric_columns)
+
+salud = (salud.copy()
+              .pipe(define_pea)
+              .pipe(define_tipo_trab)
+              .pipe(servicios_medicos_ocupacion_principal)
+              .pipe(servicios_medicos_ocupacion_secundaria)
+              .pipe(contratacion_voluntaria_servicios_medicos)
+              .pipe(acceso_directo_servicios_salud)
+              .pipe(definir_nucleos_familiares)
+              .pipe(asistencia_escuela)
+              .pipe(identificar_jefes_conyuges_hijos)
+              .pipe(calcular_acceso_servicios)
+              .pipe(acceso_servicios_salud)
+              .pipe(indicador_carencia_acceso_salud)
+              .pipe(presencia_discapacidad)
+              .pipe(seleccionar_columnas)
+          )
+```
+
+**Se guarda la base de datos** 
+```{python}
+salud.to_csv(current_directory + '/Output/Data/' + 'ic_asalud22_2.csv', index = False)
 ```
 
 #### III. Indicador de carencia por acceso a la seguridad social {.tabset .tabset-pills .top3-tiles}  
@@ -811,7 +980,6 @@ prestaciones = prestaciones.reset_index()
 prestaciones['trab'] = 1
 prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'trab', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'ocupa1', 'ocupa2']]
 ```
-
 
 **Se guarda la base de datos** 
 ```{python}
@@ -1160,62 +1328,76 @@ seguridad_social.to_csv(current_directory + '/Output/Data/' + '/ic_segsoc22.csv'
 ###### Prestaciones laborales
 
 ```{python}
-prestaciones = trabajos.copy()
+trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False)
+```
 
-#Convirtiendo variables string a numericas
-prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
-             ] = prestaciones[['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
-                              ].apply(pd.to_numeric, errors = 'coerce')
+```{python}
+def convertir_a_numerico(df):
+    columnas = ['subor', 'indep', 'tiene_suel', 'pago', 'pres_8', 'id_trabajo']
+    df[columnas] = df[columnas].apply(pd.to_numeric, errors = 'coerce')
+    return df
 
-# Tipo de trabajador: identifica la población subordinada e independiente
-prestaciones['tipo_trab'] = np.NAN
-## Subordinados
-prestaciones.loc[(prestaciones['subor'] == 1), 'tipo_trab'] = 1
+def tipo_de_trabajador(df):
+    df['tipo_trab'] = np.NAN
 
-## Independientes que reciben un pago
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & 
-                  (prestaciones['tiene_suel'] == 1)), 'tipo_trab'] = 2
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & 
-                  (prestaciones['pago'] == 1)), 'tipo_trab'] = 2
+    # Subordinados
+    df.loc[df['subor'] == 1, 'tipo_trab'] = 1
 
-## Independientes que no reciben un pago
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 1) & 
-                  (prestaciones['tiene_suel'] == 2)), 'tipo_trab'] = 3
-prestaciones.loc[((prestaciones['subor'] == 2) & (prestaciones['indep'] == 2) & 
-                  ((prestaciones['pago'] == 2) | (prestaciones['pago'] == 3))), 'tipo_trab'] = 3
- 
+    # Independientes que reciben un pago
+    df.loc[(df['subor'] == 2) & (df['indep'] == 1) & (df['tiene_suel'] == 1), 'tipo_trab'] = 2
+    df.loc[(df['subor'] == 2) & (df['indep'] == 2) & (df['pago'] == 1), 'tipo_trab'] = 2
 
-# Ahorro para el retiro o pensión para la vejez (SAR, Afore)
-prestaciones['aforlab'] = np.NAN
-prestaciones.loc[(prestaciones['pres_8'].isna()), 'aforlab'] = 0 
-prestaciones.loc[(prestaciones['pres_8'] == 8), 'aforlab'] = 1 
+    # Independientes que no reciben un pago
+    df.loc[(df['subor'] == 2) & (df['indep'] == 1) & (df['tiene_suel'] == 2), 'tipo_trab'] = 3
+    df.loc[(df['subor'] == 2) & (df['indep'] == 2) & ((df['pago'] == 2) | (df['pago'] == 3)), 'tipo_trab'] = 3
 
-# Ocupación principal o secundaria
-prestaciones['ocupa'] = np.NAN
-prestaciones.loc[(prestaciones['id_trabajo'] == 1), 'ocupa'] = 1 
-prestaciones.loc[(prestaciones['id_trabajo'] == 2), 'ocupa'] = 1 
+    return df
 
-# Distinción de prestaciones en trabajo principal y secundario
-prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'id_trabajo', 'tipo_trab', 'aforlab', 'ocupa']]
+def ahorro_para_el_retiro(df):
+    df['aforlab'] = np.NAN
+    df.loc[df['pres_8'].isna(), 'aforlab'] = 0
+    df.loc[df['pres_8'] == 8, 'aforlab'] = 1
+    return df
 
-prestaciones = pd.pivot_table(prestaciones, 
-                               index = ['folioviv', 'foliohog', 'numren'], 
-                                columns = 'id_trabajo', 
-                                 values = ['tipo_trab', 'aforlab', 'ocupa'], 
-                                  aggfunc = np.sum, 
-                                   fill_value = 0)
-prestaciones.columns = [f'{i}{j}' for i, j in prestaciones.columns]
-prestaciones = prestaciones.reset_index()
+def ocupacion_principal_secundaria(df):
+    df['ocupa'] = np.NAN
+    df.loc[df['id_trabajo'] == 1, 'ocupa'] = 1
+    df.loc[df['id_trabajo'] == 2, 'ocupa'] = 1
+    return df
 
-#Identificación de la población trabajadora (toda la que reporta al menos un empleo en la base de trabajos.csv)
-prestaciones['trab'] = 1
-prestaciones = prestaciones[['folioviv', 'foliohog', 'numren', 'trab', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'ocupa1', 'ocupa2']]
+def pivot_prestaciones(df):
+    df = pd.pivot_table(df,
+                        index = ['folioviv', 'foliohog', 'numren'],
+                        columns = 'id_trabajo',
+                        values = ['tipo_trab', 'aforlab', 'ocupa'],
+                        aggfunc = np.sum,
+                        fill_value = 0
+                        )
+    df.columns = [f'{i}{j}' for i, j in df.columns]
+    df = df.reset_index()
+    return df
+
+def identificar_poblacion_trabajadora(df):
+    df['trab'] = 1
+    columnas = ['folioviv', 'foliohog', 'numren', 'trab', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'ocupa1', 'ocupa2']
+    return df[columnas]
+
+# Aplicando el pipeline
+prestaciones = (
+                trabajos.copy()
+                        .pipe(convertir_a_numerico)
+                        .pipe(tipo_de_trabajador)
+                        .pipe(ahorro_para_el_retiro)
+                        .pipe(ocupacion_principal_secundaria)
+                        .pipe(pivot_prestaciones)
+                        .pipe(identificar_poblacion_trabajadora)
+)
 ```
 
 
 **Se guarda la base de datos** 
 ```{python}
-prestaciones.to_csv(current_directory + '/Output/Data/' + '/prestaciones22.csv', index = False)
+prestaciones.to_csv(current_directory + '/Output/Data/' + '/prestaciones22_2.csv', index = False)
 ```
 
 ###### Ingresos por jubilaciones o pensiones
@@ -1223,81 +1405,86 @@ prestaciones.to_csv(current_directory + '/Output/Data/' + '/prestaciones22.csv',
 ```{python}
 # Ingresos por jubilaciones o pensiones
 pensiones = pd.read_csv(current_directory + "/Bases de datos/ingresos.csv", low_memory = False)
-
-pensiones = pensiones[((pensiones['clave'] == 'P032') | (pensiones['clave'] == 'P033') | 
-                       (pensiones['clave'] == 'P104') | (pensiones['clave'] == 'P045'))]
 ```
 
 
 ```{python}
-# Definición de los deflactores 2022 
-dic21 =	0.9475376203	
-ene22 =	0.9531433002
-feb22 =	0.9610510246	
-mar22 =	0.9705661414	
-abr22 =	0.9758164180	
-may22 =	0.9775368933
-jun22 =	0.9857919437	
-jul22 =	0.9930938669
-ago22 =	1.0000000000
-sep22 =	1.0062034038
-oct22 =	1.0118979346
-nov22 =	1.0177217030
-dic22 =	1.0216069077
+# Definiendo las constantes de deflación
+deflactores = {
+    1: 1.0118979346,  # oct22
+    2: 0.9610510246,  # feb22
+    3: 0.9705661414,  # mar22
+    4: 0.9758164180,  # abr22
+    5: 0.9775368933,  # may22
+    6: 0.9857919437,  # jun22
+    7: 0.9930938669,  # jul22
+    8: 1.0000000000,  # ago22
+    9: 1.0062034038,  # sep22
+    10: 1.0118979346,  # oct22
+    11: 1.0177217030,  # nov22
+    12: 1.0216069077   # dic22
+}
 ```
 
 ```{python}
-#Convirtiendo variables string a numericas
-pensiones[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
-          ] = pensiones[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']].apply(pd.to_numeric, errors = 'coerce')
-          
-# Se deflactan los ingresos por jubilaciones, pensionesiones y programas de adultos mayores de acuerdo con el mes de levantamiento
-pensiones['ing_6'] = np.where(pensiones['mes_6'].isna(), pensiones['ing_6'] ,
-                      np.where(pensiones['mes_6'] == 2, pensiones['ing_6'] / feb22,
-                       np.where(pensiones['mes_6'] == 3, pensiones['ing_6'] / mar22,
-                        np.where(pensiones['mes_6'] == 4, pensiones['ing_6'] / abr22,
-                         pensiones['ing_6'] / may22))))
-pensiones['ing_5'] = np.where(pensiones['mes_5'].isna(), pensiones['ing_5'] ,
-                      np.where(pensiones['mes_5'] == 3, pensiones['ing_5'] / mar22,
-                       np.where(pensiones['mes_5'] == 4, pensiones['ing_5'] / abr22,
-                        np.where(pensiones['mes_5'] == 5, pensiones['ing_5'] / may22,
-                         pensiones['ing_5'] / jun22))))
-pensiones['ing_4'] = np.where(pensiones['mes_4'].isna(), pensiones['ing_4'] ,
-                      np.where(pensiones['mes_4'] == 4, pensiones['ing_4'] / abr22,
-                       np.where(pensiones['mes_4'] == 5, pensiones['ing_4'] / may22,
-                        np.where(pensiones['mes_4'] == 6, pensiones['ing_4'] / jun22,
-                         pensiones['ing_4'] / jul22 ))))
-pensiones['ing_3'] = np.where(pensiones['mes_3'].isna(), pensiones['ing_3'] ,
-                      np.where(pensiones['mes_3'] == 5, pensiones['ing_3'] / may22,
-                       np.where(pensiones['mes_3'] == 6, pensiones['ing_3'] / jun22,
-                        np.where(pensiones['mes_3'] == 7, pensiones['ing_3'] / jul22,
-                         pensiones['ing_3'] / ago22))))
-pensiones['ing_2'] = np.where(pensiones['mes_2'].isna(), pensiones['ing_2'] ,
-                      np.where(pensiones['mes_2'] == 6, pensiones['ing_2'] / jun22,
-                       np.where(pensiones['mes_2'] == 7, pensiones['ing_2'] / jul22,
-                        np.where(pensiones['mes_2'] == 8, pensiones['ing_2'] / ago22,
-                         pensiones['ing_2'] / sep22))))
-pensiones['ing_1'] = np.where(pensiones['mes_1'].isna(), pensiones['ing_1'] ,
-                      np.where(pensiones['mes_1'] == 7, pensiones['ing_1'] / jul22,
-                       np.where(pensiones['mes_1'] == 8, pensiones['ing_1'] / ago22,
-                        np.where(pensiones['mes_1'] == 9, pensiones['ing_1'] / sep22,
-                         pensiones['ing_1'] / oct22 ))))
+# Función para filtrar las pensiones relevantes
+def filtrar_pensiones(df):
+    claves_relevantes = ['P032', 'P033', 'P104', 'P045']
+    return df[df['clave'].isin(claves_relevantes)]
 
-# Ingreso promedio mensual por programas de adultos mayores
-pensiones['ing_pam'] = np.where((pensiones['clave'] == 'P104') | (pensiones['clave'] == 'P045'),
-                                  np.apply_along_axis(np.mean, 1, pensiones[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]), 0)
-# Ingreso promedio mensual por jubilaciones y pensiones
-pensiones['ing_pens'] = np.where((pensiones['clave'] == 'P032') | (pensiones['clave'] == 'P033'),
-                                   np.apply_along_axis(np.mean, 1, pensiones[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]), 0)
+# Función para convertir variables string a numéricas
+def convertir_a_numerico(df):
+    columnas = ['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 
+                'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+    df[columnas] = df[columnas].apply(pd.to_numeric, errors = 'coerce')
+    return df
 
-pensiones = pensiones.groupby(['folioviv', 'foliohog', 'numren'])[['ing_pens', 'ing_pam']].sum(numeric_only = True)
-pensiones = pensiones.reset_index()
+# Función para deflactar los ingresos
+def deflactar(ingreso, mes):
+    if pd.isna(mes):
+        return ingreso
+    return ingreso / deflactores.get(mes, 1)
+
+def deflactar_ingresos(df):
+    for i in range(1, 7):
+        mes_col = f'mes_{i}'
+        ing_col = f'ing_{i}'
+        df[ing_col] = df.apply(lambda row: deflactar(row[ing_col], row[mes_col]), axis = 1)
+    return df
+
+# Función para calcular los ingresos promedios
+def calcular_ingresos_promedios(df):
+    # Ingreso promedio mensual por programas de adultos mayores
+    df['ing_pam'] = np.where(df['clave'].isin(['P104', 'P045']),
+                              np.apply_along_axis(np.mean, 1, df[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]),
+                               0
+                             )
+    # Ingreso promedio mensual por jubilaciones y pensiones
+    df['ing_pens'] = np.where(df['clave'].isin(['P032', 'P033']),
+                                np.apply_along_axis(np.mean, 1, df[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']]),
+                                 0)
+    return df
+
+# Función para agrupar los datos por hogar y sumar los ingresos
+def agrupar_y_sumar(df):
+    df = df.groupby(['folioviv', 'foliohog', 'numren'])[['ing_pens', 'ing_pam']].sum(numeric_only = True)
+    return df.reset_index()
+
+# Aplicando el pipeline
+pensiones = (
+             pensiones.copy()
+                      .pipe(filtrar_pensiones)
+                      .pipe(convertir_a_numerico)
+                      .pipe(deflactar_ingresos)
+                      .pipe(calcular_ingresos_promedios)
+                      .pipe(agrupar_y_sumar)
+     )
 ```
 
 
 **Se guarda la base de datos** 
 ```{python}
-pensiones.to_csv(current_directory + '/Output/Data/' + '/pensiones22.csv', index = False)
+pensiones.to_csv(current_directory + '/Output/Data/' + '/pensiones22_2.csv', index = False)
 ```
 
 
@@ -1309,7 +1496,12 @@ Se encuentra en situación de carencia por acceso a la seguridad social a la pob
 1. No disponga de acceso directo a la seguridad social.   
 2. No cuente con parentesco directo con alguna persona dentro del hogar que tenga acceso directo.    
 3. No recibe servicios médicos por parte de algún familiar dentro o fuera del hogar, por muerte del asegurado o por contratación propia.  
-4. No recibe ingreso por parte de un programa de adultos mayores donde el monto sea mayor o igual al valor promedio de la canasta alimentaria rural y urbana.    
+4. No recibe ingreso por parte de un programa de adultos mayores donde el monto sea mayor o igual al valor promedio de la canasta alimentaria rural y urbana. 
+
+```{python}
+pensiones = pd.read_csv(current_directory + '/Output/Data/' + '/pensiones22.csv', low_memory = False)
+prestaciones = pd.read_csv(current_directory + '/Output/Data/' + '/prestaciones22.csv', low_memory = False)
+```
 
 ```{python}
 # Valor monetario de las líneas de pobreza extrema por ingresos rural y urbana
@@ -1318,43 +1510,7 @@ lp1_rur = 1600.18
 lp_pam = (lp1_urb + lp1_rur)/2
 ```
 
- 
 ```{python}
-# Construcción del indicador
-seguridad_social = poblacion.copy()
-
-# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
-seguridad_social = seguridad_social[~((seguridad_social['parentesco'] >= 400) & (seguridad_social['parentesco'] < 500) |
-                   (seguridad_social['parentesco'] >= 700) & (seguridad_social['parentesco'] < 800))]
-
-# Integración de bases
-seguridad_social = pd.merge(seguridad_social, prestaciones, 
-                             on = ['folioviv', 'foliohog', 'numren'], 
-                              how = 'left')
-seguridad_social = pd.merge(seguridad_social, pensiones, 
-                    on = ['folioviv', 'foliohog', 'numren'], 
-                     how = 'left')
-
-#Convirtiendo variables string a numericas
-seguridad_social[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'trabajo_mp',
-                  'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 
-                  'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']
-                 ] = seguridad_social[['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2','ocupa1', 'atemed', 'trabajo_mp',
-                                       'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3', 
-                                       'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']].apply(pd.to_numeric, errors = 'coerce')
-
-# PEA (personas de 16 años o más)
-seguridad_social['pea'] = np.NAN
-seguridad_social.loc[(seguridad_social['trab'] == 1) & (seguridad_social['edad'] >= 16) & 
-                      (~seguridad_social['edad'].isna()), 'pea'] = 1 # PEA: ocupada
-seguridad_social.loc[((seguridad_social['act_pnea1'] == 1) | (seguridad_social['act_pnea2'] == 1)) & 
-                      (seguridad_social['edad'] >= 16) & (~seguridad_social['edad'].isna()), 'pea'] = 2 # PEA: desocupada
-seguridad_social.loc[((seguridad_social['edad'] >= 16) & (~seguridad_social['edad'].isna()) &
-                      (((seguridad_social['act_pnea1'] != 1) | (seguridad_social['act_pnea1'].isna())) &
-                       ((seguridad_social['act_pnea2'] != 1) | (seguridad_social['act_pnea2'].isna()))) &
-                        (((seguridad_social['act_pnea1'] >= 2) & (seguridad_social['act_pnea1'] <= 6)) |
-                         ((seguridad_social['act_pnea2'] >= 2) & (seguridad_social['act_pnea2'] <= 6)))), 'pea'] = 0 # PNEA
-
 # Acceso directo a la seguridad social
 ## Ocupación principal
 seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'] == 1, 
@@ -1547,6 +1703,50 @@ seguridad_social.loc[(seguridad_social['ic_segsoc'].isna()), 'ic_segsoc'] = 1 # 
 
 seguridad_social = seguridad_social[['folioviv', 'foliohog', 'numren', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'pea', 'jub', 
 'smlab1', 'smlab2', 'smcv', 'aforecv', 'ss_dir', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 's_salud', 'pam', 'ing_pam', 'ic_segsoc']]
+```
+
+ 
+```{python}
+def filtrar_poblacion_objetivo(df):
+    return df[~((df['parentesco'] >= 400) & (df['parentesco'] < 500) | (df['parentesco'] >= 700) & (df['parentesco'] < 800))]
+
+def integrar_bases(df, prestaciones, pensiones):
+    df = pd.merge(df, 
+                   prestaciones, 
+                    on = ['folioviv', 'foliohog', 'numren'], 
+                     how = 'left')
+    df = pd.merge(df, 
+                   pensiones, 
+                    on = ['folioviv', 'foliohog', 'numren'], 
+                     how = 'left')
+    return df
+
+def convertir_a_numerico(df, columnas):
+    df[columnas] = df[columnas].apply(pd.to_numeric, errors = 'coerce')
+    return df
+
+def calcular_pea(df):
+    df['pea'] = np.NAN
+    df.loc[(df['trab'] == 1) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 1  # PEA: ocupada
+    df.loc[((df['act_pnea1'] == 1) | (df['act_pnea2'] == 1)) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 2  # PEA: desocupada
+    df.loc[((df['edad'] >= 16) & (~df['edad'].isna()) &
+            (((df['act_pnea1'] != 1) | (df['act_pnea1'].isna())) &
+             ((df['act_pnea2'] != 1) | (df['act_pnea2'].isna()))) &
+            (((df['act_pnea1'] >= 2) & (df['act_pnea1'] <= 6)) |
+             ((df['act_pnea2'] >= 2) & (df['act_pnea2'] <= 6)))), 'pea'] = 0  # PNEA
+    return df
+
+# Convirtiendo variables string a numéricas
+columnas_a_convertir = ['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2', 'ocupa1', 'atemed', 'trabajo_mp',
+                        'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3',
+                        'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']
+    
+seguridad_social = (poblacion.copy()
+                             .pipe(filtrar_poblacion_objetivo)
+                             .pipe(integrar_bases, prestaciones  = prestaciones, pensiones = pensiones)
+                             .pipe(convertir_a_numerico, columnas = columnas_a_convertir)
+                             .pipe(calcular_pea)
+                             )
 ```
 
 **Se guarda la base de datos** 
@@ -2426,9 +2626,17 @@ alimentacion = alimentacion[['folioviv', 'foliohog', 'ia_1ad', 'ia_2ad', 'ia_3ad
 ```
 
 
-#### VII. Bienestar económico (ingresos) {.tabset .tabset-pills}   
+**Se guarda la base de datos** 
+```{python}
+alimentacion.to_csv(current_directory + '/Output/Data/' + 'ic_ali22.csv', index = False)
+```
 
-##### Ingresos
+
+#### VII. Bienestar económico (ingresos) {.tabset .tabset-pills .top3-tiles}   
+
+##### Opción 1 {.tabset .tabset-pills .top4-tiles}   
+
+###### Ingresos    
 
 Para la construcción del ingreso corriente del hogar es necesario utilizar información sobre la condición de ocupación y los ingresos de los individuos.  
 Se utiliza la información contenida en la base trabajo.csv para identificar a la población ocupada que declara tener como prestación laboral aguinaldo, ya sea por su trabajo principal o secundario, a fin de incorporar los ingresos por este concepto en la medición
@@ -2469,7 +2677,7 @@ aguinaldos = aguinaldos[['folioviv', 'foliohog', 'numren', 'aguinaldo1', 'aguina
 
 **Se guarda la base de datos** 
 ```{python}
-aguinaldos.to_csv(current_directory + '/Output/Data/' + 'ic_ali22.csv', index = False)
+aguinaldos.to_csv(current_directory + '/Output/Data/' + 'aguinaldo22.csv', index = False)
 ```
 
 **Ahora se incorpora a la base de ingresos**
@@ -2623,387 +2831,1118 @@ ingreso_deflactado = ingreso_deflactado.reset_index()
 ingreso_deflactado.to_csv(current_directory + '/Output/Data/' + '/ingreso_deflactado22.csv', index = False)
 ```
 
-##### No Monetario  
+###### No Monetario  
 
 En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que identifique la decena de levantamiento.   
 
 Creación del ingreso no monetario deflactado a pesos de agosto del 2022.  
 
-```{r}
-load(file = paste0(here::here(), "/Data/gastoshogar.RData")) 
-load(file = paste0(here::here(), "/Data/gastospersona.RData"))
+```{python}
+gastoshogar = pd.read_csv(current_directory + "/Bases de datos/gastoshogar.csv", low_memory = False).astype(str)
+gastospersona = pd.read_csv(current_directory + "/Bases de datos/gastospersona.csv", low_memory = False).astype(str)
 
-gastoshogar <- gastoshogar %>% 
-                mutate(base = 1)
-
-gastospersona <- gastospersona  %>% 
-                  mutate(base = 2) 
+gastoshogar['base'] = 1
 ```
 
-```{r}
-no.monetario <- gastospersona %>%
-                 bind_rows(., gastoshogar) %>%
-                  mutate(frecuencia = ifelse(.$base == 2, 
-                                              .$frec_rem, 
-                                               .$frecuencia), 
-                          # En el caso de la información de gasto no monetario, para deflactar se utiliza la decena 
-                          # de levantamiento de la encuesta, la cual se encuentra en la octava posición del folio de la vivienda. 
-                          # En primer lugar se obtiene una variable que identifique la decena de levantamiento.
-                         decena = str_sub(str_pad(.$folioviv, 10, "left", pad = "0"), 8, 8))
+```{python}
+no_monetario = pd.concat([gastoshogar, gastospersona], 
+                          ignore_index = True)
+                          
+no_monetario.loc[no_monetario['base'].isna(), 'base'] = 2
+
+no_monetario.loc[no_monetario['base'] == 2, 'frecuencia'] = no_monetario['frec_rem']
+
+# En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, 
+# la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que 
+# identifique la decena de levantamiento.  
+
+no_monetario['decena'] = no_monetario['folioviv'].astype(str).str.zfill(10).str[7]
 ```
 
 **Definición de los deflactores**
 
-```{r}
-# Rubro 1.1 semanal, Alimentos		
-  d11w07	<-	0.9869825057
-  d11w08	<-	1.0000000000
-  d11w09	<-	1.0130754464
-  d11w10	<-	1.0178275200
-  d11w11	<-	1.0207468579
-  
-  # Rubro 1.2 semanal, Bebidas alcohólicas y tabaco		
-  d12w07	<-	0.9923340135
-  d12w08	<-	1.0000000000
-  d12w09	<-	1.0035071112
-  d12w10	<-	1.0111808568
-  d12w11	<-	1.0131982216
-  
-  # Rubro 2 trimestral, Vestido, calzado y accesorios		
-  d2t05	<-	0.9899050815
-  d2t06	<-	0.9941003723
-  d2t07	<-	0.9997465345
-  d2t08	<-	1.0083352270
-  
-  # Rubro 3 mensual, viviendas		
-  d3m07	<-	0.9998142481
-  d3m08	<-	1.0000000000
-  d3m09	<-	0.9978682753
-  d3m10	<-	1.0031577830
-  d3m11	<-	1.0197073965
-  
-  # Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar		
-  d42m07	<-	0.9894769136
-  d42m08	<-	1.0000000000
-  d42m09	<-	1.0086286240
-  d42m10	<-	1.0182083142
-  d42m11	<-	1.0237613131
-  
-  # Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar		
-  d42t05	<-	0.9787953163
-  d42t06	<-	0.9897197934
-  d42t07	<-	0.9993685126
-  d42t08	<-	1.0089456461
-  
-  # Rubro 4.1 semestral, Muebles y aparatos dómesticos		
-  d41s02	<-	1.0003069312
-  d41s03	<-	0.9993861376
-  d41s04	<-	0.9992122603
-  d41s05	<-	0.9991442214
-  
-  # Rubro 5.1 trimestral, Salud		
-  d51t05	<-	0.9909917367
-  d51t06	<-	0.9954834527
-  d51t07	<-	0.9994564693
-  d51t08	<-	1.0030487384
-  
-  # Rubro 6.1.1 semanal, Transporte público urbano		
-  d611w07	<-	0.9963207274
-  d611w08	<-	1.0000000000
-  d611w09	<-	1.0034865488
-  d611w10	<-	1.0052385833
-  d611w11	<-	1.0064912880
-  
-  # Rubro 6 mensual, Transporte		
-  d6m07	<-	0.9987845893
-  d6m08	<-	1.0000000000
-  d6m09	<-	1.0001664946
-  d6m10	<-	1.0057274150
-  d6m11	<-	1.0076837268
-  
-  # Rubro 6 semestral, Transporte		
-  d6s02	<-	0.9808628306
-  d6s03	<-	0.9879901879
-  d6s04	<-	0.9927380596
-  d6s05	<-	0.9969378864
-  
-  # Rubro 7 mensual, Educación y esparcimiento		
-  d7m07	<-	0.9961413091
-  d7m08	<-	1.0000000000
-  d7m09	<-	1.0095233900
-  d7m10	<-	1.0144128271
-  d7m11	<-	1.0174522069
-  
-  # Rubro 2.3 mensual, Accesorios y cuidados del vestido		
-  d23m07	<-	0.9952443607
-  d23m08	<-	1.0000000000
-  d23m09	<-	1.0081869233
-  d23m10	<-	1.0108184343
-  d23m11	<-	1.0072323555
-  
-  # Rubro 2.3 trimestral,  Accesorios y cuidados del vestido		
-  d23t05	<-	0.9914948875
-  d23t06	<-	0.9956428139
-  d23t07	<-	1.0011437613
-  d23t08	<-	1.0063351192
-  
-  # INPC semestral		
-  dINPCs02 <-	0.9773093813
-  dINPCs03 <-	0.9838008772
-  dINPCs04 <-	0.9897404209
-  dINPCs05 <-	0.9957540070
+```{python}
+# Definición de los deflactores
+d11w07 = 0.9869825057
+d11w08 = 1.0000000000
+d11w09 = 1.0130754464
+d11w10 = 1.0178275200
+d11w11 = 1.0207468579
+
+# Rubro 1.2 semanal, Bebidas alcohólicas y tabaco		
+d12w07 = 0.9923340135
+d12w08 = 1.0000000000
+d12w09 = 1.0035071112
+d12w10 = 1.0111808568
+d12w11 = 1.0131982216
+
+# Rubro 2 trimestral, Vestido, calzado y accesorios		
+d2t05 = 0.9899050815
+d2t06 = 0.9941003723
+d2t07 = 0.9997465345
+d2t08 = 1.0083352270
+
+# Rubro 3 mensual, viviendas		
+d3m07 = 0.9998142481
+d3m08 = 1.0000000000
+d3m09 = 0.9978682753
+d3m10 = 1.0031577830
+d3m11 = 1.0197073965
+
+# Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar		
+d42m07 = 0.9894769136
+d42m08 = 1.0000000000
+d42m09 = 1.0086286240
+d42m10 = 1.0182083142
+d42m11 = 1.0237613131
+
+# Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar		
+d42t05 = 0.9787953163
+d42t06 = 0.9897197934
+d42t07 = 0.9993685126
+d42t08 = 1.0089456461
+
+# Rubro 4.1 semestral, Muebles y aparatos dómesticos		
+d41s02 = 1.0003069312
+d41s03 = 0.9993861376
+d41s04 = 0.9992122603
+d41s05 = 0.9991442214
+
+# Rubro 5.1 trimestral, Salud		
+d51t05 = 0.9909917367
+d51t06 = 0.9954834527
+d51t07 = 0.9994564693
+d51t08 = 1.0030487384
+
+# Rubro 6.1.1 semanal, Transporte público urbano		
+d611w07 = 0.9963207274
+d611w08 = 1.0000000000
+d611w09 = 1.0034865488
+d611w10 = 1.0052385833
+d611w11 = 1.0064912880
+
+# Rubro 6 mensual, Transporte		
+d6m07 = 0.9987845893
+d6m08 = 1.0000000000
+d6m09 = 1.0001664946
+d6m10 = 1.0057274150
+d6m11 = 1.0076837268
+
+# Rubro 6 semestral, Transporte		
+d6s02 = 0.9808628306
+d6s03 = 0.9879901879
+d6s04 = 0.9927380596
+d6s05 = 0.9969378864
+
+# Rubro 7 mensual, Educación y esparcimiento		
+d7m07 = 0.9961413091
+d7m08 = 1.0000000000
+d7m09 = 1.0095233900
+d7m10 = 1.0144128271
+d7m11 = 1.0174522069
+
+# Rubro 2.3 mensual, Accesorios y cuidados del vestido		
+d23m07 = 0.9952443607
+d23m08 = 1.0000000000
+d23m09 = 1.0081869233
+d23m10 = 1.0108184343
+d23m11 = 1.0072323555
+
+# Rubro 2.3 trimestral,  Accesorios y cuidados del vestido		
+d23t05 = 0.9914948875
+d23t06 = 0.9956428139
+d23t07 = 1.0011437613
+d23t08 = 1.0063351192
+
+# INPC semestral		
+dINPCs02 = 0.9773093813
+dINPCs03 = 0.9838008772
+dINPCs04 = 0.9897404209
+dINPCs05 = 0.9957540070
 ```
 
 
 **Una vez definidos los deflactores, se seleccionan los rubros** 
 
-```{r}
-no.monetario <- no.monetario %>%
-                 mutate(gasnomon = .$gas_nm_tri/3,
-                        esp = if_else(.$tipo_gasto == "G4", 1, NA_real_),
-                        reg = if_else(.$tipo_gasto == "G5" | .$tipo_gasto == "G6", 1, NA_real_))  %>%
-                 filter(!(tipo_gasto %in% c("G2", "G3", "G7"))) %>%
-                 # Control para la frecuencia de los regalos recibidos por persona
-                 filter(!(((frecuencia >= 5 & frecuencia <= 6) | is.na(frecuencia) | frecuencia == 0) & base == 1 & tipo_gasto == "G5")) %>%
-                 filter(!(((frecuencia == 9) | is.na(frecuencia)) & base == 2 & tipo_gasto == "G5")) %>%
-                 mutate(
-                        # Se definen las asignaciones para las diferentes claves de ingreso
-                        ali_nm = if_else(between(.$clave, "A001", "A222") | between(.$clave, "A242", "A247"), .$gasnomon, NA_real_),
-                        alta_nm = if_else(between(.$clave, "A223", "A241"), .$gasnomon, NA_real_),
-                        veca_nm = if_else(between(.$clave, "H001", "H122") | .$clave == "H136", .$gasnomon, NA_real_),
-                        viv_nm = if_else(between(.$clave, "G001", "G016") | between(.$clave, "R001", "R004") | .$clave == "R013", .$gasnomon, NA_real_),
-                        lim_nm = if_else(between(.$clave, "C001", "C024"), .$gasnomon, NA_real_),
-                        cris_nm = if_else(between(.$clave, "I001", "I026"), .$gasnomon, NA_real_),
-                        ens_nm = if_else(between(.$clave, "K001", "K037"), .$gasnomon, NA_real_),
-                        sal_nm = if_else(between(.$clave, "J001", "J072"), .$gasnomon, NA_real_),
-                        tpub_nm = if_else(between(.$clave, "B001", "B007"), .$gasnomon, NA_real_),
-                        tfor_nm = if_else(between(.$clave, "M001", "M018") | between(.$clave, "F007", "F014"), .$gasnomon, NA_real_),
-                        com_nm = if_else(between(.$clave, "F001", "F006") | between(.$clave, "R005", "R008") | between(.$clave, "R010", "R011"), .$gasnomon, NA_real_),
-                        edre_nm = if_else(between(.$clave, "E001", "E034") | between(.$clave, "H134", "H135") | between(.$clave, "L001", "L029") | between(.$clave, "N003", "N005") | .$clave == "R009", .$gasnomon, NA_real_),
-                        edba_nm = if_else((between(.$clave, "E002", "E003") | between(.$clave, "H134", "H135")), .$gasnomon, NA_real_),
-                        cuip_nm = if_else(between(.$clave, "D001", "D026") | .$clave == "H132", .$gasnomon, NA_real_),
-                        accp_nm = if_else(between(.$clave, "H123", "H131") | .$clave == "H133", .$gasnomon, NA_real_),
-                        otr_nm = if_else(between(.$clave, "N001", "N002") | between(.$clave, "N006", "N016") | between(.$clave, "T901", "T915") | .$clave == "R012", .$gasnomon, NA_real_),
-                        
-                        reda_nm = if_else(between(.$clave, "T901", "T915") | .$clave == "N013", .$gasnomon, NA_real_)
-                        ) %>% 
-                 # Se deflactan los rubros del gasto no monetario según la decena de levantamiento
-                   mutate(
-                          # Gasto no monetario en Alimentos deflactado (semanal)
-                          ali_nm = case_when(.$decena %in% c(1, 2, 3) ~ .$ali_nm/d11w08,
-                                             .$decena %in% c(4, 5, 6) ~ .$ali_nm/d11w09,
-                                             .$decena %in% c(7, 8, 9) ~ .$ali_nm/d11w10,
-                                             .$decena %in% c(0) ~ .$ali_nm/d11w11),
-                          # Gasto no monetario en Alcohol y tabaco deflactado (semanal)
-                          alta_nm = case_when(.$decena %in% c(1,2,3) ~ .$alta_nm/d12w08,
-                                              .$decena %in% c(4,5,6) ~ .$alta_nm/d12w09,
-                                              .$decena %in% c(7,8,9) ~ .$alta_nm/d12w10,
-                                              .$decena %in% c(0) ~ .$alta_nm/d12w11),
-                          # Gasto no monetario en Vestido y calzado deflactado (trimestral)
-                          veca_nm = case_when(.$decena %in% c(1,2) ~ .$veca_nm/d2t05,
-                                              .$decena %in% c(3,4,5) ~ .$veca_nm/d2t06,
-                                              .$decena %in% c(6,7,8) ~ .$veca_nm/d2t07,
-                                              .$decena %in% c(9,0) ~ .$veca_nm/d2t08),
-                          # Gasto no monetario en viviendas y servicios de conservación deflactado (mensual)
-                          viv_nm = case_when(.$decena %in% c(1,2) ~ .$viv_nm/d3m07,
-                                             .$decena %in% c(3,4,5) ~ .$viv_nm/d3m08,
-                                             .$decena %in% c(6,7,8) ~ .$viv_nm/d3m09,
-                                             .$decena %in% c(9,0) ~ .$viv_nm/d3m10),
-                          # Gasto no monetario en Artículos de limpieza deflactado (mensual)
-                          lim_nm = case_when(.$decena %in% c(1,2) ~ .$lim_nm/d42m07,
-                                             .$decena %in% c(3,4,5) ~ .$lim_nm/d42m08,
-                                             .$decena %in% c(6,7,8) ~ .$lim_nm/d42m09,
-                                             .$decena %in% c(9,0) ~ .$lim_nm/d42m10),
-                          # Gasto no monetario en Cristalería y blancos deflactado (trimestral)
-                          cris_nm = case_when(.$decena %in% c(1,2) ~ .$cris_nm/d42t05,
-                                              .$decena %in% c(3,4,5) ~ .$cris_nm/d42t06,
-                                              .$decena %in% c(6,7,8) ~ .$cris_nm/d42t07,
-                                              .$decena %in% c(9,0) ~ .$cris_nm/d42t08),
-                          # Gasto no monetario en Enseres domésticos y muebles deflactado (semestral)
-                          ens_nm = case_when(.$decena %in% c(1,2) ~ .$ens_nm/d41s02,
-                                             .$decena %in% c(3,4,5) ~ .$ens_nm/d41s03,
-                                             .$decena %in% c(6,7,8) ~ .$ens_nm/d41s04,
-                                             .$decena %in% c(9,0) ~ .$ens_nm/d41s05),
-                          # Gasto no monetario en Salud deflactado (trimestral)
-                          sal_nm = case_when(.$decena %in% c(1,2) ~ .$sal_nm/d51t05,
-                                             .$decena %in% c(3,4,5) ~ .$sal_nm/d51t06,
-                                             .$decena %in% c(6,7,8) ~ .$sal_nm/d51t07,
-                                             .$decena %in% c(9,0) ~ .$sal_nm/d51t08),
-                          # Gasto no monetario en Transporte público deflactado (semanal)
-                          tpub_nm = case_when(.$decena %in% c(1,2,3) ~ .$tpub_nm/d611w08,
-                                              .$decena %in% c(4,5,6) ~ .$tpub_nm/d611w09,
-                                              .$decena %in% c(7,8,9) ~ .$tpub_nm/d611w10,
-                                              .$decena %in% c(0) ~ .$tpub_nm/d611w11),
-                          # Gasto no monetario en Transporte foráneo deflactado (semestral)
-                          tfor_nm = case_when(.$decena %in% c(1,2) ~ .$tfor_nm/d6s02,
-                                              .$decena %in% c(3,4,5) ~ .$tfor_nm/d6s03,
-                                              .$decena %in% c(6,7,8) ~ .$tfor_nm/d6s04,
-                                              .$decena %in% c(9,0) ~ .$tfor_nm/d6s05),
-                          # Gasto no monetario en Comunicaciones deflactado (mensual)
-                          com_nm = case_when(.$decena %in% c(1,2) ~ .$com_nm/d6m07,
-                                             .$decena %in% c(3,4,5) ~ .$com_nm/d6m08,
-                                             .$decena %in% c(6,7,8) ~ .$com_nm/d6m09,
-                                             .$decena %in% c(9,0) ~ .$com_nm/d6m10),
-                          # Gasto no monetario en Educación y recreación deflactado (mensual)
-                          edre_nm = case_when(.$decena %in% c(1,2) ~ .$edre_nm/d7m07,
-                                              .$decena %in% c(3,4,5) ~ .$edre_nm/d7m08,
-                                              .$decena %in% c(6,7,8) ~ .$edre_nm/d7m09,
-                                              .$decena %in% c(9,0) ~ .$edre_nm/d7m10),
-                          # Gasto no monetario en Educación básica deflactado (mensual)
-                          edba_nm = case_when(.$decena %in% c(1,2) ~ .$edba_nm/d7m07,
-                                              .$decena %in% c(3,4,5) ~ .$edba_nm/d7m08,
-                                              .$decena %in% c(6,7,8) ~ .$edba_nm/d7m09,
-                                              .$decena %in% c(9,0) ~ .$edba_nm/d7m10),
-                          # Gasto no monetario en Cuidado personal deflactado (mensual)
-                          cuip_nm = case_when(.$decena %in% c(1,2) ~ .$cuip_nm/d23m07,
-                                              .$decena %in% c(3,4,5) ~ .$cuip_nm/d23m08,
-                                              .$decena %in% c(6,7,8) ~ .$cuip_nm/d23m09,
-                                              .$decena %in% c(9,0) ~ .$cuip_nm/d23m10),
-                          # Gasto no monetario en Accesorios personales deflactado (trimestral)
-                          accp_nm = case_when(.$decena %in% c(1,2) ~ .$accp_nm/d23t05,
-                                              .$decena %in% c(3,4,5) ~ .$accp_nm/d23t06,
-                                              .$decena %in% c(6,7,8) ~ .$accp_nm/d23t07,
-                                              .$decena %in% c(9,0) ~ .$accp_nm/d23t08),
-                           # Gasto no monetario en Otros gastos y transferencias deflactado (semestral)
-                          otr_nm = case_when(.$decena %in% c(1,2) ~ .$otr_nm/dINPCs02,
-                                             .$decena %in% c(3,4,5) ~ .$otr_nm/dINPCs03,
-                                             .$decena %in% c(6,7,8) ~ .$otr_nm/dINPCs04,
-                                             .$decena %in% c(9,0) ~ .$otr_nm/dINPCs05),
-                          # Gasto no monetario en Regalos Otorgados deflactado
-                          reda_nm = case_when(.$decena %in% c(1,2) ~ .$reda_nm/dINPCs02,
-                                              .$decena %in% c(3,4,5) ~ .$reda_nm/dINPCs03,
-                                              .$decena %in% c(6,7,8) ~ .$reda_nm/dINPCs04,
-                                              .$decena %in% c(9,0) ~ .$reda_nm/dINPCs05))
+```{python}
+#Convirtiendo variables string a numericas
+no_monetario[['gas_nm_tri', 'gasto_nm']] = no_monetario[['gas_nm_tri', 'gasto_nm']
+                                                        ].apply(pd.to_numeric, errors = 'coerce')
+
+# Una vez definidos los deflactores, se seleccionan los rubros
+no_monetario['gasnomon'] = no_monetario['gas_nm_tri'] / 3
+no_monetario.loc[no_monetario['tipo_gasto'] == 'G4', 'esp'] = 1
+no_monetario.loc[no_monetario['tipo_gasto'].isin(['G5', 'G6']), 'reg'] = 1
+no_monetario = no_monetario.loc[~no_monetario['tipo_gasto'].isin(['G2', 'G3', 'G7'])]
+
+# Control para la frecuencia de los regalos recibidos por el hogar
+no_monetario = no_monetario[~(((no_monetario['frecuencia'].between('5', '6')) |
+                               (no_monetario['frecuencia'].isna()) |
+                                (no_monetario['frecuencia'] == '0')) &
+                                 (no_monetario['base'] == 1) &
+                                  (no_monetario['tipo_gasto'] == 'G5'))]
+
+# Control para la frecuencia de los regalos recibidos por persona
+no_monetario = no_monetario[~(((no_monetario['frecuencia'] == '9') |
+                              (no_monetario['frecuencia'].isna())) &
+                               (no_monetario['base'] == 2) &
+                                (no_monetario['tipo_gasto'] == 'G5'))]
+
+# Se deflactan los rubros del gasto no monetario según la decena de levantamiento 
+no_monetario.loc[(no_monetario['clave'].between('A001', 'A222') |
+                   no_monetario['clave'].between('A242', 'A247')), 'ali_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('A223', 'A241')), 'alta_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('H001', 'H122') |
+                  (no_monetario['clave'] == 'H136')), 'veca_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('G001', 'G016') |
+                   no_monetario['clave'].between('R001', 'R004') |
+                    (no_monetario['clave'] == 'R013')), 'viv_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('C001', 'C024')), 'lim_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('I001', 'I026')), 'cris_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('K001', 'K037')), 'ens_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('J001', 'J072')), 'sal_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('B001', 'B007')), 'tpub_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('M001', 'M018') |
+                   no_monetario['clave'].between('F007', 'F014')), 'tfor_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('F001', 'F006') |
+                   no_monetario['clave'].between('R005', 'R008') |
+                    no_monetario['clave'].between('R010', 'R011')), 'com_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('E001', 'E034') |
+                   no_monetario['clave'].between('H134', 'H135') |
+                    no_monetario['clave'].between('L001', 'L029') |
+                     no_monetario['clave'].between('N003', 'N005') |
+                      (no_monetario['clave'] == 'R009')), 'edre_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('E002', 'E003') |
+                   no_monetario['clave'].between('H134', 'H135')), 'edba_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('D001', 'D026') |
+                  (no_monetario['clave'] == 'H132')), 'cuip_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('H123', 'H131') |
+                   (no_monetario['clave'] == 'H133')), 'accp_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('N001', 'N002') |
+                   no_monetario['clave'].between('N006', 'N016') |
+                    no_monetario['clave'].between('T901', 'T915') |
+                     (no_monetario['clave'] == 'R012')), 'otr_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('T901', 'T915') |
+                  (no_monetario['clave'] == 'N013')), 'reda_nm'] = no_monetario['gasnomon']
+
+# Gasto no monetario en Alimentos deflactado (semanal)
+no_monetario['ali_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['ali_nm']/d11w08, 
+                          np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['ali_nm']/d11w09,
+                           np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['ali_nm']/d11w10,
+                                    no_monetario['ali_nm']/d11w11)))
+
+# Gasto no monetario en Alcohol y tabaco deflactado (semanal)
+no_monetario['alta_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['alta_nm']/d12w08,
+                           np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['alta_nm']/d12w09,
+                            np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['alta_nm']/d12w10,
+                                      no_monetario['alta_nm']/d12w11)))
+
+# Gasto no monetario en Vestido y calzado deflactado (trimestral)
+no_monetario['veca_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['veca_nm']/d2t05,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['veca_nm']/d2t06,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['veca_nm']/d2t07,
+                                      no_monetario['veca_nm']/d2t08)))
+
+# Gasto no monetario en viviendas y servicios de conservación deflactado (mensual)
+no_monetario['viv_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['viv_nm']/d3m07,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['viv_nm']/d3m08,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['viv_nm']/d3m09,
+                                     no_monetario['viv_nm']/d3m10)))
+
+# Gasto no monetario en Artículos de limpieza deflactado (mensual)
+no_monetario['lim_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['lim_nm']/d42m07,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['lim_nm']/d42m08,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['lim_nm']/d42m09,
+                                     no_monetario['lim_nm']/d42m10)))
+
+# Gasto no monetario en Cristalería y blancos deflactado (trimestral)
+no_monetario['cris_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['cris_nm']/d42t05,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['cris_nm']/d42t06,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['cris_nm']/d42t07,
+                                      no_monetario['cris_nm']/d42t08)))
+
+# Gasto no monetario en Enseres domésticos y muebles deflactado (semestral)
+no_monetario['ens_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['ens_nm']/d41s02,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['ens_nm']/d41s03,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['ens_nm']/d41s04,
+                                     no_monetario['ens_nm']/d41s05)))
+
+# Gasto no monetario en Salud deflactado (trimestral)
+no_monetario['sal_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['sal_nm']/d51t05,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['sal_nm']/d51t06,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['sal_nm']/d51t07,
+                                     no_monetario['sal_nm']/d51t08)))
+
+# Gasto no monetario en Transporte público deflactado (semanal)
+no_monetario['tpub_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['tpub_nm']/d611w08,
+                           np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['tpub_nm']/d611w09,
+                            np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['tpub_nm']/d611w10,
+                                      no_monetario['tpub_nm']/d611w11)))
+
+# Gasto no monetario en Transporte foráneo deflactado (semestral)
+no_monetario['tfor_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['tfor_nm']/d6s02,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['tfor_nm']/d6s03,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['tfor_nm']/d6s04,
+                                      no_monetario['tfor_nm']/d6s05)))
+
+# Gasto no monetario en Comunicaciones deflactado (mensual)
+no_monetario['com_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['com_nm']/d6m07,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['com_nm']/d6m08,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['com_nm']/d6m09,
+                                     no_monetario['com_nm']/d6m10)))
+
+# Gasto no monetario en Educación y recreación deflactado (mensual)
+no_monetario['edre_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['edre_nm']/d7m07,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['edre_nm']/d7m08,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['edre_nm']/d7m09,
+                                      no_monetario['edre_nm']/d7m10)))
+
+# Gasto no monetario en Educación básica deflactado (mensual)
+no_monetario['edba_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['edba_nm']/d7m07,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['edba_nm']/d7m08,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['edba_nm']/d7m09,
+                                      no_monetario['edba_nm']/d7m10)))
+
+# Gasto no monetario en Cuidado personal deflactado (mensual)
+no_monetario['cuip_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['cuip_nm']/d23m07,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['cuip_nm']/d23m08,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['cuip_nm']/d23m09,
+                                      no_monetario['cuip_nm']/d23m10)))
+
+# Gasto no monetario en Accesorios personales deflactado (trimestral)
+no_monetario['accp_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['accp_nm']/d23t05,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['accp_nm']/d23t06,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['accp_nm']/d23t07,
+                                      no_monetario['accp_nm']/d23t08)))
+
+# Gasto no monetario en Otros gastos y transferencias deflactado (semestral)
+no_monetario['otr_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['otr_nm']/dINPCs02,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['otr_nm']/dINPCs03,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['otr_nm']/dINPCs04,
+                                     no_monetario['otr_nm']/dINPCs05)))
+
+# Gasto no monetario en Regalos Otorgados deflactado
+no_monetario['reda_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['reda_nm']/dINPCs02,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['reda_nm']/dINPCs03,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['reda_nm']/dINPCs04,
+                                      no_monetario['reda_nm']/dINPCs05)))
 ```
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(no.monetario, paste0(here::here(), "/Output/Data/ingresonomonetario_def22.csv"), row.names = F)
-save(no.monetario, file = paste0(here::here(), "/Output/Data/ingresonomonetario_def22.RData"))
+**Se guarda la base de datos** 
+```{python}
+no_monetario.to_csv(current_directory + '/Output/Data/' + '/ingresonomonetario_def22.csv', index = False)
 ```
 
 **Construcción de la base de pagos en especie a partir de la base de gasto no monetario**  
 
-```{r}
-pagos.especie <- no.monetario %>%
-                  filter(esp == 1) %>%
-                   group_by(folioviv, foliohog) %>% 
-                    summarise(across(all_of(names(.)[endsWith(names(.), "_nm")]), ~sum(., na.rm = TRUE))) %>%
-                     rename_with(~ paste0(., "e"), 4:20)
+```{python}
+# Construcción de la base de pagos en especie a partir de la base de gasto no monetario
+pagos_especie = no_monetario[no_monetario['esp'] == 1]
+
+pagos_especie = pagos_especie.groupby(['folioviv', 'foliohog'])[['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm',
+                                       'lim_nm', 'cris_nm', 'ens_nm', 'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm',
+                                       'edba_nm', 'cuip_nm', 'accp_nm', 'otr_nm', 'reda_nm']].sum(numeric_only = True)
+
+pagos_especie = pagos_especie.reset_index()
+
+pagos_especie.columns = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 
+                         'cris_nme', 'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 
+                         'cuip_nme', 'accp_nme', 'otr_nme', 'reda_nme']
 ```
 
-
-**Se guarda la base de datos**
-```{r}
-#fwrite(pagos.especie, paste0(here::here(), "/Output/Data/esp_def22.csv"), row.names = F)
-save(pagos.especie, file = paste0(here::here(), "/Output/Data/esp_def22.RData"))
+**Se guarda la base de datos** 
+```{python}
+pagos_especie.to_csv(current_directory + '/Output/Data/' + '/esp_def22.csv', index = False)
 ```
+
 
 **Construcción de base de regalos a partir de la base no monetaria**  
 
-```{r}
-regalos <- no.monetario %>% 
-            filter(reg == 1) %>%
-             group_by(folioviv, foliohog) %>% 
-              summarise(across(all_of(names(.)[endsWith(names(.), "_nm")]), ~sum(., na.rm = TRUE))) %>%
-               rename_with(~ paste0(., "r"), 4:20)
+```{python}
+# Construcción de base de regalos a partir de la base no monetaria
+regalos = no_monetario[no_monetario['reg'] == 1]
+
+regalos = regalos.groupby(['folioviv', 'foliohog'])[['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm', 'lim_nm', 'cris_nm',
+                                                     'ens_nm', 'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm', 'edba_nm',
+                                                     'cuip_nm', 'accp_nm', 'otr_nm', 'reda_nm']].sum(numeric_only = True)
+regalos = regalos.reset_index()
+
+regalos.columns = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr',
+                   'ens_nmr', 'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr',
+                   'otr_nmr', 'reda_nmr']
+```
+
+**Se guarda la base de datos**
+```{python}
+regalos.to_csv(current_directory + '/Output/Data/' + '/reg_def22.csv', index = False)
+```
+
+##### Opción 2 {.tabset .tabset-pills .top4-tiles}   
+
+###### Ingresos    
+
+Para la construcción del ingreso corriente del hogar es necesario utilizar información sobre la condición de ocupación y los ingresos de los individuos.  
+Se utiliza la información contenida en la base trabajo.csv para identificar a la población ocupada que declara tener como prestación laboral aguinaldo, ya sea por su trabajo principal o secundario, a fin de incorporar los ingresos por este concepto en la medición
+
+Creación del ingreso monetario deflactado a pesos de agosto del 2022   
+
+```{python}
+trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_memory = False)
 ```
 
 
+```{python}
+aguinaldos = trabajos.copy()
+
+#Convirtiendo variables string a numericas
+aguinaldos[['numren', 'id_trabajo', 'pres_2']
+           ] = aguinaldos[['numren', 'id_trabajo', 'pres_2']
+                          ].apply(pd.to_numeric, errors = 'coerce')
+
+#Generando la base de aguinaldo
+aguinaldos = pd.pivot_table(aguinaldos, 
+                             index=['folioviv', 'foliohog', 'numren'], 
+                              columns = 'id_trabajo', 
+                               values=['pres_2'], 
+                                aggfunc = np.sum, 
+                                 fill_value = 0)
+                                 
+aguinaldos.columns = [f'{i}{j}' for i, j in aguinaldos.columns]
+aguinaldos = aguinaldos.reset_index()
+
+aguinaldos['trab'] = 1 # Población con al menos un empleo 
+
+aguinaldos['aguinaldo1'] = np.where(aguinaldos['pres_21'] == 2, 1, 0) # Aguinaldo trabajo principal
+aguinaldos['aguinaldo2'] = np.where(aguinaldos['pres_22'] == 2, 1, 0) # Aguinaldo trabajo secundario
+
+aguinaldos = aguinaldos[['folioviv', 'foliohog', 'numren', 'aguinaldo1', 'aguinaldo2', 'trab']]
+```
+
+**Se guarda la base de datos** 
+```{python}
+aguinaldos.to_csv(current_directory + '/Output/Data/' + 'aguinaldo22.csv', index = False)
+```
+
+**Ahora se incorpora a la base de ingresos**
+
+```{python}
+ingresos = pd.read_csv(current_directory + "/Bases de datos/ingresos.csv", low_memory = False)
+```
+
+
+```{python}
+ingreso_deflactado = ingresos.copy()
+
+ingreso_deflactado = pd.merge(ingresos, 
+                               aguinaldos, 
+                                on = ['folioviv', 'foliohog', 'numren'], 
+                                 how = 'outer') 
+
+ingreso_deflactado = ingreso_deflactado[~(((ingreso_deflactado['clave'] == 'P009') & (ingreso_deflactado['aguinaldo1'] != 1)) |
+                                          ((ingreso_deflactado['clave'] == 'P016') & (ingreso_deflactado['aguinaldo2'] != 1)))]
+```
+
+Una vez realizado lo anterior, se procede a deflactar el ingreso recibido por los hogares a precios de agosto de 2022. Para ello, se utilizan las variables meses, las cuales toman los valores 2 a 10 e indican el mes en que se recibió el ingreso respectivo.   
+
+**Definición de los deflactores 2022**   
+
+```{python}
+# Definición de los deflactores 2022 
+dic21 =	0.9475376203	
+ene22 =	0.9531433002
+feb22 =	0.9610510246	
+mar22 =	0.9705661414	
+abr22 =	0.9758164180	
+may22 =	0.9775368933
+jun22 =	0.9857919437	
+jul22 =	0.9930938669
+ago22 =	1.0000000000
+sep22 =	1.0062034038
+oct22 =	1.0118979346
+nov22 =	1.0177217030
+dic22 =	1.0216069077
+```
+
+```{python}
+#Convirtiendo variables string a numericas
+ingreso_deflactado[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+                     ] = ingreso_deflactado[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4',
+                                               'ing_5', 'ing_6']
+                                              ].apply(pd.to_numeric, errors = 'coerce')
+
+ingreso_deflactado['ing_6'] = np.where(ingreso_deflactado['mes_6'].isna(), 
+                                        ingreso_deflactado['ing_6'] ,
+                              np.where(ingreso_deflactado['mes_6'] == 2, 
+                                        ingreso_deflactado['ing_6'] / feb22,
+                              np.where(ingreso_deflactado['mes_6'] == 3, 
+                                        ingreso_deflactado['ing_6'] / mar22,
+                              np.where(ingreso_deflactado['mes_6'] == 4, 
+                                        ingreso_deflactado['ing_6'] / abr22,
+                                         ingreso_deflactado['ing_6'] / may22))))
+ingreso_deflactado['ing_5'] = np.where(ingreso_deflactado['mes_5'].isna(), 
+                                        ingreso_deflactado['ing_5'] ,
+                              np.where(ingreso_deflactado['mes_5'] == 3, 
+                                        ingreso_deflactado['ing_5'] / mar22,
+                              np.where(ingreso_deflactado['mes_5'] == 4, 
+                                        ingreso_deflactado['ing_5'] / abr22,
+                              np.where(ingreso_deflactado['mes_5'] == 5, 
+                                        ingreso_deflactado['ing_5'] / may22,
+                                         ingreso_deflactado['ing_5'] / jun22))))
+ingreso_deflactado['ing_4'] = np.where(ingreso_deflactado['mes_4'].isna(), 
+                                        ingreso_deflactado['ing_4'] ,
+                              np.where(ingreso_deflactado['mes_4'] == 4,  
+                                        ingreso_deflactado['ing_4'] / abr22,
+                              np.where(ingreso_deflactado['mes_4'] == 5, 
+                                        ingreso_deflactado['ing_4'] / may22,
+                              np.where(ingreso_deflactado['mes_4'] == 6, 
+                                        ingreso_deflactado['ing_4'] / jun22,
+                                         ingreso_deflactado['ing_4'] / jul22))))
+ingreso_deflactado['ing_3'] = np.where(ingreso_deflactado['mes_3'].isna(), 
+                                        ingreso_deflactado['ing_3'] ,
+                              np.where(ingreso_deflactado['mes_3'] == 5, 
+                                        ingreso_deflactado['ing_3'] / may22,
+                              np.where(ingreso_deflactado['mes_3'] == 6,  
+                                        ingreso_deflactado['ing_3'] / jun22,
+                              np.where(ingreso_deflactado['mes_3'] == 7, 
+                                        ingreso_deflactado['ing_3'] / jul22,
+                                         ingreso_deflactado['ing_3'] / ago22))))
+ingreso_deflactado['ing_2'] = np.where(ingreso_deflactado['mes_2'].isna(), 
+                                        ingreso_deflactado['ing_2'] ,
+                              np.where(ingreso_deflactado['mes_2'] == 6, 
+                                        ingreso_deflactado['ing_2'] / jun22,
+                              np.where(ingreso_deflactado['mes_2'] == 7, 
+                                        ingreso_deflactado['ing_2'] / jul22,
+                              np.where(ingreso_deflactado['mes_2'] == 8, 
+                                        ingreso_deflactado['ing_2'] / ago22,
+                                         ingreso_deflactado['ing_2'] / sep22))))
+ingreso_deflactado['ing_1'] = np.where(ingreso_deflactado['mes_1'].isna(), 
+                                        ingreso_deflactado['ing_1'] ,
+                              np.where(ingreso_deflactado['mes_1'] == 7, 
+                                        ingreso_deflactado['ing_1'] / jul22,
+                              np.where(ingreso_deflactado['mes_1'] == 8, 
+                                        ingreso_deflactado['ing_1'] / ago22,
+                              np.where(ingreso_deflactado['mes_1'] == 9, 
+                                        ingreso_deflactado['ing_1'] / sep22,
+                                         ingreso_deflactado['ing_1'] / oct22))))
+```
+
+Se deflactan las claves P008 y P015 (Reparto de utilidades) y P009 y P016 (aguinaldo) con los deflactores de mayo a agosto 2022 y de diciembre de 2021 a agosto 2022, respectivamente, y se obtiene el promedio mensual.   
+
+```{python}
+index = ['P008', 'P009', 'P015', 'P016']
+```
+
+```{python}
+ingreso_deflactado.loc[ingreso_deflactado['clave'].isin(['P008', 'P015']), 'ing_1'] = ingreso_deflactado['ing_1'] / may22 / 12
+ingreso_deflactado.loc[ingreso_deflactado['clave'].isin(['P009', 'P016']), 'ing_1'] = ingreso_deflactado['ing_1'] / dic21 / 12
+
+cols = ['ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+for col in cols:
+    ingreso_deflactado.loc[ingreso_deflactado['clave'].isin(index) & ([col] == 0), col] = None
+    
+# Una vez realizada la deflactación, se procede a obtener el ingreso mensual promedio en los últimos seis meses, para cada persona y clave de ingreso
+ingreso_deflactado['ing_mens'] = ingreso_deflactado[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']].mean(axis = 1, skipna = True)
+
+# Para obtener el ingreso corriente monetario, se seleccionan las claves de ingreso correspondientes
+ingreso_deflactado.loc[((ingreso_deflactado['clave'].between('P001', 'P009')) |
+                        (ingreso_deflactado['clave'].between('P011', 'P016')) | 
+                         (ingreso_deflactado['clave'].between('P018', 'P048')) | 
+                          (ingreso_deflactado['clave'].between('P067', 'P081')) | 
+                           (ingreso_deflactado['clave'].between('P101', 'P108'))), 'ing_mon'] = ingreso_deflactado['ing_mens']
+
+# Para obtener el ingreso laboral, se seleccionan las claves de ingreso correspondientes
+ingreso_deflactado.loc[((ingreso_deflactado['clave'].between('P001', 'P009')) | 
+                        (ingreso_deflactado['clave'].between('P011', 'P016')) | 
+                         (ingreso_deflactado['clave'].between('P018', 'P022')) | 
+                          (ingreso_deflactado['clave'].between('P067', 'P081'))), 'ing_lab'] = ingreso_deflactado['ing_mens']
+
+# Para obtener el ingreso por rentas, se seleccionan las claves de ingreso correspondientes
+ingreso_deflactado.loc[ingreso_deflactado['clave'].between('P023', 'P031'), 'ing_ren'] = ingreso_deflactado['ing_mens']
+
+# Para obtener el ingreso por transferencias, se seleccionan las claves de ingreso correspondientes
+ingreso_deflactado.loc[((ingreso_deflactado['clave'].between('P032', 'P048')) | 
+                        (ingreso_deflactado['clave'].between('P101', 'P108'))), 'ing_tra'] = ingreso_deflactado['ing_mens']
+
+# Se estima el total de ingresos de cada  hogar
+ingreso_deflactado = ingreso_deflactado.groupby(['folioviv', 'foliohog'])[['ing_mon', 'ing_lab', 'ing_ren', 'ing_tra']
+                                                                          ].sum(numeric_only = True)
+ingreso_deflactado = ingreso_deflactado.reset_index()
+```
+
+**Se guarda la base de datos** 
+```{python}
+ingreso_deflactado.to_csv(current_directory + '/Output/Data/' + '/ingreso_deflactado22.csv', index = False)
+```
+
+###### No Monetario  
+
+En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que identifique la decena de levantamiento.   
+
+Creación del ingreso no monetario deflactado a pesos de agosto del 2022.  
+
+```{python}
+gastoshogar = pd.read_csv(current_directory + "/Bases de datos/gastoshogar.csv", low_memory = False).astype(str)
+gastospersona = pd.read_csv(current_directory + "/Bases de datos/gastospersona.csv", low_memory = False).astype(str)
+
+gastoshogar['base'] = 1
+```
+
+```{python}
+no_monetario = pd.concat([gastoshogar, gastospersona], 
+                          ignore_index = True)
+                          
+no_monetario.loc[no_monetario['base'].isna(), 'base'] = 2
+
+no_monetario.loc[no_monetario['base'] == 2, 'frecuencia'] = no_monetario['frec_rem']
+
+# En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, 
+# la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que 
+# identifique la decena de levantamiento.  
+
+no_monetario['decena'] = no_monetario['folioviv'].astype(str).str.zfill(10).str[7]
+```
+
+**Definición de los deflactores**
+
+```{python}
+# Definición de los deflactores
+d11w07 = 0.9869825057
+d11w08 = 1.0000000000
+d11w09 = 1.0130754464
+d11w10 = 1.0178275200
+d11w11 = 1.0207468579
+
+# Rubro 1.2 semanal, Bebidas alcohólicas y tabaco		
+d12w07 = 0.9923340135
+d12w08 = 1.0000000000
+d12w09 = 1.0035071112
+d12w10 = 1.0111808568
+d12w11 = 1.0131982216
+
+# Rubro 2 trimestral, Vestido, calzado y accesorios		
+d2t05 = 0.9899050815
+d2t06 = 0.9941003723
+d2t07 = 0.9997465345
+d2t08 = 1.0083352270
+
+# Rubro 3 mensual, viviendas		
+d3m07 = 0.9998142481
+d3m08 = 1.0000000000
+d3m09 = 0.9978682753
+d3m10 = 1.0031577830
+d3m11 = 1.0197073965
+
+# Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar		
+d42m07 = 0.9894769136
+d42m08 = 1.0000000000
+d42m09 = 1.0086286240
+d42m10 = 1.0182083142
+d42m11 = 1.0237613131
+
+# Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar		
+d42t05 = 0.9787953163
+d42t06 = 0.9897197934
+d42t07 = 0.9993685126
+d42t08 = 1.0089456461
+
+# Rubro 4.1 semestral, Muebles y aparatos dómesticos		
+d41s02 = 1.0003069312
+d41s03 = 0.9993861376
+d41s04 = 0.9992122603
+d41s05 = 0.9991442214
+
+# Rubro 5.1 trimestral, Salud		
+d51t05 = 0.9909917367
+d51t06 = 0.9954834527
+d51t07 = 0.9994564693
+d51t08 = 1.0030487384
+
+# Rubro 6.1.1 semanal, Transporte público urbano		
+d611w07 = 0.9963207274
+d611w08 = 1.0000000000
+d611w09 = 1.0034865488
+d611w10 = 1.0052385833
+d611w11 = 1.0064912880
+
+# Rubro 6 mensual, Transporte		
+d6m07 = 0.9987845893
+d6m08 = 1.0000000000
+d6m09 = 1.0001664946
+d6m10 = 1.0057274150
+d6m11 = 1.0076837268
+
+# Rubro 6 semestral, Transporte		
+d6s02 = 0.9808628306
+d6s03 = 0.9879901879
+d6s04 = 0.9927380596
+d6s05 = 0.9969378864
+
+# Rubro 7 mensual, Educación y esparcimiento		
+d7m07 = 0.9961413091
+d7m08 = 1.0000000000
+d7m09 = 1.0095233900
+d7m10 = 1.0144128271
+d7m11 = 1.0174522069
+
+# Rubro 2.3 mensual, Accesorios y cuidados del vestido		
+d23m07 = 0.9952443607
+d23m08 = 1.0000000000
+d23m09 = 1.0081869233
+d23m10 = 1.0108184343
+d23m11 = 1.0072323555
+
+# Rubro 2.3 trimestral,  Accesorios y cuidados del vestido		
+d23t05 = 0.9914948875
+d23t06 = 0.9956428139
+d23t07 = 1.0011437613
+d23t08 = 1.0063351192
+
+# INPC semestral		
+dINPCs02 = 0.9773093813
+dINPCs03 = 0.9838008772
+dINPCs04 = 0.9897404209
+dINPCs05 = 0.9957540070
+```
+
+
+**Una vez definidos los deflactores, se seleccionan los rubros** 
+
+```{python}
+#Convirtiendo variables string a numericas
+no_monetario[['gas_nm_tri', 'gasto_nm']] = no_monetario[['gas_nm_tri', 'gasto_nm']
+                                                        ].apply(pd.to_numeric, errors = 'coerce')
+
+# Una vez definidos los deflactores, se seleccionan los rubros
+no_monetario['gasnomon'] = no_monetario['gas_nm_tri'] / 3
+no_monetario.loc[no_monetario['tipo_gasto'] == 'G4', 'esp'] = 1
+no_monetario.loc[no_monetario['tipo_gasto'].isin(['G5', 'G6']), 'reg'] = 1
+no_monetario = no_monetario.loc[~no_monetario['tipo_gasto'].isin(['G2', 'G3', 'G7'])]
+
+# Control para la frecuencia de los regalos recibidos por el hogar
+no_monetario = no_monetario[~(((no_monetario['frecuencia'].between('5', '6')) |
+                               (no_monetario['frecuencia'].isna()) |
+                                (no_monetario['frecuencia'] == '0')) &
+                                 (no_monetario['base'] == 1) &
+                                  (no_monetario['tipo_gasto'] == 'G5'))]
+
+# Control para la frecuencia de los regalos recibidos por persona
+no_monetario = no_monetario[~(((no_monetario['frecuencia'] == '9') |
+                              (no_monetario['frecuencia'].isna())) &
+                               (no_monetario['base'] == 2) &
+                                (no_monetario['tipo_gasto'] == 'G5'))]
+
+# Se deflactan los rubros del gasto no monetario según la decena de levantamiento 
+no_monetario.loc[(no_monetario['clave'].between('A001', 'A222') |
+                   no_monetario['clave'].between('A242', 'A247')), 'ali_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('A223', 'A241')), 'alta_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('H001', 'H122') |
+                  (no_monetario['clave'] == 'H136')), 'veca_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('G001', 'G016') |
+                   no_monetario['clave'].between('R001', 'R004') |
+                    (no_monetario['clave'] == 'R013')), 'viv_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('C001', 'C024')), 'lim_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('I001', 'I026')), 'cris_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('K001', 'K037')), 'ens_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('J001', 'J072')), 'sal_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('B001', 'B007')), 'tpub_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('M001', 'M018') |
+                   no_monetario['clave'].between('F007', 'F014')), 'tfor_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('F001', 'F006') |
+                   no_monetario['clave'].between('R005', 'R008') |
+                    no_monetario['clave'].between('R010', 'R011')), 'com_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('E001', 'E034') |
+                   no_monetario['clave'].between('H134', 'H135') |
+                    no_monetario['clave'].between('L001', 'L029') |
+                     no_monetario['clave'].between('N003', 'N005') |
+                      (no_monetario['clave'] == 'R009')), 'edre_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('E002', 'E003') |
+                   no_monetario['clave'].between('H134', 'H135')), 'edba_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('D001', 'D026') |
+                  (no_monetario['clave'] == 'H132')), 'cuip_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('H123', 'H131') |
+                   (no_monetario['clave'] == 'H133')), 'accp_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('N001', 'N002') |
+                   no_monetario['clave'].between('N006', 'N016') |
+                    no_monetario['clave'].between('T901', 'T915') |
+                     (no_monetario['clave'] == 'R012')), 'otr_nm'] = no_monetario['gasnomon']
+no_monetario.loc[(no_monetario['clave'].between('T901', 'T915') |
+                  (no_monetario['clave'] == 'N013')), 'reda_nm'] = no_monetario['gasnomon']
+
+# Gasto no monetario en Alimentos deflactado (semanal)
+no_monetario['ali_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['ali_nm']/d11w08, 
+                          np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['ali_nm']/d11w09,
+                           np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['ali_nm']/d11w10,
+                                    no_monetario['ali_nm']/d11w11)))
+
+# Gasto no monetario en Alcohol y tabaco deflactado (semanal)
+no_monetario['alta_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['alta_nm']/d12w08,
+                           np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['alta_nm']/d12w09,
+                            np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['alta_nm']/d12w10,
+                                      no_monetario['alta_nm']/d12w11)))
+
+# Gasto no monetario en Vestido y calzado deflactado (trimestral)
+no_monetario['veca_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['veca_nm']/d2t05,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['veca_nm']/d2t06,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['veca_nm']/d2t07,
+                                      no_monetario['veca_nm']/d2t08)))
+
+# Gasto no monetario en viviendas y servicios de conservación deflactado (mensual)
+no_monetario['viv_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['viv_nm']/d3m07,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['viv_nm']/d3m08,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['viv_nm']/d3m09,
+                                     no_monetario['viv_nm']/d3m10)))
+
+# Gasto no monetario en Artículos de limpieza deflactado (mensual)
+no_monetario['lim_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['lim_nm']/d42m07,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['lim_nm']/d42m08,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['lim_nm']/d42m09,
+                                     no_monetario['lim_nm']/d42m10)))
+
+# Gasto no monetario en Cristalería y blancos deflactado (trimestral)
+no_monetario['cris_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['cris_nm']/d42t05,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['cris_nm']/d42t06,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['cris_nm']/d42t07,
+                                      no_monetario['cris_nm']/d42t08)))
+
+# Gasto no monetario en Enseres domésticos y muebles deflactado (semestral)
+no_monetario['ens_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['ens_nm']/d41s02,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['ens_nm']/d41s03,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['ens_nm']/d41s04,
+                                     no_monetario['ens_nm']/d41s05)))
+
+# Gasto no monetario en Salud deflactado (trimestral)
+no_monetario['sal_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['sal_nm']/d51t05,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['sal_nm']/d51t06,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['sal_nm']/d51t07,
+                                     no_monetario['sal_nm']/d51t08)))
+
+# Gasto no monetario en Transporte público deflactado (semanal)
+no_monetario['tpub_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['tpub_nm']/d611w08,
+                           np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['tpub_nm']/d611w09,
+                            np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['tpub_nm']/d611w10,
+                                      no_monetario['tpub_nm']/d611w11)))
+
+# Gasto no monetario en Transporte foráneo deflactado (semestral)
+no_monetario['tfor_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['tfor_nm']/d6s02,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['tfor_nm']/d6s03,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['tfor_nm']/d6s04,
+                                      no_monetario['tfor_nm']/d6s05)))
+
+# Gasto no monetario en Comunicaciones deflactado (mensual)
+no_monetario['com_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['com_nm']/d6m07,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['com_nm']/d6m08,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['com_nm']/d6m09,
+                                     no_monetario['com_nm']/d6m10)))
+
+# Gasto no monetario en Educación y recreación deflactado (mensual)
+no_monetario['edre_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['edre_nm']/d7m07,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['edre_nm']/d7m08,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['edre_nm']/d7m09,
+                                      no_monetario['edre_nm']/d7m10)))
+
+# Gasto no monetario en Educación básica deflactado (mensual)
+no_monetario['edba_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['edba_nm']/d7m07,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['edba_nm']/d7m08,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['edba_nm']/d7m09,
+                                      no_monetario['edba_nm']/d7m10)))
+
+# Gasto no monetario en Cuidado personal deflactado (mensual)
+no_monetario['cuip_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['cuip_nm']/d23m07,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['cuip_nm']/d23m08,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['cuip_nm']/d23m09,
+                                      no_monetario['cuip_nm']/d23m10)))
+
+# Gasto no monetario en Accesorios personales deflactado (trimestral)
+no_monetario['accp_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['accp_nm']/d23t05,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['accp_nm']/d23t06,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['accp_nm']/d23t07,
+                                      no_monetario['accp_nm']/d23t08)))
+
+# Gasto no monetario en Otros gastos y transferencias deflactado (semestral)
+no_monetario['otr_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['otr_nm']/dINPCs02,
+                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['otr_nm']/dINPCs03,
+                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['otr_nm']/dINPCs04,
+                                     no_monetario['otr_nm']/dINPCs05)))
+
+# Gasto no monetario en Regalos Otorgados deflactado
+no_monetario['reda_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['reda_nm']/dINPCs02,
+                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['reda_nm']/dINPCs03,
+                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['reda_nm']/dINPCs04,
+                                      no_monetario['reda_nm']/dINPCs05)))
+```
+
+**Se guarda la base de datos** 
+```{python}
+no_monetario.to_csv(current_directory + '/Output/Data/' + '/ingresonomonetario_def22.csv', index = False)
+```
+
+**Construcción de la base de pagos en especie a partir de la base de gasto no monetario**  
+
+```{python}
+# Construcción de la base de pagos en especie a partir de la base de gasto no monetario
+pagos_especie = no_monetario[no_monetario['esp'] == 1]
+
+pagos_especie = pagos_especie.groupby(['folioviv', 'foliohog'])[['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm',
+                                       'lim_nm', 'cris_nm', 'ens_nm', 'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm',
+                                       'edba_nm', 'cuip_nm', 'accp_nm', 'otr_nm', 'reda_nm']].sum(numeric_only = True)
+
+pagos_especie = pagos_especie.reset_index()
+
+pagos_especie.columns = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 
+                         'cris_nme', 'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 
+                         'cuip_nme', 'accp_nme', 'otr_nme', 'reda_nme']
+```
+
+**Se guarda la base de datos** 
+```{python}
+pagos_especie.to_csv(current_directory + '/Output/Data/' + '/esp_def22.csv', index = False)
+```
+
+
+**Construcción de base de regalos a partir de la base no monetaria**  
+
+```{python}
+# Construcción de base de regalos a partir de la base no monetaria
+regalos = no_monetario[no_monetario['reg'] == 1]
+
+regalos = regalos.groupby(['folioviv', 'foliohog'])[['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm', 'lim_nm', 'cris_nm',
+                                                     'ens_nm', 'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm', 'edba_nm',
+                                                     'cuip_nm', 'accp_nm', 'otr_nm', 'reda_nm']].sum(numeric_only = True)
+regalos = regalos.reset_index()
+
+regalos.columns = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr',
+                   'ens_nmr', 'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr',
+                   'otr_nmr', 'reda_nmr']
+```
+
 **Se guarda la base de datos**
-```{r}
-#fwrite(regalos, paste0(here::here(), "/Output/Data/reg_def22.csv"), row.names = F)
-save(regalos, file = paste0(here::here(), "/Output/Data/reg_def22.RData"))
+```{python}
+regalos.to_csv(current_directory + '/Output/Data/' + '/reg_def22.csv', index = False)
 ```
 
 
 
 ### Construcción del ingreso corriente total   {.tabset .tabset-pills .top2-tiles} 
 
-#### Ingreso corriente total {}
+#### Ingreso corriente total {.tabset .tabset-pills .top3-tiles}
 
-```{r}
-load(file = paste0(here::here(), "/Data/concentradohogar.RData")) 
-load(file = paste0(here::here(), "/Output/Data/ingreso_deflactado22.RData"))
-load(file = paste0(here::here(), "/Output/Data/esp_def22.RData"))
+##### Opción 1  
+
+```{python}
+concentradohogar = pd.read_csv(current_directory + "/Bases de datos/concentradohogar.csv", low_memory = False)
+ingreso_deflactado = pd.read_csv(current_directory + '/Output/Data/' + '/ingreso_deflactado22.csv', low_memory = False)
+pagos_especie = pd.read_csv(current_directory + '/Output/Data/' + '/esp_def22.csv', low_memory = False)
+regalos = pd.read_csv(current_directory + '/Output/Data/' + '/reg_def22.csv', low_memory = False)
 ```
 
-```{r}
-ingreso.corriente <- concentradohogar %>%
-                      select(folioviv, foliohog, tam_loc, factor, tot_integ, est_dis, upm, ubica_geo) %>% 
-                       # Incorporación de la base de ingreso monetario deflactado
-                       left_join(., ingresos, by = c("folioviv", "foliohog")) %>% 
-                       # Incorporación de la base de ingreso no monetario deflactado: pago en especie
-                       left_join(., pagos.especie, by = c("folioviv", "foliohog")) %>% 
-                       # Incorporación de la base de ingreso no monetario deflactado: regalos en especie
-                       left_join(., regalos, by = c("folioviv", "foliohog")) %>% 
-                        mutate(
-                               rururb = case_when(.$tam_loc == 4 ~ 1, # Rural
-                                                  .$tam_loc <= 3 ~ 0), # Urbano
-                               pago_esp = apply(.[,c("ali_nme", "alta_nme", "veca_nme", "viv_nme", 
-                                                     "lim_nme", "cris_nme", "ens_nme", "sal_nme", 
-                                                     "tpub_nme", "tfor_nme", "com_nme", "edre_nme", 
-                                                     "cuip_nme", "accp_nme", "otr_nme")], 
-                                                1, 
-                                                 sum, 
-                                                  na.rm = TRUE), 
-                              reg_esp  = apply(.[,c("ali_nmr", "alta_nmr", "veca_nmr", "viv_nmr", 
-                                                      "lim_nmr", "cris_nmr", "ens_nmr", "sal_nmr", 
-                                                      "tpub_nmr", "tfor_nmr", "com_nmr", "edre_nmr", 
-                                                      "cuip_nmr", "accp_nmr", "otr_nmr")], 
-                                                1, 
-                                                 sum, 
-                                                  na.rm = TRUE)) %>% 
-                        mutate(
-                               nomon = apply(.[,c("pago_esp","reg_esp")], 1, sum, na.rm = TRUE)) %>%
-                        # Se construye el Ingreso Corriente Total con el ingreso monetario  y el ingreso no monetario 
-                        mutate(ict = apply(.[,c("ing_mon", "nomon")], 1, sum, na.rm = TRUE)) %>% 
-                         select(!c(gasto_nm.x, gasto_nm.y))
-```
+```{python}
+ingreso_corriente = concentradohogar[['folioviv', 'foliohog', 'tam_loc', 'factor', 'tot_integ', 'est_dis', 'upm', 'ubica_geo']]
 
-**Se guarda la base de datos**
-```{r}
-#fwrite(ingreso.corriente, paste0(here::here(), "/Output/Data/ingresotot22.csv"), row.names = F)
-save(ingreso.corriente, file = paste0(here::here(), "/Output/Data/ingresotot22.RData"))
-```
+# Incorporación de la base de ingreso monetario deflactado
+ingreso_corriente = pd.merge(ingreso_corriente, 
+                              ingreso_deflactado, 
+                               on = ['folioviv', 'foliohog'], 
+                                how = 'left')
 
+# Incorporación de la base de ingreso no monetario deflactado: pago en especie
+ingreso_corriente = pd.merge(ingreso_corriente,
+                              pagos_especie, 
+                               on = ['folioviv', 'foliohog'], 
+                                how = 'left')
 
-#### Construcción del tamaño de hogar con economías de escala y escalas de equivalencia   {.tabset .tabset-pills} 
+# Incorporación de la base de ingreso no monetario deflactado: regalos en especie
+ingreso_corriente = pd.merge(ingreso_corriente, 
+                              regalos,
+                               on = ['folioviv', 'foliohog'], 
+                                how = 'left')
 
-```{r}
-tam_hogar.escala <- poblacion %>% 
-                     # Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
-                     filter(!(parentesco >= 400 & parentesco < 500 | parentesco >= 700 & parentesco < 800)) %>%
-                      mutate(ind = 1) %>%
-                       group_by(folioviv, foliohog) %>%
-                        mutate(tot_ind = sum(ind, na.rm = TRUE)) %>%
-                         ungroup() %>%
-                          # Escalas de equivalencia  
-                          mutate(tamhogesc = case_when(.$tot_ind == 1 ~ 1,
-                                                       .$edad <= 5 ~ .7031,
-                                                       .$edad >= 6 & .$edad<=12 ~ .7382,
-                                                       .$edad >= 13 & .$edad<=18 ~ .7057,
-                                                       .$edad >= 19 & !is.na(.$edad) ~ .9945)) %>%
-                           select(folioviv, foliohog, numren, tamhogesc) %>% 
-                            group_by(folioviv, foliohog) %>%
-                             summarise(tamhogesc = sum(tamhogesc, na.rm = TRUE)) %>%
-                              ungroup()
+ingreso_corriente.loc[ingreso_corriente['tam_loc'] == 4, 'rururb'] = 1 # Rural
+ingreso_corriente.loc[ingreso_corriente['tam_loc'] <= 3, 'rururb'] = 0 # Urbano
+
+# Ingreso corriente no monetario pago especie
+ingreso_corriente['pago_esp'] = ingreso_corriente[['ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme', 'ens_nme', 'sal_nme',
+                                                   'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'cuip_nme', 'accp_nme', 'otr_nme']
+                                                  ].sum(axis = 1)
+
+# Ingreso corriente no monetario regalos especie
+ingreso_corriente['reg_esp'] = ingreso_corriente[['ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr', 'sal_nmr',
+                                                  'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr']
+                                                  ].sum(axis = 1)
+
+# Ingreso corriente no monetario
+ingreso_corriente['nomon'] = ingreso_corriente[['pago_esp', 'reg_esp']].sum(axis = 1)
+
+# Se construye el Ingreso Corriente Total con el ingreso monetario y el ingreso no monetario 
+ingreso_corriente['ict'] = ingreso_corriente[['ing_mon', 'nomon']].sum(axis = 1)
+
+ingreso_corriente = ingreso_corriente[['folioviv', 'foliohog', 'ubica_geo', 'tam_loc', 'est_dis', 'upm', 'factor', 'tot_integ', 'ing_mon',
+                                       'ing_lab', 'ing_ren', 'ing_tra', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme',
+                                       'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 'cuip_nme', 'accp_nme',
+                                       'otr_nme', 'reda_nme', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr',
+                                       'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr',
+                                       'reda_nmr', 'rururb', 'pago_esp', 'reg_esp', 'nomon', 'ict']]
 ```
 
 **Se guarda la base de datos**
-```{r}
-#fwrite(tam_hogar.escala, paste0(here::here(), "/Output/Data/tamhogesc22.csv"), row.names = F)
-save(tam_hogar.escala, file = paste0(here::here(), "/Output/Data/tamhogesc22.RData"))
+```{python}
+ingreso_corriente.to_csv(current_directory + '/Output/Data/' + '/ingresotot22.csv', index = False)
 ```
 
+##### Opción 2  
 
-#### Bienestar económico {.tabset .tabset-pills} 
+```{python}
+concentradohogar = pd.read_csv(current_directory + "/Bases de datos/concentradohogar.csv", low_memory = False)
+ingreso_deflactado = pd.read_csv(current_directory + '/Output/Data/' + '/ingreso_deflactado22.csv', low_memory = False)
+pagos_especie = pd.read_csv(current_directory + '/Output/Data/' + '/esp_def22.csv', low_memory = False)
+regalos = pd.read_csv(current_directory + '/Output/Data/' + '/reg_def22.csv', low_memory = False)
+```
+
+```{python}
+ingreso_corriente = concentradohogar[['folioviv', 'foliohog', 'tam_loc', 'factor', 'tot_integ', 'est_dis', 'upm', 'ubica_geo']]
+
+# Incorporación de la base de ingreso monetario deflactado
+ingreso_corriente = pd.merge(ingreso_corriente, 
+                              ingreso_deflactado, 
+                               on = ['folioviv', 'foliohog'], 
+                                how = 'left')
+
+# Incorporación de la base de ingreso no monetario deflactado: pago en especie
+ingreso_corriente = pd.merge(ingreso_corriente,
+                              pagos_especie, 
+                               on = ['folioviv', 'foliohog'], 
+                                how = 'left')
+
+# Incorporación de la base de ingreso no monetario deflactado: regalos en especie
+ingreso_corriente = pd.merge(ingreso_corriente, 
+                              regalos,
+                               on = ['folioviv', 'foliohog'], 
+                                how = 'left')
+
+ingreso_corriente.loc[ingreso_corriente['tam_loc'] == 4, 'rururb'] = 1 # Rural
+ingreso_corriente.loc[ingreso_corriente['tam_loc'] <= 3, 'rururb'] = 0 # Urbano
+
+# Ingreso corriente no monetario pago especie
+ingreso_corriente['pago_esp'] = ingreso_corriente[['ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme', 'ens_nme', 'sal_nme',
+                                                   'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'cuip_nme', 'accp_nme', 'otr_nme']
+                                                  ].sum(axis = 1)
+
+# Ingreso corriente no monetario regalos especie
+ingreso_corriente['reg_esp'] = ingreso_corriente[['ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr', 'sal_nmr',
+                                                  'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr']
+                                                  ].sum(axis = 1)
+
+# Ingreso corriente no monetario
+ingreso_corriente['nomon'] = ingreso_corriente[['pago_esp', 'reg_esp']].sum(axis = 1)
+
+# Se construye el Ingreso Corriente Total con el ingreso monetario y el ingreso no monetario 
+ingreso_corriente['ict'] = ingreso_corriente[['ing_mon', 'nomon']].sum(axis = 1)
+
+ingreso_corriente = ingreso_corriente[['folioviv', 'foliohog', 'ubica_geo', 'tam_loc', 'est_dis', 'upm', 'factor', 'tot_integ', 'ing_mon',
+                                       'ing_lab', 'ing_ren', 'ing_tra', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme',
+                                       'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 'cuip_nme', 'accp_nme',
+                                       'otr_nme', 'reda_nme', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr',
+                                       'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr',
+                                       'reda_nmr', 'rururb', 'pago_esp', 'reg_esp', 'nomon', 'ict']]
+```
+
+**Se guarda la base de datos**
+```{python}
+ingreso_corriente.to_csv(current_directory + '/Output/Data/' + '/ingresotot22.csv', index = False)
+```
+
+#### Construcción del tamaño de hogar con economías de escala y escalas de equivalencia {.tabset .tabset-pills .top2-tiles}  
+
+##### Opción 1 {.tabset .tabset-pills .top3-tiles}  
+
+```{python}
+tam_hogar_escala = poblacion.copy()
+
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+tam_hogar_escala = tam_hogar_escala.loc[~((tam_hogar_escala['parentesco'] >= 400) & (tam_hogar_escala['parentesco'] < 500) |
+                                          (tam_hogar_escala['parentesco'] >= 700) & (tam_hogar_escala['parentesco'] < 800))]
+
+# Total de integrantes del hogar
+tam_hogar_escala['ind'] = 1
+
+tam_hogar_escala['tot_ind'] = tam_hogar_escala.groupby(['folioviv', 'foliohog'])['ind'].transform('sum')
+
+# Escalas de equivalencia 
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 0) & (tam_hogar_escala['edad'] <= 5), 'n_05'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 0) | (tam_hogar_escala['edad'] > 5), 'n_05'] = 0
+
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 6) & (tam_hogar_escala['edad'] <= 12), 'n_6_12'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 6) | (tam_hogar_escala['edad'] > 12), 'n_6_12'] = 0
+
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 13) & (tam_hogar_escala['edad'] <= 18), 'n_13_18'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 13) | (tam_hogar_escala['edad'] > 18), 'n_13_18'] = 0
+
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 19), 'n_19'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 19), 'n_19'] = 0
+
+tam_hogar_escala.loc[tam_hogar_escala['n_05'] == 1, 'tamhogesc'] = tam_hogar_escala['n_05'] * .7031
+tam_hogar_escala.loc[tam_hogar_escala['n_6_12'] == 1, 'tamhogesc'] = tam_hogar_escala['n_6_12'] * .7382
+tam_hogar_escala.loc[tam_hogar_escala['n_13_18'] == 1, 'tamhogesc'] = tam_hogar_escala['n_13_18'] * .7057
+tam_hogar_escala.loc[tam_hogar_escala['n_19'] == 1, 'tamhogesc'] = tam_hogar_escala['n_19'] * .9945
+tam_hogar_escala.loc[tam_hogar_escala['tot_ind'] == 1, 'tamhogesc'] = 1
+
+tam_hogar_escala = tam_hogar_escala.groupby(['folioviv', 'foliohog'])['tamhogesc'].sum().reset_index()
+```
+
+**Se guarda la base de datos**
+```{python}
+tam_hogar_escala.to_csv(current_directory + '/Output/Data/' + '/tamhogesc22.csv', index = False)
+```
+
+##### Opción 2 {.tabset .tabset-pills .top3-tiles}  
+
+```{python}
+tam_hogar_escala = poblacion.copy()
+
+# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
+tam_hogar_escala = tam_hogar_escala.loc[~((tam_hogar_escala['parentesco'] >= 400) & (tam_hogar_escala['parentesco'] < 500) |
+                                          (tam_hogar_escala['parentesco'] >= 700) & (tam_hogar_escala['parentesco'] < 800))]
+
+# Total de integrantes del hogar
+tam_hogar_escala['ind'] = 1
+
+tam_hogar_escala['tot_ind'] = tam_hogar_escala.groupby(['folioviv', 'foliohog'])['ind'].transform('sum')
+
+# Escalas de equivalencia 
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 0) & (tam_hogar_escala['edad'] <= 5), 'n_05'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 0) | (tam_hogar_escala['edad'] > 5), 'n_05'] = 0
+
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 6) & (tam_hogar_escala['edad'] <= 12), 'n_6_12'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 6) | (tam_hogar_escala['edad'] > 12), 'n_6_12'] = 0
+
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 13) & (tam_hogar_escala['edad'] <= 18), 'n_13_18'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 13) | (tam_hogar_escala['edad'] > 18), 'n_13_18'] = 0
+
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 19), 'n_19'] = 1
+tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 19), 'n_19'] = 0
+
+tam_hogar_escala.loc[tam_hogar_escala['n_05'] == 1, 'tamhogesc'] = tam_hogar_escala['n_05'] * .7031
+tam_hogar_escala.loc[tam_hogar_escala['n_6_12'] == 1, 'tamhogesc'] = tam_hogar_escala['n_6_12'] * .7382
+tam_hogar_escala.loc[tam_hogar_escala['n_13_18'] == 1, 'tamhogesc'] = tam_hogar_escala['n_13_18'] * .7057
+tam_hogar_escala.loc[tam_hogar_escala['n_19'] == 1, 'tamhogesc'] = tam_hogar_escala['n_19'] * .9945
+tam_hogar_escala.loc[tam_hogar_escala['tot_ind'] == 1, 'tamhogesc'] = 1
+
+tam_hogar_escala = tam_hogar_escala.groupby(['folioviv', 'foliohog'])['tamhogesc'].sum().reset_index()
+```
+
+**Se guarda la base de datos**
+```{python}
+tam_hogar_escala.to_csv(current_directory + '/Output/Data/' + '/tamhogesc22.csv', index = False)
+```
+
+#### Bienestar económico {.tabset .tabset-pills .top2-tiles}  
+
+##### Opción 1 {.tabset .tabset-pills .top3-tiles}  
 
 Incorporación de la información sobre el tamaño del hogar ajustado
 
-```{r}
-load(file = paste0(here::here(), "/Output/Data/ingresotot22.RData"))
-load(file = paste0(here::here(), "/Output/Data/tamhogesc22.RData"))
+```{python}
+ingreso_corriente = pd.read_csv(current_directory + '/Output/Data/' + '/ingresotot22.csv', low_memory = False)
+tam_hogar_escala = pd.read_csv(current_directory + '/Output/Data/' + '/tamhogesc22.csv', low_memory = False)
 ```
 
 **Indicadores de Bienestar económico**    
@@ -3018,370 +3957,598 @@ En este programa se construyen los indicadores de bienestar económico mediante 
 
 Para más información, se sugiere consultar el documento metodológico de Construcción de las líneas de pobreza por ingresos. Disponible en: https://www.coneval.org.mx/InformesPublicaciones/InformesPublicaciones/Documents/Lineas_pobreza.pdf     
 
-```{r}
-#Línea de pobreza extrema por ingresos (LPEI);
-# Valor monetario de la canasta alimentaria;
-lp1_urb <- 2086.21
-lp1_rur <- 1600.18
+```{python}
+#Línea de pobreza extrema por ingresos (LPEI)
+# Valor monetario de la canasta alimentaria
+lp1_urb = 2086.21
+lp1_rur = 1600.18
 
 # Línea de pobreza por ingresos (LPI)
 # Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria
-lp2_urb <- 4158.35
-lp2_rur <- 2970.76
+lp2_urb = 4158.35
+lp2_rur = 2970.76
 ```
 
 
-```{r}
-p_ingreso <- ingreso.corriente %>% 
-              left_join(., tam_hogar.escala, by = c("folioviv", "foliohog")) %>% 
-               # Información per cápita
-               mutate(ictpc = .$ict/.$tamhogesc) %>% 
-               # Se identifica a los hogares bajos de la línea de la pobreza
-               mutate(
-                      # Se identifica a los hogares bajo lp1
-                      plp_e = case_when(.$ictpc < lp1_urb  & .$rururb == 0  ~ 1,
-                                        .$ictpc >= lp1_urb  & .$rururb == 0 & !is.na(.$ictpc) ~ 0,
-                                        .$ictpc < lp1_rur  & .$rururb == 1  ~ 1,
-                                        .$ictpc >= lp1_rur  & .$rururb == 1 & !is.na(.$ictpc) ~ 0),
-                      # Se identifica a los hogares bajo lp2
-                      plp = case_when(.$ictpc < lp2_urb  & .$rururb == 0  ~ 1,
-                                      .$ictpc >= lp2_urb  & .$rururb == 0 & !is.na(.$ictpc) ~ 0,
-                                      .$ictpc < lp2_rur  & .$rururb == 1  ~ 1,
-                                      .$ictpc >= lp2_rur  & .$rururb == 1 & !is.na(.$ictpc) ~ 0)) %>% 
-                select(folioviv, foliohog, factor, tam_loc, rururb, tamhogesc, ict, ictpc, plp_e, plp, est_dis, upm, ubica_geo, 
-                       tot_integ, ing_mon, ing_lab, ing_ren, ing_tra, nomon, pago_esp, reg_esp)  
+```{python}
+# Incorporación de la información sobre el tamaño del hogar ajustado
+p_ingreso = pd.merge(ingreso_corriente, 
+                      tam_hogar_escala, 
+                       on = ['folioviv', 'foliohog'], 
+                        how = 'left')
+
+# Información per cápita
+p_ingreso['ictpc'] = p_ingreso['ict'] / p_ingreso['tamhogesc']     
+
+# Se identifica a los hogares bajo lp1
+p_ingreso.loc[(p_ingreso['ictpc'] < lp1_urb) & (p_ingreso['rururb'] == 0), 'plp_e'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp1_urb) & (p_ingreso['rururb'] == 0), 'plp_e'] = 0
+p_ingreso.loc[(p_ingreso['ictpc'] < lp1_rur) & (p_ingreso['rururb'] == 1), 'plp_e'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp1_rur) & (p_ingreso['rururb'] == 1), 'plp_e'] = 0
+
+# Se identifica a los hogares bajo lp2
+p_ingreso.loc[(p_ingreso['ictpc'] < lp2_urb) & (p_ingreso['rururb'] == 0), 'plp'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp2_urb) & (p_ingreso['rururb'] == 0), 'plp'] = 0
+p_ingreso.loc[(p_ingreso['ictpc'] < lp2_rur) & (p_ingreso['rururb'] == 1), 'plp'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp2_rur) & (p_ingreso['rururb'] == 1), 'plp'] = 0
+
+p_ingreso = p_ingreso[['folioviv', 'foliohog', 'factor', 'tam_loc', 'rururb', 'tamhogesc', 'ict', 'ictpc',
+                       'plp_e', 'plp', 'est_dis', 'upm', 'ubica_geo', 'tot_integ', 'ing_mon', 'ing_lab', 'ing_ren',
+                       'ing_tra', 'nomon', 'pago_esp', 'reg_esp']]
 ```
 
 
 **Se guarda la base de datos**
-```{r}
-#fwrite(p_ingreso, paste0(here::here(), "/Output/Data/p_ingresos22.csv"), row.names = F)
-save(p_ingreso, file = paste0(here::here(), "/Output/Data/p_ingresos22.RData"))
+```{python}
+p_ingreso.to_csv(current_directory + '/Output/Data/' + '/p_ingresos22.csv', index = False)
 ```
 
+
+##### Opción 2 {.tabset .tabset-pills .top3-tiles}  
+
+Incorporación de la información sobre el tamaño del hogar ajustado
+
+```{python}
+ingreso_corriente = pd.read_csv(current_directory + '/Output/Data/' + '/ingresotot22.csv', low_memory = False)
+tam_hogar_escala = pd.read_csv(current_directory + '/Output/Data/' + '/tamhogesc22.csv', low_memory = False)
+```
+
+**Indicadores de Bienestar económico**    
+
+`LP I`: Valor de la Canasta alimentaria   
+`LP II`: Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria (ver Anexo A del documento metodológico).    
+
+En este programa se construyen los indicadores de bienestar económico mediante las 2 líneas definidas por CONEVAL, denominándolas:   
+  
+`lp1` : Línea de Pobreza Extrema por Ingresos (`LPEI`)   
+`lp2` : Línea de Pobreza por Ingresos (`LPI`)    
+
+Para más información, se sugiere consultar el documento metodológico de Construcción de las líneas de pobreza por ingresos. Disponible en: https://www.coneval.org.mx/InformesPublicaciones/InformesPublicaciones/Documents/Lineas_pobreza.pdf     
+
+```{python}
+#Línea de pobreza extrema por ingresos (LPEI)
+# Valor monetario de la canasta alimentaria
+lp1_urb = 2086.21
+lp1_rur = 1600.18
+
+# Línea de pobreza por ingresos (LPI)
+# Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria
+lp2_urb = 4158.35
+lp2_rur = 2970.76
+```
+
+
+```{python}
+# Incorporación de la información sobre el tamaño del hogar ajustado
+p_ingreso = pd.merge(ingreso_corriente, 
+                      tam_hogar_escala, 
+                       on = ['folioviv', 'foliohog'], 
+                        how = 'left')
+
+# Información per cápita
+p_ingreso['ictpc'] = p_ingreso['ict'] / p_ingreso['tamhogesc']     
+
+# Se identifica a los hogares bajo lp1
+p_ingreso.loc[(p_ingreso['ictpc'] < lp1_urb) & (p_ingreso['rururb'] == 0), 'plp_e'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp1_urb) & (p_ingreso['rururb'] == 0), 'plp_e'] = 0
+p_ingreso.loc[(p_ingreso['ictpc'] < lp1_rur) & (p_ingreso['rururb'] == 1), 'plp_e'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp1_rur) & (p_ingreso['rururb'] == 1), 'plp_e'] = 0
+
+# Se identifica a los hogares bajo lp2
+p_ingreso.loc[(p_ingreso['ictpc'] < lp2_urb) & (p_ingreso['rururb'] == 0), 'plp'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp2_urb) & (p_ingreso['rururb'] == 0), 'plp'] = 0
+p_ingreso.loc[(p_ingreso['ictpc'] < lp2_rur) & (p_ingreso['rururb'] == 1), 'plp'] = 1
+p_ingreso.loc[(p_ingreso['ictpc'] >= lp2_rur) & (p_ingreso['rururb'] == 1), 'plp'] = 0
+
+p_ingreso = p_ingreso[['folioviv', 'foliohog', 'factor', 'tam_loc', 'rururb', 'tamhogesc', 'ict', 'ictpc',
+                       'plp_e', 'plp', 'est_dis', 'upm', 'ubica_geo', 'tot_integ', 'ing_mon', 'ing_lab', 'ing_ren',
+                       'ing_tra', 'nomon', 'pago_esp', 'reg_esp']]
+```
+
+
+**Se guarda la base de datos**
+```{python}
+p_ingreso.to_csv(current_directory + '/Output/Data/' + '/p_ingresos22.csv', index = False)
+```
 
 ## Pobreza multidimensional  {.tabset .tabset-pills .top3-tiles} 
 
-### Integración de las bases 
+### Integración de las bases  
 
 **Se vuelven a cargar las bases de datos**  
 
-```{r}
+```{python}
 # Rezago eductivo 
-load(file = paste0(here::here(), "/Output/Data/ic_rezedu22.RData"))
+rezago_educativo = pd.read_csv(current_directory + '/Output/Data/' + '/ic_rezedu22.csv', low_memory = False)
 # Carencia por acceso a los servicios de salud
-load(file = paste0(here::here(), "/Output/Data/ic_asalud22.RData"))
+salud = pd.read_csv(current_directory + '/Output/Data/' + '/ic_asalud22.csv', low_memory = False)
 # Carencia por acceso a la seguridad social
-load(file = paste0(here::here(), "/Output/Data/ic_segsoc22.RData"))
+seguridad_social = pd.read_csv(current_directory + '/Output/Data/' + '/ic_segsoc22.csv', low_memory = False)
 # Carencia por calidad y espacios de la vivienda
-load(file = paste0(here::here(), "/Output/Data/ic_cev22.RData"))
+calidad_viviendas = pd.read_csv(current_directory + '/Output/Data/' + '/ic_cev22.csv', low_memory = False)
 # Carencia por acceso a los servicios básicos de la vivienda
-load(file = paste0(here::here(), "/Output/Data/ic_sbv22.RData"))
+servicios_basicos = pd.read_csv(current_directory + '/Output/Data/' + '/ic_sbv22.csv', low_memory = False)
 # Carencia por acceso a la alimentación nutritiva y de calidad 
-load(file = paste0(here::here(), "/Output/Data/ic_ali22.RData"))
+alimentacion = pd.read_csv(current_directory + '/Output/Data/' + '/ic_ali22.csv', low_memory = False)
 # Línea de pobreza por ingresos (LPI)
-load(file = paste0(here::here(), "/Output/Data/p_ingresos22.RData"))
+p_ingreso = pd.read_csv(current_directory + '/Output/Data/' + '/p_ingresos22.csv', low_memory = False)
 ```
+
+
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}  
 
 Se integran las seis bases de datos.  
 
-```{r}
-require(tidyr)
-pobreza <- rezago.educativo %>%  
-            left_join(., salud, by = c("folioviv", "foliohog", "numren")) %>% 
-             left_join(., seguridad.social, by = c("folioviv", "foliohog", "numren")) %>% 
-              left_join(., calidad.viviendas, by = c("folioviv", "foliohog")) %>% 
-               left_join(., servicios.basicos, by = c("folioviv", "foliohog")) %>% 
-                left_join(., alimentacion, by = c("folioviv", "foliohog")) %>% 
-                 left_join(., p_ingreso, by = c("folioviv", "foliohog")) %>% 
-                  mutate_at(vars(c(ing_mon, ing_lab, ing_ren, ing_tra)),  ~ if_else(is.na(.), 0, .)) %>% 
-                   # Se eliminan posibles duplicados
-                   distinct(folioviv, foliohog, numren, .keep_all = TRUE) %>% 
-                    mutate(
-                           folioviv = str_pad(.$folioviv, 10, "left", pad = "0"),
-                           ent = as.numeric(str_sub(.$folioviv, 1,2))) %>%
-                    mutate(          
-                           entidad = case_when(.$ent == 1  ~ "Aguascalientes",
-                                               .$ent == 2  ~ "Baja California",
-                                               .$ent == 3  ~ "Baja California Sur",
-                                               .$ent == 4  ~ "Campeche",
-                                               .$ent == 5  ~ "Coahuila",
-                                               .$ent == 6  ~ "Colima",
-                                               .$ent == 7  ~ "Chiapas",
-                                               .$ent == 8  ~ "Chihuahua",
-                                               .$ent == 9  ~ "Ciudad de México",
-                                               .$ent == 10 ~	"Durango",
-                                               .$ent == 11 ~	"Guanajuato",
-                                               .$ent == 12 ~	"Guerrero",
-                                               .$ent == 13 ~	"Hidalgo",
-                                               .$ent == 14 ~	"Jalisco",
-                                               .$ent == 15 ~	"México",
-                                               .$ent == 16 ~	"Michoacán",
-                                               .$ent == 17 ~	"Morelos",
-                                               .$ent == 18 ~	"Nayarit",
-                                               .$ent == 19 ~	"Nuevo León",
-                                               .$ent == 20 ~	"Oaxaca",
-                                               .$ent == 21 ~	"Puebla",
-                                               .$ent == 22 ~	"Querétaro",
-                                               .$ent == 23 ~	"Quintana Roo",
-                                               .$ent == 24 ~	"San Luis Potosí",
-                                               .$ent == 25 ~	"Sinaloa",
-                                               .$ent == 26 ~	"Sonora",
-                                               .$ent == 27 ~	"Tabasco",
-                                               .$ent == 28 ~	"Tamaulipas",
-                                               .$ent == 29 ~	"Tlaxcala",
-                                               .$ent == 30 ~	"Veracruz",
-                                               .$ent == 31 ~	"Yucatán",
-                                               .$ent == 32 ~	"Zacatecas"))
+```{python}
+pobreza = pd.merge(rezago_educativo, 
+                    salud, 
+                     on = ['folioviv', 'foliohog', 'numren'], 
+                      how = 'left')
+pobreza = pd.merge(pobreza, 
+                    seguridad_social, 
+                     on = ['folioviv', 'foliohog', 'numren'], 
+                      how = 'left')
+pobreza = pd.merge(pobreza, 
+                    calidad_viviendas, 
+                     on = ['folioviv', 'foliohog'], 
+                      how = 'left')
+pobreza = pd.merge(pobreza, 
+                    servicios_basicos, 
+                     on = ['folioviv', 'foliohog'], 
+                      how = 'left')
+pobreza = pd.merge(pobreza, 
+                    alimentacion, 
+                     on = ['folioviv', 'foliohog'], 
+                      how = 'left')
+pobreza = pd.merge(pobreza, 
+                    p_ingreso, 
+                     on = ['folioviv', 'foliohog'], 
+                      how = 'left')
+
+pobreza['ing_mon'].fillna(0, inplace = True)
+pobreza['ing_lab'].fillna(0, inplace = True)
+pobreza['ing_ren'].fillna(0, inplace = True)
+pobreza['ing_tra'].fillna(0, inplace = True)
+
+# Se eliminan posibles duplicados
+pobreza = pobreza.drop_duplicates(subset = ['folioviv', 'foliohog', 'numren'], keep = 'first', index = False)
+
+pobreza['folioviv'] = pobreza['folioviv'].astype(str).str.zfill(10)
+pobreza['ent'] = pobreza['folioviv'].str[:2].astype(int)
+
+entidad = {
+           1: 'Aguascalientes',
+           2: 'Baja California',
+           3: 'Baja California Sur',
+           4: 'Campeche',
+           5: 'Coahuila',
+           6: 'Colima',
+           7: 'Chiapas',
+           8: 'Chihuahua',
+           9: 'Ciudad de México',
+           10: 'Durango',
+           11: 'Guanajuato',
+           12: 'Guerrero',
+           13: 'Hidalgo',
+           14: 'Jalisco',
+           15: 'México',
+           16: 'Michoacán',
+           17: 'Morelos',
+           18: 'Nayarit',
+           19: 'Nuevo León',
+           20: 'Oaxaca',
+           21: 'Puebla',
+           22: 'Querétaro',
+           23: 'Quintana Roo',
+           24: 'San Luis Potosí',
+           25: 'Sinaloa',
+           26: 'Sonora',
+           27: 'Tabasco',
+           28: 'Tamaulipas',
+           29: 'Tlaxcala',
+           30: 'Veracruz',
+           31: 'Yucatán',
+           32: 'Zacatecas'}
+           
+pobreza['entidad'] = pobreza['ent'].map(entidad)
 ```
 
 
-### Índice de Privación Social 
+### Índice de Privación Social {.tabset .tabset-pills .top3-tiles} 
 
-```{r}
-pobreza <- pobreza %>%
-            group_by(folioviv, foliohog, numren) %>%
-             mutate(i_privacion = sum(ic_rezedu, ic_asalud, ic_segsoc, ic_cv, ic_sbv, ic_ali_nc, 
-                                      na.rm = TRUE)) %>%
-              ungroup()
+#### Opción 1 {.tabset .tabset-pills .top4-tiles} 
+
+```{python}
+pobreza['i_privacion'] = pobreza[['ic_rezedu', 'ic_asalud', 'ic_segsoc', 'ic_cv', 'ic_sbv', 'ic_ali_nc']].sum(axis = 1)
+
+pobreza.loc[pobreza['ic_rezedu'].isna() |
+             pobreza['ic_asalud'].isna() |
+              pobreza['ic_segsoc'].isna() |
+               pobreza['ic_cv'].isna() |
+                pobreza['ic_sbv'].isna() |
+                 pobreza['ic_ali'].isna(), 'i_privacion'] = np.NAN
 ```
 
 
-### Pobreza multidimensional 
+### Pobreza multidimensional {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate(
-                  # Pobreza
-                  pobreza = case_when(.$plp == 1 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 1, # Pobre
-                                       (.$plp == 0 | .$i_privacion == 0) & (!is.na(.$plp) & !is.na(.$i_privacion)) ~ 0), # No pobre
-                  # Pobreza extrema
-                  pobreza_e = case_when(.$plp_e == 1 & (.$i_privacion >= 3 & !is.na(.$i_privacion)) ~ 1, # Pobre extremo
-                                          (.$plp_e == 0 | .$i_privacion < 3 ) & (!is.na(.$plp_e) & !is.na(.$i_privacion)) ~ 0)) %>% # No pobre extremo
-           mutate(
-                  # Pobreza moderada
-                  pobreza_m = case_when(.$pobreza == 1 & .$pobreza_e == 0 ~ 1, # Pobre moderado 
-                                         .$pobreza == 0 | (.$pobreza == 1 & .$pobreza_e == 1) ~ 0) # No pobre moderado
-                  )
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+# Pobreza
+pobreza.loc[(pobreza['plp'] == 1) &
+             (pobreza['i_privacion'] >= 1) &
+              (~pobreza['i_privacion'].isna()), 'pobreza'] = 1 # Pobre
+pobreza.loc[((pobreza['plp'] == 0) | (pobreza['i_privacion'] == 0)) &
+             (~pobreza['plp'].isna()) &
+              (~pobreza['i_privacion'].isna()), 'pobreza'] = 0 # No pobre
+
+# Pobreza extrema
+pobreza.loc[(pobreza['plp_e'] == 1) &
+             (pobreza['i_privacion'] >= 3) &
+              (~pobreza['i_privacion'].isna()), 'pobreza_e'] = 1 # Pobre extremo
+pobreza.loc[((pobreza['plp_e'] == 0) | (pobreza['i_privacion'] < 3)) &
+             (~pobreza['plp_e'].isna()) &
+              (~pobreza['i_privacion'].isna()), 'pobreza_e'] = 0 # No pobre extremo
+
+# Pobreza moderada
+pobreza.loc[(pobreza['pobreza'] == 1) &
+             (pobreza['pobreza_e'] == 0), 'pobreza_m'] = 1 # Pobre moderado
+pobreza.loc[(pobreza['pobreza'] == 0) | ((pobreza['pobreza'] == 1) &
+             (pobreza['pobreza_e'] == 1)), 'pobreza_m'] = 0 # No pobre moderado
 ```
 
 
-### Población vulnerable
+### Población vulnerable {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate(
-                   # Vulnerables por carencias
-                   vul_car = case_when(.$plp == 0 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 1, # Vulnerable
-                                        is.na(.$pobreza) ~ NA_real_,
-                                         TRUE ~ 0), # No vulnerable
-                   # Vulnerables por ingresos
-                   vul_ing = case_when(.$plp == 1 & .$i_privacion == 0 ~ 1, # Vulnerable
-                                        is.na(.$pobreza)~  NA_real_,
-                                         TRUE~0)) # No vulnerable
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+# Vulnerables por carencias
+pobreza['vul_car'] = 0  
+pobreza.loc[(pobreza['plp'] == 0) &
+             (pobreza['i_privacion'] >= 1) &
+              (~pobreza['i_privacion'].isna()), 'vul_car'] = 1 # Vulnerable
+pobreza.loc[pd.isna(pobreza['pobreza']), 'vul_car'] = pd.NA # No vulnerable
+
+# Vulnerables por ingresos
+pobreza['vul_ing'] = 0  
+pobreza.loc[(pobreza['plp'] == 1) &
+             (pobreza['i_privacion'] == 0), 'vul_ing'] = 1 # Vulnerable
+pobreza.loc[pd.isna(pobreza['pobreza']), 'vul_ing'] = pd.NA # No vulnerable
 ```
 
 
-### Población no pobre y no vulnerable 
+### Población no pobre y no vulnerable {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate(
-                   # Población no pobre y no vulnerable
-                   no_pobv = case_when(.$plp == 0 & .$i_privacion == 0 ~ 1,  # Vulnerable
-                                        is.na(.$pobreza) ~ NA_real_,
-                                         TRUE ~ 0))  # No vulnerable
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+# Población no pobre y no vulnerable
+pobreza['no_pobv'] = 0  
+pobreza.loc[(pobreza['plp'] == 0) &
+             (pobreza['i_privacion'] == 0), 'no_pobv'] = 1 # Vulnerable
+pobreza.loc[pd.isna(pobreza['pobreza']), 'no_pobv'] = pd.NA # No vulnerable
 ```
 
 
-### Población con carencias sociales   
+### Población con carencias sociales {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate(
-                   # Población con al menos una carencia
-                   carencias = case_when(.$i_privacion >= 1 & !is.na(.$i_privacion) ~ 1, # Población con al menos una carencia
-                                          is.na(.$pobreza) ~ NA_real_,
-                                           TRUE ~ 0), # Población sin carencias
-                   # Población con tres o más carencias                  
-                   carencias3 = case_when(.$i_privacion >= 3 & !is.na(.$i_privacion) ~ 1, # Población con al menos tres o más carencias
-                                           is.na(.$pobreza) ~ NA_real_,
-                                            TRUE ~ 0)) # Población con menos de tres carencias
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}    
+
+```{python}
+# Población con al menos una carencia
+pobreza['carencias'] = 0
+pobreza.loc[(pobreza['i_privacion'] >= 1) &
+             (~pobreza['i_privacion'].isna()), 'carencias'] = 1 # Población con al menos una carencia social
+pobreza.loc[pd.isna(pobreza['pobreza']), 'carencias'] = pd.NA # Población sin carencias sociales
+
+# Población con tres o más carencias
+pobreza['carencias3'] = 0
+pobreza.loc[(pobreza['i_privacion'] >= 3) &
+             (~pobreza['i_privacion'].isna()), 'carencias3'] = 1 # Población con al menos tres carencias sociales
+pobreza.loc[pd.isna(pobreza['pobreza']), 'carencias3'] = pd.NA # Población con menos de tres carencias sociales
 ```
 
 
-### Cuadrantes
+### Cuadrantes {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate(
-                   cuadrantes=case_when(.$plp == 1 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 1, # Pobres
-                                        .$plp == 0 & (.$i_privacion >= 1 & !is.na(.$i_privacion)) ~ 2, # Vulnerables por carencias
-                                        .$plp == 1 & .$i_privacion == 0 ~ 3,  # Vulnerables por ingresos     
-                                        .$plp == 0 & .$i_privacion == 0 ~ 4))  # No pobres y no vulnerables
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+pobreza['cuadrantes'] = np.NAN
+pobreza.loc[(pobreza['plp'] == 1) &
+             (pobreza['i_privacion'] >= 1) &
+              (~pobreza['i_privacion'].isna()), 'cuadrantes'] = 1 # Pobres
+pobreza.loc[(pobreza['plp'] == 0) &
+             (pobreza['i_privacion'] >= 1) &
+              (~pobreza['i_privacion'].isna()), 'cuadrantes'] = 2 # Vulnerables por carencias
+pobreza.loc[(pobreza['plp'] == 1) &
+             (pobreza['i_privacion'] == 0), 'cuadrantes'] = 3 # Vulnerables por ingresos 
+pobreza.loc[(pobreza['plp'] == 0) &
+             (pobreza['i_privacion'] == 0), 'cuadrantes'] = 4 # No pobres y no vulnerables
 ```
 
 
-### Profundidad en el espacio del bienestar económico  
+### Profundidad en el espacio del bienestar económico {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-#Línea de pobreza extrema por ingresos (LPEI);
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}    
+
+```{python}
+#Línea de pobreza extrema por ingresos (LPEI)
 # Valor monetario de la canasta alimentaria
-lp1_urb <- 2086.21
-lp1_rur <- 1600.18
+lp1_urb = 2086.21
+lp1_rur = 1600.18
 
 # Línea de pobreza por ingresos (LPI)
 # Valor monetario de la canasta alimentaria más el valor monetario de la canasta no alimentaria
-lp2_urb <- 4158.35
-lp2_rur <- 2970.76
+lp2_urb = 4158.35
+lp2_rur = 2970.76
 ```
 
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate( 
-                   # FGT (a=1)
-                   # Distancia normalizada del ingreso respecto a la línea de pobreza por ingresos
-                   prof1 = case_when(.$rururb ==1 & .$plp == 1 ~ (lp2_rur - .$ictpc)/(lp2_rur), 
-                                     .$rururb ==0 & .$plp == 1 ~ (lp2_urb - .$ictpc)/(lp2_urb),
-                                     !is.na(.$ictpc) ~ 0),
-                   # Distancia normalizada del ingreso respecto a la línea de pobreza extrema por ingresos
-                   prof_e1 = case_when(.$rururb==1 & .$plp_e == 1 ~ (lp1_rur - .$ictpc)/(lp1_rur),
-                                       .$rururb==0 & .$plp_e == 1 ~ (lp1_urb - .$ictpc)/(lp1_urb),
-                                        !is.na(.$ictpc) ~ 0))
+```{python}
+# FGT (a=1)
+# Distancia normalizada del ingreso respecto a la línea de pobreza por ingresos
+pobreza.loc[(pobreza['rururb'] == 1) &
+             (pobreza['plp'] == 1), 'prof1'] = (lp2_rur - pobreza['ictpc']) / lp2_rur
+pobreza.loc[(pobreza['rururb'] == 0) &
+             (pobreza['plp'] == 1), 'prof1'] = (lp2_urb - pobreza['ictpc']) / lp2_urb
+pobreza.loc[(pobreza['prof1'].isna()) &
+             (pobreza['ictpc'].notna()), 'prof1'] = 0
+
+# Distancia normalizada del ingreso respecto a la línea de pobreza extrema por ingresos
+pobreza.loc[(pobreza['rururb'] == 1) &
+             (pobreza['plp_e'] == 1), 'prof_e1'] = (lp1_rur - pobreza['ictpc']) / lp1_rur
+pobreza.loc[(pobreza['rururb'] == 0) &
+             (pobreza['plp_e'] == 1), 'prof_e1'] = (lp1_urb - pobreza['ictpc']) / lp1_urb
+pobreza.loc[(pobreza['prof_e1'].isna()) &
+             (pobreza['ictpc'].notna()), 'prof_e1'] = 0
 ```
 
 
-### Profundidad de la privación social  
+### Profundidad de la privación social {.tabset .tabset-pills .top3-tiles}  
 
-```{r}
-pobreza <- pobreza %>% 
-            mutate( 
-                   profun = .$i_privacion/6
-                   ) %>% 
-               #   Intensidad de la privación social      
-            mutate(        
-                   ### Intensidad de la privación social: pobres
-                   int_pob = .$profun * .$pobreza,
-                   
-                   ### Intensidad de la privación social: pobres extremos
-                   int_pobe = .$profun * .$pobreza_e,
-                   
-                   ### Intensidad de la privación social: Población vulnerable por carencias
-                   int_vulcar = .$profun * .$vul_car,
-                   
-                   ### Intensidad de la privación social: Población con carencias sociales
-                   int_caren = .$profun * .$carencias) %>% 
-             select( folioviv, foliohog, numren, est_dis.x, upm.x, factor.x, tam_loc, rururb, ent, ubica_geo, edad.x, sexo, parentesco.x,
-                     ic_rezedu, anac_e, inas_esc.x, niv_ed, ic_asalud, ic_segsoc,sa_dir, ss_dir, s_salud.x, par.x, jef_ss, cony_ss,
-                     hijo_ss, pea.x, jub, pam, ing_pam, ic_cv, icv_pisos, icv_muros, icv_techos, icv_hac, ic_sbv, isb_agua, isb_dren,
-                     isb_luz, isb_combus, ic_ali_nc, id_men, tot_iaad, tot_iamen, ins_ali, ic_ali, lca, dch, plp_e, plp, 
-                     pobreza, pobreza_e, pobreza_m, vul_car, vul_ing, no_pobv,  i_privacion, carencias, carencias3, cuadrantes, 
-                     prof1, prof_e1, profun,  int_pob, int_pobe, int_vulcar, int_caren,tamhogesc, ictpc, ict, ing_mon, 
-                     ing_lab, ing_ren, ing_tra, nomon, pago_esp, reg_esp, hli, discap)
-```
+#### Opción 1 {.tabset .tabset-pills .top4-tiles}    
 
+```{python}
+pobreza['profun'] = pobreza['i_privacion'] / 6
 
-```{r}
-pobreza <- pobreza %>%
-            rename("est_dis" = "est_dis.x",
-                   "upm" = "upm.x",
-                   "factor" = "factor.x",
-                   "edad" = "edad.x",
-                   "parentesco" = "parentesco.x",
-                   "inas_esc" = "inas_esc.x",
-                   "s_salud" = "s_salud.x",
-                   "par" = "par.x",
-                   "pea" = "pea.x")
+#   Intensidad de la privación social      
+            
+# Intensidad de la privación social: pobres
+pobreza['int_pob'] = pobreza['profun']*pobreza['pobreza']
+
+# Intensidad de la privación social: pobres extremos
+pobreza['int_pobe']= pobreza['profun']*pobreza['pobreza_e']
+
+# Intensidad de la privación social: población vulnerable por carencias
+pobreza['int_vulcar']=pobreza['profun']*pobreza['vul_car']
+
+# Intensidad de la privación social: población con carencias sociales
+pobreza['int_caren'] = pobreza['profun'] * pobreza['carencias']
+
+pobreza = pobreza[['folioviv', 'foliohog', 'numren', 'est_dis', 'upm', 'factor', 'tam_loc', 'rururb', 'ent', 'ubica_geo',
+                   'edad', 'sexo', 'parentesco', 'ic_rezedu', 'anac_e', 'inas_esc', 'niv_ed', 'ic_asalud', 'ic_segsoc', 'sa_dir',
+                   'ss_dir', 's_salud', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 'pea', 'jub', 'pam', 'ing_pam', 'ic_cv', 'icv_pisos',
+                   'icv_muros', 'icv_techos', 'icv_hac', 'ic_sbv', 'isb_agua', 'isb_dren', 'isb_luz', 'isb_combus', 'ic_ali_nc',
+                   'id_men', 'tot_iaad', 'tot_iamen', 'ins_ali', 'ic_ali', 'lca', 'dch', 'plp_e', 'plp', 'pobreza', 'pobreza_e',
+                   'pobreza_m', 'vul_car', 'vul_ing', 'no_pobv', 'i_privacion', 'carencias', 'carencias3', 'cuadrantes', 'prof1',
+                   'prof_e1', 'profun', 'int_pob', 'int_pobe', 'int_vulcar', 'int_caren', 'tamhogesc', 'ictpc', 'ict', 'ing_mon',
+                   'ing_lab', 'ing_ren', 'ing_tra', 'nomon', 'pago_esp', 'reg_esp', 'hli', 'discap']]
 ```
 
 **Se guarda la base de datos**
-```{r}
-#fwrite(pobreza, paste0(here::here(), "/Output/Data/pobreza_22.csv"), row.names = F)
-save(pobreza, file = paste0(here::here(), "/Output/Data/pobreza_22.RData"))
+```{python}
+pobreza.to_csv(current_directory + '/Output/Data/' + 'pobreza_22.csv', index = False)
 ```
 
 ## Resultados 
 
 ### Nivel nacional 
 
-```{r}
-pob_w <- pobreza %>% 
-          as_survey_design(weights = factor, 
-                            nest = TRUE) %>% 
-           filter(!is.na(pobreza))
+```{python}
+base = pobreza[~np.isnan(pobreza['pobreza'])]
+base_pobreza = pobreza[pobreza['pobreza'] == 1]
 
-vars  <- c("pobreza", "pobreza_m", "pobreza_e", "vul_car", "vul_ing", "no_pobv", "carencias", "carencias3", "ic_rezedu", 
-           "ic_asalud", "ic_segsoc", "ic_cv", "ic_sbv", "ic_ali_nc", "plp_e", "plp")
+nac= [
+      ['pobreza', np.average(a = base['pobreza'], 
+                             weights  = base['factor']) * 100 ,
+                  np.average(a = base[base['pobreza'] == 1]['pobreza'], 
+                             weights = base[base['pobreza'] == 1]['factor'], returned = True)[1]/1000000],     
+      ['pobreza_m', np.average(a = base['pobreza_m'], 
+                               weights = base['factor']) * 100 ,
+                    np.average(a = base[base['pobreza_m'] == 1]['pobreza_m'], 
+                               weights = base[base['pobreza_m'] == 1]['factor'], returned = True)[1]/1000000], 
+      ['pobreza_e', np.average(a = base['pobreza_e'], 
+                               weights  = pobreza[~np.isnan(pobreza['pobreza_e'])]['factor']) * 100 ,
+                    np.average(a = base[base['pobreza_e'] == 1]['pobreza_e'], 
+                               weights = base[base['pobreza_e'] == 1]['factor'], returned = True)[1]/1000000],     
+      ['vul_car', np.average(a = base['vul_car'], 
+                             weights = pobreza[~np.isnan(pobreza['vul_car'] )]['factor']) * 100 ,
+                  np.average(a = base[base['vul_car'] == 1]['vul_car'], 
+                             weights = base[base['vul_car'] == 1]['factor'], returned = True)[1]/1000000],
+      ['vul_ing', np.average(a = base['vul_ing'], 
+                             weights = pobreza[~np.isnan(pobreza['vul_car'])]['factor']) * 100 ,
+                  np.average(a = base[base['vul_ing'] == 1]['vul_ing'], 
+                             weights = base[base['vul_ing'] == 1]['factor'], returned = True)[1]/1000000],      
+      ['no_pobv', np.average(a = base['no_pobv'], 
+                             weights = pobreza[~np.isnan(pobreza['no_pobv'])]['factor']) * 100 ,
+                  np.average(a = base[base['no_pobv'] == 1]['no_pobv'], 
+                             weights = base[base['no_pobv'] == 1]['factor'], returned = True)[1]/1000000], 
+      ['carencias', np.average(a = base['carencias'], 
+                               weights=pobreza[~np.isnan(pobreza['carencias'])]['factor']) * 100 ,
+                    np.average(a = base[base['carencias'] == 1]['carencias'], 
+                               weights = base[base['carencias'] == 1]['factor'], returned = True)[1]/1000000],
+      ['carencias3', np.average(a = base['carencias3'], 
+                                weights=pobreza[~np.isnan(pobreza['carencias3'])]['factor']) * 100 ,
+                     np.average(a = base[base['carencias3'] == 1]['carencias3'], 
+                                weights = base[base['carencias3'] == 1]['factor'], returned = True)[1]/1000000],  
+      ['ic_rezedu', np.average(a = base['ic_rezedu'], 
+                               weights = base['factor']) * 100 ,
+                    np.average(a = base[base['ic_rezedu'] == 1]['ic_rezedu'], 
+                               weights = base[base['ic_rezedu'] == 1]['factor'], returned = True)[1]/1000000],     
+      ['ic_asalud', np.average(a = base['ic_asalud'], 
+                               weights = base['factor']) * 100 ,
+                    np.average(a = base[base['ic_asalud'] == 1]['ic_asalud'], 
+                               weights = base[base['ic_asalud'] == 1]['factor'], returned = True)[1]/1000000], 
+      ['ic_segsoc', np.average(a = base['ic_segsoc'], 
+                               weights = base['factor']) * 100 ,
+                    np.average(a = base[base['ic_segsoc'] == 1]['ic_segsoc'], 
+                               weights = base[base['ic_segsoc'] == 1]['factor'], returned = True)[1]/1000000],       
+      ['ic_cv', np.average(a = base['ic_cv'], 
+                           weights = base['factor']) * 100 , 
+                np.average(a = base[base['ic_cv'] == 1]['ic_cv'], 
+                           weights = base[base['ic_cv'] == 1]['factor'], returned = True)[1]/1000000],         
+      ['ic_sbv', np.average(a = base['ic_sbv'], 
+                            weights = base['factor']) * 100 ,
+                 np.average(a = base[base['ic_sbv'] == 1]['ic_sbv'], 
+                            weights = base[base['ic_sbv'] == 1]['factor'], returned = True)[1]/1000000],            
+      ['ic_ali_nc', np.average(a = base['ic_ali_nc'], 
+                               weights = base['factor']) * 100 ,
+                    np.average(a = base[base['ic_ali_nc'] == 1]['ic_ali_nc'], 
+                               weights = base[base['ic_ali_nc'] == 1]['factor'], returned = True)[1]/1000000],      
+      ['plp_e', np.average(a = base['plp_e'], 
+                           weights = base['factor']) * 100 ,
+                np.average(a = base[base['plp_e'] == 1]['plp_e'], 
+                           weights = base[base['plp_e'] == 1]['factor'], returned = True)[1]/1000000],
+      ['plp', np.average(a = base['plp'], 
+                         weights = base['factor']) * 100 ,
+              np.average(a = base[base['plp'] == 1]['plp'], 
+                         weights = base[base['plp'] == 1]['factor'], returned = True)[1]/1000000]]
 
-por <- pob_w %>%  
-        select(vars) %>% 
-         summarise_all(survey_mean, vartype = NULL) %>%  
-          round(digits = 6) %>%
-           t() %>% 
-            as.data.frame() %>%
-             mutate_at(vars(1),function(x) x * 100)
+titulos = ['Indicador', 'Porcentaje', 'Millones de personas']
 
-tot <- pob_w %>%  
-        select(vars) %>% 
-         summarise_all(survey_total, vartype = NULL) %>%  
-          t() %>% 
-           as.data.frame() %>%
-            mutate_at(vars(1),function(x) x / 1000000) 
-
-
-nac <- bind_cols(por, tot)
-
-rownames(nac) <-vars
-colnames(nac) <- c("Porcentaje", "Millones de personas")
+print(tabulate(nac, titulos, tablefmt = 'grid', floatfmt = ('.6f')))
 ```
 
-
+**Se guarda la base de datos**
+```{python}
+nac = pd.DataFrame(nac)
+nac.to_csv(current_directory + '/Output/' + 'indice de pobreza a nivel nacional.csv', index = False)
+```
 
 ### Porcentaje y número de personas por indicador de pobreza, entidad federativa.   
 
-```{r}
-vars  <- c("pobreza", "pobreza_m", "pobreza_e", "vul_car", "vul_ing", "no_pobv")
+```{python}
+ids = np.unique(pobreza['ent'])
 
-pob_ent_por <- pob_w %>% 
-                group_by(ent) %>%  
-                 select(vars) %>%
-                  summarise_all(survey_mean, vartype = NULL)
+pob_ent_por =[list(j) for j in  zip([np.average(a = base[base['ent'] == i]['pobreza'], 
+                                                weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                    [np.average(a = base[base['ent'] == i]['pobreza_m'], 
+                                                weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                    [np.average(a = base[base['ent'] == i]['pobreza_e'], 
+                                                weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                    [np.average(a = base[base['ent'] == i]['vul_car'], 
+                                                weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                    [np.average(a = base[base['ent'] == i]['vul_ing'], 
+                                                weights = base[base['ent'] == i]['factor']) * 100 for i in ids])]
 
-pob_ent_tot <- pob_w %>% 
-                group_by(ent) %>%  
-                 select(vars) %>%
-                  summarise_all(survey_total, vartype = NULL)
+titulos = ['pobreza', 'pobreza_m', 'pobreza_e', 'vul_car', 'vul_ing', 'no_pobv']   
 
-pob_ent <- pob_ent_por %>% 
-            left_join(., pob_ent_tot, 
-                       by = "ent")
+print(tabulate(pob_ent_por, titulos, floatfmt = ('.6f')))    
+
+pob_ent_tot =[list(j) for j in  zip([np.average(a = base[base['pobreza'] == 1][base['ent'] == i]['pobreza'], 
+                                                weights = base[base['pobreza'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],         
+                                    [np.average(a = base[base['pobreza_m'] == 1][base['ent'] == i]['pobreza_m'], 
+                                                weights = base[base['pobreza_m'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                    [np.average(a = base[base['pobreza_e'] == 1][base['ent'] == i]['pobreza_e'], 
+                                                weights = base[base['pobreza_e'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                    [np.average(a = base[base['vul_car'] == 1][base['ent'] == i]['vul_car'], 
+                                                weights = base[base['vul_car'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                    [np.average(a = base[base['vul_ing'] == 1][base['ent'] == i]['vul_ing'], 
+                                                weights = base[base['vul_ing'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids])]
+
+print(tabulate(pob_ent_tot, titulos, floatfmt = ('.0f')))    
 ```
 
+
+**Se guarda la base de datos**
+```{python}
+pob_ent_tot = pd.DataFrame(pob_ent_tot)
+pob_ent_tot.to_csv(current_directory + '/Output/' + 'indice de pobreza a nivel estatal.csv', index = False)
+```
 
 ### Porcentaje y número de personas por indicador de carencia social, entidad federativa.    
 
-```{r}
-vars  <- c("ic_rezedu", "ic_asalud", "ic_segsoc", "ic_cv", "ic_sbv", "ic_ali_nc", "carencias", "carencias3", "plp_e", "plp")
+```{python}
+ids = np.unique(pobreza['ent'])
 
-care_ent_por <- pob_w %>% 
-                 group_by(ent) %>%  
-                  select(vars) %>%
-                   summarise_all(survey_mean, vartype = NULL)
+care_ent_por =[list(j) for j in  zip([np.average(a = base[base['ent'] == i]['ic_rezedu'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['ic_asalud'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['ic_segsoc'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['ic_cv'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['ic_sbv'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['ic_ali_nc'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['carencias'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['carencias3'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['plp_e'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids],
+                                     [np.average(a = base[base['ent'] == i]['plp'], 
+                                                 weights = base[base['ent'] == i]['factor']) * 100 for i in ids])]
 
-care_ent_tot <- pob_w %>% 
-                 group_by(ent) %>%  
-                  select(vars) %>%
-                   summarise_all(survey_total, vartype = NULL)
+titulos = ['ic_rezedu', 'ic_asalud', 'ic_segsoc', 'ic_cv', 'ic_sbv', 'ic_ali_nc', 'carencias', 'carencias3', 'plp_e', 'plp']   
 
-pob_ent <- pob_ent %>% 
-            left_join(., care_ent_por, by = "ent") %>% 
-             left_join(care_ent_tot, by = "ent")
+print(tabulate(care_ent_por, titulos,floatfmt=('.6f')))    
+
+care_ent_tot =[list(j) for j in  zip([np.average(a = base[base['ic_rezedu'] == 1][base['ent'] == i]['ic_rezedu'], 
+                                                 weights = base[base['ic_rezedu'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],           
+                                     [np.average(a = base[base['ic_asalud'] == 1][base['ent'] == i]['ic_asalud'], 
+                                                 weights = base[base['ic_asalud'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['ic_segsoc'] == 1][base['ent'] == i]['ic_segsoc'], 
+                                                 weights = base[base['ic_segsoc'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['ic_cv'] == 1][base['ent'] == i]['ic_cv'], 
+                                                 weights = base[base['ic_cv'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['ic_sbv'] == 1][base['ent'] == i]['ic_sbv'], 
+                                                 weights = base[base['ic_sbv'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['ic_ali_nc'] == 1][base['ent'] == i]['ic_ali_nc'], 
+                                                 weights = base[base['ic_ali_nc'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['carencias'] == 1][base['ent'] == i]['carencias'], 
+                                                 weights = base[base['carencias'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['carencias3'] == 1][base['ent'] == i]['carencias3'], 
+                                                 weights = base[base['carencias3'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['plp_e'] == 1][base['ent'] == i]['plp_e'], 
+                                                 weights = base[base['plp_e'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids],
+                                     [np.average(a = base[base['plp'] == 1][base['ent'] == i]['plp'], 
+                                                 weights = base[base['plp'] == 1][base['ent'] == i]['factor'], returned = True)[1] for i in ids])]
+
+titulos = ['ic_rezedu', 'ic_asalud', 'ic_segsoc', 'ic_cv', 'ic_sbv', 'ic_ali_nc', 'carencias', 'carencias3', 'plp_e', 'plp']   
+
+print(tabulate(care_ent_tot, titulos, floatfmt = ('.0f')))
 ```
 
 
-**Se guarda la base de datos final **
-```{r}
-#fwrite(pob_ent, paste0(here::here(), "/Output/Data/indice de pobreza a nivel entidad.csv"), row.names = F)
-save(pob_ent, file = paste0(here::here(), "/Output/Data/indice de pobreza a nivel entidad.RData"))
+**Se guarda la base de datos**
+```{python}
+care_ent_tot = pd.DataFrame(care_ent_tot)
+care_ent_tot.columns = ['ic_rezedu', 'ic_asalud', 'ic_segsoc', 'ic_cv', 'ic_sbv', 'ic_ali_nc', 'carencias', 'carencias3', 'plp_e', 'plp']   
+care_ent_tot.to_csv(current_directory + '/Output/' + 'indicadores de carencia a nivel estatal.csv', index = False)
 ```
