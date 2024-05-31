@@ -1510,243 +1510,223 @@ lp1_rur = 1600.18
 lp_pam = (lp1_urb + lp1_rur)/2
 ```
 
-```{python}
-# Acceso directo a la seguridad social
-## Ocupación principal
-seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'] == 1, 
-                                           seguridad_social['tipo_trab1'], 
-                                            seguridad_social['tipo_trab1']) # Depende de un patrón, jefe o superior 
-seguridad_social['tipo_trab1'] = np.where((seguridad_social['pea'] == 0) | (seguridad_social['pea'] == 2), 
-                                            np.NAN, 
-                                             seguridad_social['tipo_trab1']) # No depende de un jefe y recibe o tiene asignado un sueldo
-seguridad_social['tipo_trab1'] = np.where(seguridad_social['pea'].isna(), 
-                                           np.NAN, 
-                                            seguridad_social['tipo_trab1']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
-## Ocupación secundaria
-seguridad_social['tipo_trab2'] = np.where(seguridad_social['pea'] == 1, 
-                                           seguridad_social['tipo_trab2'], 
-                                            seguridad_social['tipo_trab2']) # Depende de un patrón, jefe o superior
-seguridad_social['tipo_trab2'] = np.where((seguridad_social['pea'] == 0) | (seguridad_social['pea'] == 2), 
-                                            np.NAN, 
-                                             seguridad_social['tipo_trab2']) # No depende de un jefe y recibe o tiene asignado un sueldo
-seguridad_social['tipo_trab2'] = np.where(seguridad_social['pea'].isna(), 
-                                           np.NAN, 
-                                            seguridad_social['tipo_trab2']) # No depende de un jefe y no recibe o no tiene asignado un sueldo
-## Jubilados y pensionados
-seguridad_social['jub'] = np.NAN
-seguridad_social.loc[((seguridad_social['trabajo_mp'] == 2) & ((seguridad_social['act_pnea1'] == 2) | 
-                      (seguridad_social['act_pnea2'] == 2))), 'jub'] = 1 # Población pensionada o jubilada
-seguridad_social.loc[((seguridad_social['ing_pens'] > 0) & (~seguridad_social['ing_pens'].isna())), 'jub'] = 1 # Población pensionada o jubilada
-seguridad_social.loc[(seguridad_social['inscr_2'] == 2), 'jub'] = 1 # Población pensionada o jubilada
-seguridad_social.loc[(seguridad_social['jub'].isna()), 'jub'] = 0 # Población no pensionada o jubilada
-
-# Prestaciones básicas
-
-# Prestaciones laborales (Servicios médicos)
-## Ocupación principal
-seguridad_social['smlab1'] = np.NAN
-seguridad_social.loc[(seguridad_social['ocupa1'] == 1), 'smlab1'] = 0 # Con servicios médicos
-seguridad_social.loc[((seguridad_social['ocupa1'] == 1) & (seguridad_social['atemed'] == 1) & 
-                      ((seguridad_social['inst_1'] == 1) | (seguridad_social['inst_2'] == 2) | 
-                       (seguridad_social['inst_3'] == 3) | (seguridad_social['inst_4'] == 4)) & 
-                        (seguridad_social['inscr_1'] == 1)), 'smlab1'] = 1 # Sin servicios médicos
-## Ocupación secundaria
-seguridad_social['smlab2'] = np.NAN
-seguridad_social.loc[(seguridad_social['ocupa2'] == 1), 'smlab2'] = 0 # Con servicios médicos
-seguridad_social.loc[((seguridad_social['ocupa2'] == 1) & (seguridad_social['atemed'] == 1) & 
-                      ((seguridad_social['inst_1'] == 1) | (seguridad_social['inst_2'] == 2) | 
-                       (seguridad_social['inst_3'] == 3) | (seguridad_social['inst_4'] == 4)) & 
-                        (seguridad_social['inscr_1'] == 1)), 'smlab2'] = 1 # Sin servicios médicos
-
-# Contratación voluntaria: servicios médicos y ahorro para el retiro o pensión para la vejez (SAR, Afore, Haber de retiro)
-## Servicios médicos
-seguridad_social['smcv'] = np.NAN
-seguridad_social.loc[((seguridad_social['edad'] >= 12) & (~seguridad_social['edad'].isna())), 'smcv'] = 0 # No cuenta
-seguridad_social.loc[((seguridad_social['atemed'] == 1) & ((seguridad_social['inst_1'] == 1) |
-                      (seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3) |
-                       (seguridad_social['inst_4'] == 4)) & (seguridad_social['inscr_6'] == 6) & 
-                        ((seguridad_social['edad'] >= 12) & (~seguridad_social['edad'].isna()))), 'smcv'] = 1 # Sí cuenta
-                        
-## SAR o Afore
-seguridad_social['aforecv'] = np.NAN              
-seguridad_social.loc[((seguridad_social['segvol_1'].isna()) & ((seguridad_social['edad'] >= 12) & 
-                      (~seguridad_social['edad'].isna()))), 'aforecv'] = 0 # No cuenta    
-seguridad_social.loc[((seguridad_social['segvol_1'] == 1) & ((seguridad_social['edad'] >= 12) & 
-                      (~seguridad_social['edad'].isna()))), 'aforecv'] = 1 # Sí cuenta 
-                      
-## Acceso directo a la seguridad social
-seguridad_social['ss_dir'] = np.NAN
-seguridad_social.loc[(seguridad_social['ss_dir'].isna()), 'ss_dir'] = 0 # Sin acceso
-
-## Ocupación principal
-seguridad_social.loc[((seguridad_social['tipo_trab1'] == 1) & (seguridad_social['smlab1'] == 1)), 'ss_dir'] = 1 # Con acceso
-seguridad_social.loc[((seguridad_social['tipo_trab1'] == 2) & ((seguridad_social['smlab1'] == 1) |
-                      (seguridad_social['smcv'] == 1)) & ((seguridad_social['aforlab1'] == 1) | 
-                       (seguridad_social['aforecv'] == 1))), 'ss_dir'] = 1 # Con acceso
-seguridad_social.loc[((seguridad_social['tipo_trab1'] == 3) & ((seguridad_social['smlab1'] == 1) | 
-                       (seguridad_social['smcv'] == 1)) & (seguridad_social['aforecv'] == 1)), 'ss_dir'] = 1 # Con acceso
-
-## Ocupación secundaria
-seguridad_social.loc[((seguridad_social['tipo_trab2'] == 1) & (seguridad_social['smlab2'] == 1)), 'ss_dir'] = 1 # Con acceso
-seguridad_social.loc[((seguridad_social['tipo_trab2'] == 2) & ((seguridad_social['smlab2'] == 1) | 
-                      (seguridad_social['smcv'] == 1)) & ((seguridad_social['aforlab2'] == 1) | 
-                       (seguridad_social['aforecv'] == 1))), 'ss_dir'] = 1 # Con acceso
-seguridad_social.loc[((seguridad_social['tipo_trab2'] == 3) & ((seguridad_social['smlab2'] == 1) | 
-                       (seguridad_social['smcv'] == 1)) & (seguridad_social['aforecv'] == 1)), 'ss_dir'] = 1 # Con acceso   
-
-## Jubilados y pensionados
-seguridad_social.loc[(seguridad_social['jub'] == 1), 'ss_dir'] = 1 # Con acceso 
-
-## Núcleos familiares   
-seguridad_social['par'] = np.NAN
-seguridad_social.loc[((seguridad_social['parentesco'] >= 100) & (seguridad_social['parentesco'] < 200)), 'par'] = 1 # Jefe o jefa del hogar
-seguridad_social.loc[((seguridad_social['parentesco'] >= 200) & (seguridad_social['parentesco'] < 300)), 'par'] = 2 # Cónyuge del  jefe/a
-seguridad_social.loc[((seguridad_social['parentesco'] >= 300) & (seguridad_social['parentesco'] < 400)), 'par'] = 3 # Hijo del jefe/a
-seguridad_social.loc[((seguridad_social['parentesco'] == 601)), 'par'] = 4 # Padre o Madre del jefe/a
-seguridad_social.loc[((seguridad_social['parentesco'] == 615)), 'par'] = 5 # Suegro del jefe/a
-seguridad_social.loc[(seguridad_social['par'].isna()), 'par'] = 6 # Sin acceso
-
-# Asimismo, se utilizará la información relativa a la asistencia a la escuela
-seguridad_social['inas_esc'] = np.NAN
-seguridad_social.loc[((seguridad_social['asis_esc'] == 1)), 'inas_esc'] = 0 # Sí asiste
-seguridad_social.loc[((seguridad_social['asis_esc'] == 2)), 'inas_esc'] = 1 # No asiste
-
-# En primer lugar se identifican los principales parentescos respecto a la jefatura del hogar y si ese miembro cuenta con acceso directo
-seguridad_social['jef'] = np.NAN
-seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['ss_dir'] == 1)), 'jef'] = 1
-seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) & 
-                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
-                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
-                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'jef'] = np.NAN
-
-seguridad_social['cony'] = np.NAN
-seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['ss_dir'] == 1)), 'cony'] = 1
-seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) &
-                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
-                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
-                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'cony'] = np.NAN
-
-seguridad_social['hijo'] = np.NAN
-seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['ss_dir'] == 1) & (seguridad_social['jub'] == 1) & 
-                      ((seguridad_social['edad'] > 25) & (~seguridad_social['edad'].isna()))), 'hijo'] = 1
-seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['ss_dir'] == 1) & (seguridad_social['jub'] == 0)), 'hijo'] = 1
-seguridad_social.loc[((((seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3)) & (seguridad_social['inscr_6'] == 6)) &
-                      ((seguridad_social['inst_1'].isna()) & (seguridad_social['inst_4'].isna()) & (seguridad_social['inst_6'].isna())) &
-                       ((seguridad_social['inscr_1'].isna()) & (seguridad_social['inscr_2'].isna()) & (seguridad_social['inscr_3'].isna()) &
-                        (seguridad_social['inscr_4'].isna()) & (seguridad_social['inscr_5'].isna()) & (seguridad_social['inscr_7'].isna()))), 'hijo'] = np.NAN
-
-seguridad_social = seguridad_social.groupby(['folioviv', 'foliohog']
-                                           ).apply(lambda x: pd.Series({'jef_ss': x['jef'].sum(skipna=True),
-                                                                        'cony_ss': x['cony'].sum(skipna=True),
-                                                                        'hijo_ss': x['hijo'].sum(skipna=True)})
-                                                                      ).reset_index().merge(seguridad_social, 
-                                                                                             on = ['folioviv', 'foliohog'])
-
-seguridad_social.loc[(seguridad_social['jef_ss'] > 0), 'jef_ss'] = 1 # Acceso directo a servicios de salud de la jefatura del hogar
-seguridad_social.loc[(seguridad_social['cony_ss'] > 0), 'cony_ss'] = 1 # Acceso directo a servicios de salud del cónyuge de la jefatura del hogar
-seguridad_social.loc[(seguridad_social['hijo_ss'] > 0), 'hijo_ss'] = 1 # Acceso directo a servicios de salud de hijos(as) de la jefatura del hogar
-
-# Otros núcleos familiares: se identifica a la población con acceso a la seguridad social mediante otros núcleos familiares a través de la afiliación o inscripción 
-#a servicios de salud por algún familiar dentro o fuera del hogar, muerte del asegurado o por contratación propia.
-
-seguridad_social['s_salud'] = np.NAN
-seguridad_social.loc[((~seguridad_social['pop_insabi'].isna()) & (~seguridad_social['atemed'].isna())), 's_salud'] = 0 # Sin acceso
-seguridad_social.loc[((seguridad_social['atemed'] == 1) & ((seguridad_social['inst_1'] == 1) |
-                      (seguridad_social['inst_2'] == 2) | (seguridad_social['inst_3'] == 3) | 
-                       (seguridad_social['inst_4'] == 4)) & ((seguridad_social['inscr_3'] == 3) | 
-                        (seguridad_social['inscr_4'] == 4) | (seguridad_social['inscr_6'] == 6) | 
-                         (seguridad_social['inscr_7'] == 7))), 's_salud'] = 1 # Con acceso
-
-# Programas sociales de pensiones para adultos mayores
-seguridad_social['pam'] = np.NAN
-seguridad_social.loc[((seguridad_social['edad'] >= 65) & (~seguridad_social['edad'].isna())), 'pam'] = 0 # No recibe
-seguridad_social.loc[((seguridad_social['edad'] >= 65) & (~seguridad_social['edad'].isna()) & 
-                      (seguridad_social['ing_pam'] >= lp_pam) & (~seguridad_social['ing_pam'].isna())), 'pam'] = 1 # Recibe
-
-#Indicador de carencia por acceso a la seguridad social
-seguridad_social['ic_segsoc'] = np.NAN
-## Acceso directo
-seguridad_social.loc[(seguridad_social['ss_dir'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
-
-## Parentesco directo: jefatura
-seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[((seguridad_social['par'] == 1) & (seguridad_social['pea'] == 0) & 
-                      (seguridad_social['hijo_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-
-## Parentesco directo: cónyuge
-seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[((seguridad_social['par'] == 2) & (seguridad_social['pea'] == 0) & 
-                      (seguridad_social['hijo_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-
-## Parentesco directo: descendientes
-seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'] < 16) & 
-                      (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'] < 16) & 
-                      (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'].between(16, 25)) & 
-                      (seguridad_social['inas_esc'] == 0) & (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[((seguridad_social['par'] == 3) & (seguridad_social['edad'].between(16, 25)) & 
-                      (seguridad_social['inas_esc'] == 0) & (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-
-## Parentesco directo: ascendientes
-seguridad_social.loc[((seguridad_social['par'] == 4) & (seguridad_social['pea'] == 0) &
-                      (seguridad_social['jef_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[((seguridad_social['par'] == 5) & (seguridad_social['pea'] == 0) & 
-                      (seguridad_social['cony_ss'] == 1)), 'ic_segsoc'] = 0 # No presenta carencia
-
-## Otros núcleos familiares
-seguridad_social.loc[(seguridad_social['s_salud'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
-
-## Programa de adultos mayores
-seguridad_social.loc[(seguridad_social['pam'] == 1), 'ic_segsoc'] = 0 # No presenta carencia
-seguridad_social.loc[(seguridad_social['ic_segsoc'].isna()), 'ic_segsoc'] = 1 # Presenta carencia
-
-seguridad_social = seguridad_social[['folioviv', 'foliohog', 'numren', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'pea', 'jub', 
-'smlab1', 'smlab2', 'smcv', 'aforecv', 'ss_dir', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 's_salud', 'pam', 'ing_pam', 'ic_segsoc']]
-```
-
  
 ```{python}
-def filtrar_poblacion_objetivo(df):
-    return df[~((df['parentesco'] >= 400) & (df['parentesco'] < 500) | (df['parentesco'] >= 700) & (df['parentesco'] < 800))]
-
-def integrar_bases(df, prestaciones, pensiones):
-    df = pd.merge(df, 
-                   prestaciones, 
-                    on = ['folioviv', 'foliohog', 'numren'], 
-                     how = 'left')
-    df = pd.merge(df, 
-                   pensiones, 
-                    on = ['folioviv', 'foliohog', 'numren'], 
-                     how = 'left')
-    return df
-
-def convertir_a_numerico(df, columnas):
-    df[columnas] = df[columnas].apply(pd.to_numeric, errors = 'coerce')
-    return df
-
-def calcular_pea(df):
-    df['pea'] = np.NAN
-    df.loc[(df['trab'] == 1) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 1  # PEA: ocupada
-    df.loc[((df['act_pnea1'] == 1) | (df['act_pnea2'] == 1)) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 2  # PEA: desocupada
-    df.loc[((df['edad'] >= 16) & (~df['edad'].isna()) &
-            (((df['act_pnea1'] != 1) | (df['act_pnea1'].isna())) &
-             ((df['act_pnea2'] != 1) | (df['act_pnea2'].isna()))) &
-            (((df['act_pnea1'] >= 2) & (df['act_pnea1'] <= 6)) |
-             ((df['act_pnea2'] >= 2) & (df['act_pnea2'] <= 6)))), 'pea'] = 0  # PNEA
-    return df
-
-# Convirtiendo variables string a numéricas
-columnas_a_convertir = ['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2', 'ocupa1', 'atemed', 'trabajo_mp',
-                        'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3',
-                        'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']
+def construir_indicador(poblacion):
+    # Convirtiendo variables string a numéricas
+    columnas_a_convertir = ['parentesco', 'trab', 'edad', 'act_pnea1', 'act_pnea2', 'ocupa1', 'atemed', 'trabajo_mp',
+                            'inst_1', 'inst_2', 'inst_3', 'inst_4', 'inst_5', 'inst_6', 'inscr_1', 'inscr_2', 'inscr_3',
+                           'inscr_4', 'inscr_5', 'inscr_6', 'inscr_7', 'asis_esc', 'pop_insabi', 'segvol_1']
     
-seguridad_social = (poblacion.copy()
-                             .pipe(filtrar_poblacion_objetivo)
-                             .pipe(integrar_bases, prestaciones  = prestaciones, pensiones = pensiones)
-                             .pipe(convertir_a_numerico, columnas = columnas_a_convertir)
-                             .pipe(calcular_pea)
-                             )
+    def filtrar_poblacion_objetivo(df):
+        return df[~((df['parentesco'] >= 400) & (df['parentesco'] < 500) | (df['parentesco'] >= 700) & (df['parentesco'] < 800))]
+
+    def integrar_bases(df):
+        df = pd.merge(df, 
+                       prestaciones, 
+                        on = ['folioviv', 'foliohog', 'numren'], 
+                         how = 'left')
+        df = pd.merge(df, 
+                       pensiones, 
+                        on = ['folioviv', 'foliohog', 'numren'], 
+                         how = 'left')
+        return df
+
+    def convertir_a_numerico(df, columnas):
+        df[columnas] = df[columnas].apply(pd.to_numeric, errors = 'coerce')
+      
+        return df
+
+    def calcular_pea(df):
+        df['pea'] = np.NaN
+        df.loc[(df['trab'] == 1) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 1  # PEA: ocupada
+        df.loc[((df['act_pnea1'] == 1) | (df['act_pnea2'] == 1)) & (df['edad'] >= 16) & (~df['edad'].isna()), 'pea'] = 2  # PEA: desocupada
+        df.loc[((df['edad'] >= 16) & (~df['edad'].isna()) &
+                (((df['act_pnea1'] != 1) | (df['act_pnea1'].isna())) &
+                 ((df['act_pnea2'] != 1) | (df['act_pnea2'].isna()))) &
+                (((df['act_pnea1'] >= 2) & (df['act_pnea1'] <= 6)) |
+                 ((df['act_pnea2'] >= 2) & (df['act_pnea2'] <= 6)))), 'pea'] = 0  # PNEA
+        return df
+
+    def tipo_trabajo(df):
+        # Ocupación principal
+        df['tipo_trab1'] = np.where(df['pea'] == 1, df['tipo_trab1'], df['tipo_trab1'])
+        df['tipo_trab1'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.NAN, df['tipo_trab1'])
+        df['tipo_trab1'] = np.where(df['pea'].isna(), np.NAN, df['tipo_trab1'])
+        
+        # Ocupación secundaria
+        df['tipo_trab2'] = np.where(df['pea'] == 1, df['tipo_trab2'], df['tipo_trab2'])
+        df['tipo_trab2'] = np.where((df['pea'] == 0) | (df['pea'] == 2), np.NAN, df['tipo_trab2'])
+        df['tipo_trab2'] = np.where(df['pea'].isna(), np.NAN, df['tipo_trab2'])
+        
+        return df
+
+    def calcular_jubilados(df):
+        df['jub'] = np.NaN
+        df.loc[((df['trabajo_mp'] == 2) & ((df['act_pnea1'] == 2) | (df['act_pnea2'] == 2))), 'jub'] = 1
+        df.loc[((df['ing_pens'] > 0) & (~df['ing_pens'].isna())), 'jub'] = 1
+        df.loc[(df['inscr_2'] == 2), 'jub'] = 1
+        df.loc[(df['jub'].isna()), 'jub'] = 0
+        
+        return df
+
+    def prestaciones_basicas(df):
+        df['smlab1'] = np.NaN
+        df.loc[(df['ocupa1'] == 1), 'smlab1'] = 0
+        df.loc[((df['ocupa1'] == 1) & (df['atemed'] == 1) & 
+                ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
+                 (df['inscr_1'] == 1)), 'smlab1'] = 1
+    
+        df['smlab2'] = np.NaN
+        df.loc[(df['ocupa2'] == 1), 'smlab2'] = 0
+        df.loc[((df['ocupa2'] == 1) & (df['atemed'] == 1) &
+                ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
+                 (df['inscr_1'] == 1)), 'smlab2'] = 1
+                 
+        return df
+
+    def contratacion_voluntaria(df):
+        df['smcv'] = np.where((df['edad'] >= 12) & (~df['edad'].isna()), 0, np.NaN)
+        df.loc[((df['atemed'] == 1) & ((df['inst_1'] == 1) |
+                (df['inst_2'] == 2) | (df['inst_3'] == 3) |
+                 (df['inst_4'] == 4)) & (df['inscr_6'] == 6) &
+                  ((df['edad'] >= 12) & (~df['edad'].isna()))), 'smcv'] = 1
+    
+        df['aforecv'] = np.NaN
+        df.loc[(df['segvol_1'].isna()) &
+                ((df['edad'] >= 12) &
+                 (~df['edad'].isna())), 'aforecv'] = 0
+        df.loc[(df['segvol_1'] == 1) &
+                ((df['edad'] >= 12) &
+                 (~df['edad'].isna())), 'aforecv'] = 1
+        
+        return df
+
+    def acceso_directo_seguridad_social(df):
+        df['ss_dir'] = np.NaN
+        df.loc[(df['ss_dir'].isna()), 'ss_dir'] = 0
+    
+        df.loc[((df['tipo_trab1'] == 1) & (df['smlab1'] == 1)), 'ss_dir'] = 1
+        df.loc[((df['tipo_trab1'] == 2) & ((df['smlab1'] == 1) |
+                (df['smcv'] == 1)) & ((df['aforlab1'] == 1) |
+                 (df['aforecv'] == 1))), 'ss_dir'] = 1
+        df.loc[((df['tipo_trab1'] == 3) & ((df['smlab1'] == 1) |
+                (df['smcv'] == 1)) & (df['aforecv'] == 1)), 'ss_dir'] = 1
+    
+        df.loc[((df['tipo_trab2'] == 1) & (df['smlab2'] == 1)), 'ss_dir'] = 1
+        df.loc[((df['tipo_trab2'] == 2) & ((df['smlab2'] == 1) |
+                (df['smcv'] == 1)) & ((df['aforlab2'] == 1) |
+                 (df['aforecv'] == 1))), 'ss_dir'] = 1
+        df.loc[((df['tipo_trab2'] == 3) & ((df['smlab2'] == 1) |
+                (df['smcv'] == 1)) & (df['aforecv'] == 1)), 'ss_dir'] = 1
+    
+        df.loc[(df['jub'] == 1), 'ss_dir'] = 1
+        
+        return df
+
+    def identificar_nucleos_familiares(df):
+        df['par'] = np.NaN
+        df.loc[((df['parentesco'] >= 100) & (df['parentesco'] < 200)), 'par'] = 1
+        df.loc[((df['parentesco'] >= 200) & (df['parentesco'] < 300)), 'par'] = 2
+        df.loc[((df['parentesco'] >= 300) & (df['parentesco'] < 400)), 'par'] = 3
+        df.loc[((df['parentesco'] == 601)), 'par'] = 4
+        df.loc[((df['parentesco'] == 615)), 'par'] = 5
+        df.loc[(df['par'].isna()), 'par'] = 6
+        
+        df['inas_esc'] = np.where((df['asis_esc'] == 1), 0, 1)
+        
+        return df
+
+    def identificar_acceso_directo(df):
+        df['jef'] = np.where(((df['par'] == 1) & (df['ss_dir'] == 1)), 1, np.NAN)
+        df['cony'] = np.where(((df['par'] == 2) & (df['ss_dir'] == 1)), 1, np.NAN)
+        df['hijo'] = np.where(((df['par'] == 3) & (df['ss_dir'] == 1) & (df['jub'] == 1) & 
+                                (df['edad'] > 25) & (~df['edad'].isna())) | 
+                               ((df['par'] == 3) & (df['ss_dir'] == 1) & (df['jub'] == 0)), 1, np.NAN)
+        
+        return df
+
+    def agrupar_nucleos_familiares(df):
+        grouped = df.groupby(['folioviv', 'foliohog']).agg({'jef': 'sum', 'cony': 'sum', 'hijo': 'sum'}).reset_index()
+        grouped['jef'] = np.where((grouped['jef'] > 0), 1, 0)
+        grouped['cony'] = np.where((grouped['cony'] > 0), 1, 0)
+        grouped['hijo'] = np.where((grouped['hijo'] > 0), 1, 0)
+        grouped.rename(columns={'jef': 'jef_ss', 'cony': 'cony_ss', 'hijo': 'hijo_ss'}, inplace=True)
+        
+        df = pd.merge(df, 
+                       grouped, 
+                        on = ['folioviv', 'foliohog'], 
+                         how = 'left')
+        df['jef_ss'] = np.where((df['jef_ss'] == 1), 1, np.NAN)
+        df['cony_ss'] = np.where((df['cony_ss'] == 1), 1, np.NAN)
+        df['hijo_ss'] = np.where((df['hijo_ss'] == 1), 1, np.NAN)
+        
+        return df
+
+    # Funciones auxiliares
+    def identificar_otro_nucleo_familiar(df):
+        df['s_salud'] = np.NaN
+        df.loc[((~df['pop_insabi'].isna()) & (~df['atemed'].isna())), 's_salud'] = 0
+        df.loc[((df['atemed'] == 1) &
+                ((df['inst_1'] == 1) | (df['inst_2'] == 2) | (df['inst_3'] == 3) | (df['inst_4'] == 4)) &
+                 ((df['inscr_3'] == 3) | (df['inscr_4'] == 4) | (df['inscr_6'] == 6) | (df['inscr_7'] == 7))), 's_salud'] = 1
+        return df
+
+    def identificar_programa_pensiones(df):
+        df['pam'] = np.NaN
+        df.loc[((df['edad'] >= 65) & (~df['edad'].isna())), 'pam'] = 0
+        df.loc[((df['edad'] >= 65) & (~df['edad'].isna()) & 
+                (df['ing_pam'] >= lp_pam) & (~df['ing_pam'].isna())), 'pam'] = 1
+        return df
+
+    def calcular_indicador_carencia(df):
+        df['ic_segsoc'] = np.NaN
+        df.loc[(df['ss_dir'] == 1), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 1) & (df['cony_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 1) & (df['pea'] == 0) & (df['hijo_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 2) & (df['jef_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 2) & (df['pea'] == 0) & (df['hijo_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 3) & (df['edad'] < 16) & (df['jef_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 3) & (df['edad'] < 16) & (df['cony_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 3) & (df['edad'].between(16, 25)) & (df['inas_esc'] == 0) & (df['jef_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 3) & (df['edad'].between(16, 25)) & (df['inas_esc'] == 0) & (df['cony_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 4) & (df['pea'] == 0) & (df['jef_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[((df['par'] == 5) & (df['pea'] == 0) & (df['cony_ss'] == 1)), 'ic_segsoc'] = 0
+        df.loc[(df['s_salud'] == 1), 'ic_segsoc'] = 0
+        df.loc[(df['pam'] == 1), 'ic_segsoc'] = 0
+        df.loc[df['ic_segsoc'].isna(), 'ic_segsoc'] = 1
+        
+        return df
+
+    return (poblacion.copy()
+                     .pipe(filtrar_poblacion_objetivo)
+                     .pipe(integrar_bases)
+                     .pipe(convertir_a_numerico, columnas = columnas_a_convertir)
+                     .pipe(calcular_pea)
+                     .pipe(tipo_trabajo)
+                     .pipe(calcular_jubilados)
+                     .pipe(prestaciones_basicas)
+                     .pipe(contratacion_voluntaria)
+                     .pipe(acceso_directo_seguridad_social)
+                     .pipe(identificar_nucleos_familiares)
+                     .pipe(identificar_acceso_directo)
+                     .pipe(agrupar_nucleos_familiares)
+                     .pipe(identificar_otro_nucleo_familiar)
+                     .pipe(identificar_programa_pensiones)
+                     .pipe(calcular_indicador_carencia))
+```
+
+
+```{python}
+# Uso de la función principal
+# Asumiendo que 'poblacion', 'prestaciones', y 'pensiones' ya están definidos
+
+seguridad_social = construir_indicador(poblacion)
+    
+                             
+# Seleccionar columnas finales
+seguridad_social = seguridad_social[['folioviv', 'foliohog', 'numren', 'tipo_trab1', 'tipo_trab2', 'aforlab1', 'aforlab2', 'pea', 'jub', 'smlab1',
+'smlab2', 'smcv', 'aforecv', 'ss_dir', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 's_salud', 'pam', 'ing_pam', 'ic_segsoc']]
 ```
 
 **Se guarda la base de datos** 
