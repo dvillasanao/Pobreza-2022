@@ -125,7 +125,7 @@ reticulate::repl_python() #can be used to interactively run Python code
   #                        python_version="3.11.5")
 ```
 
-```{python}
+```{python, eval = FALSE}
 # Eliminar todas las variables en el entorno de trabajo actual
 for name in dir():
     if not name.startswith('_'):
@@ -3213,35 +3213,50 @@ trabajos = pd.read_csv(current_directory + "/Bases de datos/trabajos.csv", low_m
 
 
 ```{python}
-aguinaldos = trabajos.copy()
-
-#Convirtiendo variables string a numericas
-aguinaldos[['numren', 'id_trabajo', 'pres_2']
-           ] = aguinaldos[['numren', 'id_trabajo', 'pres_2']
-                          ].apply(pd.to_numeric, errors = 'coerce')
-
-#Generando la base de aguinaldo
-aguinaldos = pd.pivot_table(aguinaldos, 
-                             index=['folioviv', 'foliohog', 'numren'], 
-                              columns = 'id_trabajo', 
-                               values=['pres_2'], 
-                                aggfunc = np.sum, 
-                                 fill_value = 0)
-                                 
-aguinaldos.columns = [f'{i}{j}' for i, j in aguinaldos.columns]
-aguinaldos = aguinaldos.reset_index()
-
-aguinaldos['trab'] = 1 # Población con al menos un empleo 
-
-aguinaldos['aguinaldo1'] = np.where(aguinaldos['pres_21'] == 2, 1, 0) # Aguinaldo trabajo principal
-aguinaldos['aguinaldo2'] = np.where(aguinaldos['pres_22'] == 2, 1, 0) # Aguinaldo trabajo secundario
-
-aguinaldos = aguinaldos[['folioviv', 'foliohog', 'numren', 'aguinaldo1', 'aguinaldo2', 'trab']]
+def indicador_aguinaldos(trabajos):
+    def convertir_a_numerico(df):
+        columnas_a_convertir = ['numren', 'id_trabajo', 'pres_2']
+        df[columnas_a_convertir] = df[columnas_a_convertir
+                                     ].apply(pd.to_numeric, errors = 'coerce')
+        return df
+    
+    def generar_base_aguinaldo(df):
+        df = pd.pivot_table(df, 
+                            index = ['folioviv', 'foliohog', 'numren'], 
+                            columns = 'id_trabajo', 
+                            values = ['pres_2'], 
+                            aggfunc = np.sum, 
+                            fill_value = 0)
+        df.columns = [f'{i}{j}' for i, j in df.columns]
+        df = df.reset_index()
+        
+        return df 
+    
+    def agregar_columnas_aguinaldo(df):
+        df['trab'] = 1  # Población con al menos un empleo 
+        df['aguinaldo1'] = np.where(df.get('pres_21', 0) == 2, 1, 0)  # Aguinaldo trabajo principal
+        df['aguinaldo2'] = np.where(df.get('pres_22', 0) == 2, 1, 0)  # Aguinaldo trabajo secundario
+        
+        return df
+    
+    def seleccionar_columnas_finales(df):
+        columnas_finales = ['folioviv', 'foliohog', 'numren', 'aguinaldo1', 'aguinaldo2', 'trab']
+        
+        return df[columnas_finales]
+    
+    # Aplicando las funciones utilizando pipe
+    return (trabajos.copy()
+                    .pipe(convertir_a_numerico)
+                    .pipe(generar_base_aguinaldo)
+                    .pipe(agregar_columnas_aguinaldo)
+                    .pipe(seleccionar_columnas_finales))
+                    
+aguinaldos = indicador_aguinaldos(trabajos)
 ```
 
 **Se guarda la base de datos** 
 ```{python}
-aguinaldos.to_csv(current_directory + '/Output/Data/' + 'aguinaldo22.csv', index = False)
+aguinaldos.to_csv(current_directory + '/Output/Data/' + 'aguinaldo22_2.csv', index = False)
 ```
 
 **Ahora se incorpora a la base de ingresos**
@@ -3251,148 +3266,195 @@ ingresos = pd.read_csv(current_directory + "/Bases de datos/ingresos.csv", low_m
 ```
 
 
-```{python}
-ingreso_deflactado = ingresos.copy()
-
-ingreso_deflactado = pd.merge(ingresos, 
-                               aguinaldos, 
-                                on = ['folioviv', 'foliohog', 'numren'], 
-                                 how = 'outer') 
-
-ingreso_deflactado = ingreso_deflactado[~(((ingreso_deflactado['clave'] == 'P009') & (ingreso_deflactado['aguinaldo1'] != 1)) |
-                                          ((ingreso_deflactado['clave'] == 'P016') & (ingreso_deflactado['aguinaldo2'] != 1)))]
-```
-
-Una vez realizado lo anterior, se procede a deflactar el ingreso recibido por los hogares a precios de agosto de 2022. Para ello, se utilizan las variables meses, las cuales toman los valores 2 a 10 e indican el mes en que se recibió el ingreso respectivo.   
+Se procede a deflactar el ingreso recibido por los hogares a precios de agosto de 2022. Para ello, se utilizan las variables meses, las cuales toman los valores 2 a 10 e indican el mes en que se recibió el ingreso respectivo.   
 
 **Definición de los deflactores 2022**   
 
 ```{python}
-# Definición de los deflactores 2022 
-dic21 =	0.9475376203	
-ene22 =	0.9531433002
-feb22 =	0.9610510246	
-mar22 =	0.9705661414	
-abr22 =	0.9758164180	
-may22 =	0.9775368933
-jun22 =	0.9857919437	
-jul22 =	0.9930938669
-ago22 =	1.0000000000
-sep22 =	1.0062034038
-oct22 =	1.0118979346
-nov22 =	1.0177217030
-dic22 =	1.0216069077
+deflactores = {
+    1: 0.9531433002,
+    2: 0.9610510246,
+    3: 0.9705661414,
+    4: 0.9758164180,
+    5: 0.9775368933,
+    6: 0.9857919437,
+    7: 0.9930938669,
+    8: 1.0000000000,
+    9: 1.0062034038,
+    10: 1.0118979346,
+    11: 1.0177217030,
+    12: 1.0216069077,
+    'dic21': 0.9475376203
+}
 ```
 
 ```{python}
-#Convirtiendo variables string a numericas
-ingreso_deflactado[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
-                     ] = ingreso_deflactado[['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 'ing_1', 'ing_2', 'ing_3', 'ing_4',
-                                               'ing_5', 'ing_6']
-                                              ].apply(pd.to_numeric, errors = 'coerce')
+def indicador_ingreso_deflactado(ingresos):
+    def merge_aguinaldos(df, aguinaldos):
+        """Fusiona las tablas de ingresos y aguinaldos."""
+        return pd.merge(df, 
+                         aguinaldos, 
+                          on = ['folioviv', 'foliohog', 'numren'], 
+                           how = 'outer')
+    
+    def filtrar_aguinaldos(df):
+        """Filtra las filas basadas en las condiciones de aguinaldo."""
+        condicion = ~(((df['clave'] == 'P009') & (df['aguinaldo1'] != 1)) |
+                      ((df['clave'] == 'P016') & (df['aguinaldo2'] != 1)))
+                      
+        return df[condicion]
+    
+    def convertir_a_numerico(df):
+        """Convierte columnas específicas a tipo numérico."""
+        columnas_a_convertir = ['mes_1', 'mes_2', 'mes_3', 'mes_4', 'mes_5', 'mes_6', 
+                                'ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+        df[columnas_a_convertir] = df[columnas_a_convertir].apply(pd.to_numeric, errors = 'coerce')
+        
+        return df
+    
+        # Función auxiliar para deflactar ingresos
+    def deflactar_ingreso(df, col_ingreso, col_mes):
+        def deflactar(row):
+            mes = row[col_mes]
+            ingreso = row[col_ingreso]
+            if pd.isna(mes) or pd.isna(ingreso):
+                return ingreso
+            return ingreso / deflactores.get(mes, 1.0)
+    
+        df[col_ingreso] = df.apply(deflactar, axis = 1)
+        return df
 
-ingreso_deflactado['ing_6'] = np.where(ingreso_deflactado['mes_6'].isna(), 
-                                        ingreso_deflactado['ing_6'] ,
-                              np.where(ingreso_deflactado['mes_6'] == 2, 
-                                        ingreso_deflactado['ing_6'] / feb22,
-                              np.where(ingreso_deflactado['mes_6'] == 3, 
-                                        ingreso_deflactado['ing_6'] / mar22,
-                              np.where(ingreso_deflactado['mes_6'] == 4, 
-                                        ingreso_deflactado['ing_6'] / abr22,
-                                         ingreso_deflactado['ing_6'] / may22))))
-ingreso_deflactado['ing_5'] = np.where(ingreso_deflactado['mes_5'].isna(), 
-                                        ingreso_deflactado['ing_5'] ,
-                              np.where(ingreso_deflactado['mes_5'] == 3, 
-                                        ingreso_deflactado['ing_5'] / mar22,
-                              np.where(ingreso_deflactado['mes_5'] == 4, 
-                                        ingreso_deflactado['ing_5'] / abr22,
-                              np.where(ingreso_deflactado['mes_5'] == 5, 
-                                        ingreso_deflactado['ing_5'] / may22,
-                                         ingreso_deflactado['ing_5'] / jun22))))
-ingreso_deflactado['ing_4'] = np.where(ingreso_deflactado['mes_4'].isna(), 
-                                        ingreso_deflactado['ing_4'] ,
-                              np.where(ingreso_deflactado['mes_4'] == 4,  
-                                        ingreso_deflactado['ing_4'] / abr22,
-                              np.where(ingreso_deflactado['mes_4'] == 5, 
-                                        ingreso_deflactado['ing_4'] / may22,
-                              np.where(ingreso_deflactado['mes_4'] == 6, 
-                                        ingreso_deflactado['ing_4'] / jun22,
-                                         ingreso_deflactado['ing_4'] / jul22))))
-ingreso_deflactado['ing_3'] = np.where(ingreso_deflactado['mes_3'].isna(), 
-                                        ingreso_deflactado['ing_3'] ,
-                              np.where(ingreso_deflactado['mes_3'] == 5, 
-                                        ingreso_deflactado['ing_3'] / may22,
-                              np.where(ingreso_deflactado['mes_3'] == 6,  
-                                        ingreso_deflactado['ing_3'] / jun22,
-                              np.where(ingreso_deflactado['mes_3'] == 7, 
-                                        ingreso_deflactado['ing_3'] / jul22,
-                                         ingreso_deflactado['ing_3'] / ago22))))
-ingreso_deflactado['ing_2'] = np.where(ingreso_deflactado['mes_2'].isna(), 
-                                        ingreso_deflactado['ing_2'] ,
-                              np.where(ingreso_deflactado['mes_2'] == 6, 
-                                        ingreso_deflactado['ing_2'] / jun22,
-                              np.where(ingreso_deflactado['mes_2'] == 7, 
-                                        ingreso_deflactado['ing_2'] / jul22,
-                              np.where(ingreso_deflactado['mes_2'] == 8, 
-                                        ingreso_deflactado['ing_2'] / ago22,
-                                         ingreso_deflactado['ing_2'] / sep22))))
-ingreso_deflactado['ing_1'] = np.where(ingreso_deflactado['mes_1'].isna(), 
-                                        ingreso_deflactado['ing_1'] ,
-                              np.where(ingreso_deflactado['mes_1'] == 7, 
-                                        ingreso_deflactado['ing_1'] / jul22,
-                              np.where(ingreso_deflactado['mes_1'] == 8, 
-                                        ingreso_deflactado['ing_1'] / ago22,
-                              np.where(ingreso_deflactado['mes_1'] == 9, 
-                                        ingreso_deflactado['ing_1'] / sep22,
-                                         ingreso_deflactado['ing_1'] / oct22))))
+        # Función auxiliar para deflactar ingresos
+        # Aplicar la función a cada columna de ingreso
+    def aplicar_deflactores(df):
+        ingresos_meses = [
+            ('ing_6', 'mes_6'),
+            ('ing_5', 'mes_5'),
+            ('ing_4', 'mes_4'),
+            ('ing_3', 'mes_3'),
+            ('ing_2', 'mes_2'),
+            ('ing_1', 'mes_1')
+        ]
+        
+        for col_ingreso, col_mes in ingresos_meses:
+            df = deflactar_ingreso(df, col_ingreso, col_mes)
+    
+        return df
+
+    #def deflactar_ingreso(df, mes_col, ing_col):
+    #    """Aplica los deflactores a los ingresos según el mes correspondiente."""
+    #    deflactor_col = f'deflactor_{mes_col}'
+    #    df[deflactor_col] = df[mes_col].map(deflactores)
+    #    df[ing_col] = df[ing_col] / df[deflactor_col]
+        
+    #    return df.drop(columns=[deflactor_col])
+    
+    #def aplicar_deflactores(df):
+    #    """Deflacta los ingresos para cada mes."""
+    #    for i in range(1, 7):
+    #        mes_col = f'mes_{i}'
+    #        ing_col = f'ing_{i}'
+    #        df = df.pipe(deflactar_ingreso, mes_col, ing_col)
+    #        
+    #    return df
+    
+        # Aplicando las funciones utilizando pipe
+    return (ingresos.copy()
+                    .pipe(merge_aguinaldos, aguinaldos)
+                    .pipe(filtrar_aguinaldos)
+                    .pipe(convertir_a_numerico)
+                    .pipe(aplicar_deflactores)
+                    )
+    
+ingreso_deflactado = indicador_ingreso_deflactado(ingresos)
 ```
 
-Se deflactan las claves P008 y P015 (Reparto de utilidades) y P009 y P016 (aguinaldo) con los deflactores de mayo a agosto 2022 y de diciembre de 2021 a agosto 2022, respectivamente, y se obtiene el promedio mensual.   
+Se deflactan las claves P008 y P015 (Reparto de utilidades) y P009 y P016 (aguinaldo) con los deflactores de mayo a agosto 2022 y de diciembre de 2021 a agosto 2022, respectivamente, y se obtiene el promedio mensual.  
+
+```{python}
+# Definición de los deflactores 2022
+deflactores = {
+    'dic21': 0.9475376203, 'ene22': 0.9531433002, 'feb22': 0.9610510246,
+    'mar22': 0.9705661414, 'abr22': 0.9758164180, 'may22': 0.9775368933,
+    'jun22': 0.9857919437, 'jul22': 0.9930938669, 'ago22': 1.0000000000,
+    'sep22': 1.0062034038, 'oct22': 1.0118979346, 'nov22': 1.0177217030,
+    'dic22': 1.0216069077
+}
+```
+
 
 ```{python}
 index = ['P008', 'P009', 'P015', 'P016']
 ```
 
 ```{python}
-ingreso_deflactado.loc[ingreso_deflactado['clave'].isin(['P008', 'P015']), 'ing_1'] = ingreso_deflactado['ing_1'] / may22 / 12
-ingreso_deflactado.loc[ingreso_deflactado['clave'].isin(['P009', 'P016']), 'ing_1'] = ingreso_deflactado['ing_1'] / dic21 / 12
+def indicador_ingreso_deflactado_anexoa(ingreso_deflactado):
+    def deflactar_ing_1(df):
+        """Aplica deflactores específicos a ing_1 según la clave."""
+        df.loc[df['clave'].isin(['P008', 'P015']), 'ing_1'] = df['ing_1'] /deflactores['may22'] / 12
+        df.loc[df['clave'].isin(['P009', 'P016']), 'ing_1'] = df['ing_1'] /deflactores['dic21'] / 12
+      
+        return df
 
-cols = ['ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
-for col in cols:
-    ingreso_deflactado.loc[ingreso_deflactado['clave'].isin(index) & ([col] == 0), col] = None
+    def poner_nulos(df):
+        """Pone valores nulos en ciertas columnas si las condiciones se cumplen."""
+        cols = ['ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']
+        for col in cols:
+            df.loc[df['clave'].isin(index) & (df[col] == 0), col] = None
+            
+        return df
     
-# Una vez realizada la deflactación, se procede a obtener el ingreso mensual promedio en los últimos seis meses, para cada persona y clave de ingreso
-ingreso_deflactado['ing_mens'] = ingreso_deflactado[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']].mean(axis = 1, skipna = True)
+    def calcular_ingreso_mensual(df):
+        """Calcula el ingreso mensual promedio en los últimos seis meses."""
+        df['ing_mens'] = df[['ing_1', 'ing_2', 'ing_3', 'ing_4', 'ing_5', 'ing_6']].mean(axis = 1, skipna = True)
+        
+        return df
+    
+    def clasificar_ingresos(df):
+        """Clasifica los ingresos en categorías específicas."""
+        condiciones_mon = ((df['clave'].between('P001', 'P009')) |
+                           (df['clave'].between('P011', 'P016')) | 
+                           (df['clave'].between('P018', 'P048')) | 
+                           (df['clave'].between('P067', 'P081')) | 
+                           (df['clave'].between('P101', 'P108')))
+        
+        condiciones_lab = ((df['clave'].between('P001', 'P009')) | 
+                           (df['clave'].between('P011', 'P016')) | 
+                           (df['clave'].between('P018', 'P022')) | 
+                           (df['clave'].between('P067', 'P081')))
+        
+        condiciones_ren = (df['clave'].between('P023', 'P031'))
+        condiciones_tra = ((df['clave'].between('P032', 'P048')) | 
+                           (df['clave'].between('P101', 'P108')))
+        
+        df.loc[condiciones_mon, 'ing_mon'] = df['ing_mens']
+        df.loc[condiciones_lab, 'ing_lab'] = df['ing_mens']
+        df.loc[condiciones_ren, 'ing_ren'] = df['ing_mens']
+        df.loc[condiciones_tra, 'ing_tra'] = df['ing_mens']
+        
+        return df
+    
+    def sumar_ingresos_hogar(df):
+        """Suma los ingresos por hogar."""
+        df = df.groupby(['folioviv', 'foliohog'])[['ing_mon', 'ing_lab', 'ing_ren', 'ing_tra']
+                                                  ].sum(numeric_only = True).reset_index()
+        
+        return df
+      
+    # Aplicando las funciones utilizando pipe
+    return(ingreso_deflactado.copy()
+                             .pipe(deflactar_ing_1)
+                             .pipe(poner_nulos)
+                             .pipe(calcular_ingreso_mensual)
+                             .pipe(clasificar_ingresos)
+                             .pipe(sumar_ingresos_hogar))
 
-# Para obtener el ingreso corriente monetario, se seleccionan las claves de ingreso correspondientes
-ingreso_deflactado.loc[((ingreso_deflactado['clave'].between('P001', 'P009')) |
-                        (ingreso_deflactado['clave'].between('P011', 'P016')) | 
-                         (ingreso_deflactado['clave'].between('P018', 'P048')) | 
-                          (ingreso_deflactado['clave'].between('P067', 'P081')) | 
-                           (ingreso_deflactado['clave'].between('P101', 'P108'))), 'ing_mon'] = ingreso_deflactado['ing_mens']
-
-# Para obtener el ingreso laboral, se seleccionan las claves de ingreso correspondientes
-ingreso_deflactado.loc[((ingreso_deflactado['clave'].between('P001', 'P009')) | 
-                        (ingreso_deflactado['clave'].between('P011', 'P016')) | 
-                         (ingreso_deflactado['clave'].between('P018', 'P022')) | 
-                          (ingreso_deflactado['clave'].between('P067', 'P081'))), 'ing_lab'] = ingreso_deflactado['ing_mens']
-
-# Para obtener el ingreso por rentas, se seleccionan las claves de ingreso correspondientes
-ingreso_deflactado.loc[ingreso_deflactado['clave'].between('P023', 'P031'), 'ing_ren'] = ingreso_deflactado['ing_mens']
-
-# Para obtener el ingreso por transferencias, se seleccionan las claves de ingreso correspondientes
-ingreso_deflactado.loc[((ingreso_deflactado['clave'].between('P032', 'P048')) | 
-                        (ingreso_deflactado['clave'].between('P101', 'P108'))), 'ing_tra'] = ingreso_deflactado['ing_mens']
-
-# Se estima el total de ingresos de cada  hogar
-ingreso_deflactado = ingreso_deflactado.groupby(['folioviv', 'foliohog'])[['ing_mon', 'ing_lab', 'ing_ren', 'ing_tra']
-                                                                          ].sum(numeric_only = True)
-ingreso_deflactado = ingreso_deflactado.reset_index()
+ingreso_deflactado = indicador_ingreso_deflactado_anexoa(ingreso_deflactado)
 ```
 
 **Se guarda la base de datos** 
 ```{python}
-ingreso_deflactado.to_csv(current_directory + '/Output/Data/' + '/ingreso_deflactado22.csv', index = False)
+ingreso_deflactado.to_csv(current_directory + '/Output/Data/' + '/ingreso_deflactado22_2.csv', index = False)
 ```
 
 ###### No Monetario  
@@ -3404,23 +3466,6 @@ Creación del ingreso no monetario deflactado a pesos de agosto del 2022.
 ```{python}
 gastoshogar = pd.read_csv(current_directory + "/Bases de datos/gastoshogar.csv", low_memory = False).astype(str)
 gastospersona = pd.read_csv(current_directory + "/Bases de datos/gastospersona.csv", low_memory = False).astype(str)
-
-gastoshogar['base'] = 1
-```
-
-```{python}
-no_monetario = pd.concat([gastoshogar, gastospersona], 
-                          ignore_index = True)
-                          
-no_monetario.loc[no_monetario['base'].isna(), 'base'] = 2
-
-no_monetario.loc[no_monetario['base'] == 2, 'frecuencia'] = no_monetario['frec_rem']
-
-# En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, 
-# la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que 
-# identifique la decena de levantamiento.  
-
-no_monetario['decena'] = no_monetario['folioviv'].astype(str).str.zfill(10).str[7]
 ```
 
 **Definición de los deflactores**
@@ -3526,197 +3571,205 @@ dINPCs05 = 0.9957540070
 ```
 
 
-**Una vez definidos los deflactores, se seleccionan los rubros** 
+Se cambia la estructura de los deflactores del código anterior para reducir el cálculo como el chunk de la  `Opción 1`.
+Se seleccionan los deflactores que solamente pertencen al cálculo de los rubros:    
 
 ```{python}
-#Convirtiendo variables string a numericas
-no_monetario[['gas_nm_tri', 'gasto_nm']] = no_monetario[['gas_nm_tri', 'gasto_nm']
-                                                        ].apply(pd.to_numeric, errors = 'coerce')
+# Definición de los deflactores
+deflactores = {
+    'ali_nm': [1.0000000000, 1.0130754464, 1.0178275200, 1.0207468579],
+    'alta_nm': [1.0000000000, 1.0035071112, 1.0111808568, 1.0131982216],
+    'veca_nm': [0.9899050815, 0.9941003723, 0.9997465345, 1.0083352270],
+    'viv_nm': [0.9998142481, 1.0000000000, 0.9978682753, 1.0031577830],
+    'lim_nm': [0.9894769136, 1.0000000000, 1.0086286240, 1.0182083142],
+    'cris_nm': [0.9787953163, 0.9897197934, 0.9993685126, 1.0089456461],
+    'ens_nm': [1.0003069312, 0.9993861376, 0.9992122603, 0.9991442214],
+    'sal_nm': [0.9909917367, 0.9954834527, 0.9994564693, 1.0030487384],
+    'tpub_nm': [1.0000000000, 1.0034865488, 1.0052385833, 1.0064912880],
+    'tfor_nm': [0.9808628306, 0.9879901879, 0.9927380596, 0.9969378864],
+    'com_nm': [0.9987845893, 1.0000000000, 1.0001664946, 1.0057274150],
+    'edre_nm': [0.9961413091, 1.0000000000, 1.0095233900, 1.0144128271],
+    'edba_nm': [0.9961413091, 1.0000000000, 1.0095233900, 1.0144128271],
+    'cuip_nm': [0.9952443607, 1.0000000000, 1.0081869233, 1.0108184343],
+    'accp_nm': [0.9914948875, 0.9956428139, 1.0011437613, 1.0063351192],
+    'otr_nm': [0.9773093813, 0.9838008772, 0.9897404209, 0.9957540070],
+    'reda_nm': [0.9773093813, 0.9838008772, 0.9897404209, 0.9957540070]
+}
+deflactores.keys()
+```
 
-# Una vez definidos los deflactores, se seleccionan los rubros
-no_monetario['gasnomon'] = no_monetario['gas_nm_tri'] / 3
-no_monetario.loc[no_monetario['tipo_gasto'] == 'G4', 'esp'] = 1
-no_monetario.loc[no_monetario['tipo_gasto'].isin(['G5', 'G6']), 'reg'] = 1
-no_monetario = no_monetario.loc[~no_monetario['tipo_gasto'].isin(['G2', 'G3', 'G7'])]
 
-# Control para la frecuencia de los regalos recibidos por el hogar
-no_monetario = no_monetario[~(((no_monetario['frecuencia'].between('5', '6')) |
-                               (no_monetario['frecuencia'].isna()) |
-                                (no_monetario['frecuencia'] == '0')) &
-                                 (no_monetario['base'] == 1) &
-                                  (no_monetario['tipo_gasto'] == 'G5'))]
+```{python}
+def indicador_no_monetario(gastoshogar):
+    # Definir funciones auxiliares
+    def merge_gastopersonas(df):
+        df['base'] = 1
+        df = pd.concat([df, gastospersona], ignore_index = True)
+        return df
+    
+    def establecer_base_frecuencia(df):
+        df.loc[df['base'].isna(), 'base'] = 2
+        df.loc[df['base'] == 2, 'frecuencia'] = df['frec_rem']
+        
+        return df
+    
+    def definir_decena(df):
+        df['decena'] = df['folioviv'].astype(str).str.zfill(10).str[7]
+        
+        return df
+    
+    def convertir_variables(df):
+        df[['gas_nm_tri', 'gasto_nm']] = df[['gas_nm_tri', 'gasto_nm']].apply(pd.to_numeric, errors = 'coerce')
+        
+        return df
+    
+    def seleccionar_rubros(df):
+        df['gasnomon'] = df['gas_nm_tri'] / 3
+        df.loc[df['tipo_gasto'] == 'G4', 'esp'] = 1
+        df.loc[df['tipo_gasto'].isin(['G5', 'G6']), 'reg'] = 1
+        df = df.loc[~df['tipo_gasto'].isin(['G2', 'G3', 'G7'])]
+        
+        return df
+    
+    def controlar_frecuencia_regalos(df):
+        df = df[~(((df['frecuencia'].between('5', '6')) |
+                   (df['frecuencia'].isna()) |
+                    (df['frecuencia'] == '0')) &
+                     (df['base'] == 1) &
+                      (df['tipo_gasto'] == 'G5'))]
+    
+        df = df[~(((df['frecuencia'] == '9') |
+                   (df['frecuencia'].isna())) &
+                    (df['base'] == 2) &
+                     (df['tipo_gasto'] == 'G5'))]
+        return df
+    
+    def deflactar_rubros(df):
+        rubros = [
+            ('A001', 'A222', 'ali_nm'),
+            ('A242', 'A247', 'ali_nm'),
+            ('A223', 'A241', 'alta_nm'),
+            ('H001', 'H122', 'veca_nm'),
+            ('H136', 'H136', 'veca_nm'),
+            ('G001', 'G016', 'viv_nm'),
+            ('R001', 'R004', 'viv_nm'),
+            ('R013', 'R013', 'viv_nm'),
+            ('C001', 'C024', 'lim_nm'),
+            ('I001', 'I026', 'cris_nm'),
+            ('K001', 'K037', 'ens_nm'),
+            ('J001', 'J072', 'sal_nm'),
+            ('B001', 'B007', 'tpub_nm'),
+            ('M001', 'M018', 'tfor_nm'),
+            ('F007', 'F014', 'tfor_nm'),
+            ('F001', 'F006', 'com_nm'),
+            ('R005', 'R008', 'com_nm'),
+            ('R010', 'R011', 'com_nm'),
+            ('E001', 'E034', 'edre_nm'),
+            ('H134', 'H135', 'edre_nm'),
+            ('L001', 'L029', 'edre_nm'),
+            ('N003', 'N005', 'edre_nm'),
+            ('R009', 'R009', 'edre_nm'),
+            ('E002', 'E003', 'edba_nm'),
+            ('H134', 'H135', 'edba_nm'),
+            ('D001', 'D026', 'cuip_nm'),
+            ('H132', 'H132', 'cuip_nm'),
+            ('H123', 'H131', 'accp_nm'),
+            ('H133', 'H133', 'accp_nm'),
+            ('N001', 'N002', 'otr_nm'),
+            ('N006', 'N016', 'otr_nm'),
+            ('T901', 'T915', 'otr_nm'),
+            ('R012', 'R012', 'otr_nm'),
+            ('N013', 'N013', 'reda_nm')
+        ]
+    
+        for inicio, fin, columna in rubros:
+            df.loc[df['clave'].between(inicio, fin), columna] = df['gasnomon']
+        
+        return df
 
-# Control para la frecuencia de los regalos recibidos por persona
-no_monetario = no_monetario[~(((no_monetario['frecuencia'] == '9') |
-                              (no_monetario['frecuencia'].isna())) &
-                               (no_monetario['base'] == 2) &
-                                (no_monetario['tipo_gasto'] == 'G5'))]
+        # Función auxiliar para deflactar según los deflactores y la decena
+    def deflactar(df, col_name, deflactores):
+        deflact_values = deflactores[col_name]
+        if len(deflact_values) == 4:
+            conditions = [
+                df['decena'].isin(['1', '2']),
+                df['decena'].isin(['3', '4', '5']),
+                df['decena'].isin(['6', '7', '8']),
+                df['decena'].isin(['9', '10', '11', '0'])
+            ]
+        else:
+            conditions = [
+                df['decena'].isin(['1', '2', '3']),
+                df['decena'].isin(['4', '5', '6']),
+                df['decena'].isin(['7', '8', '9']),
+                df['decena'].isin(['10', '11', '12', '0'])
+            ]
+    
+        return np.select(conditions, deflact_values, default = df[col_name])
 
-# Se deflactan los rubros del gasto no monetario según la decena de levantamiento 
-no_monetario.loc[(no_monetario['clave'].between('A001', 'A222') |
-                   no_monetario['clave'].between('A242', 'A247')), 'ali_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('A223', 'A241')), 'alta_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('H001', 'H122') |
-                  (no_monetario['clave'] == 'H136')), 'veca_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('G001', 'G016') |
-                   no_monetario['clave'].between('R001', 'R004') |
-                    (no_monetario['clave'] == 'R013')), 'viv_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('C001', 'C024')), 'lim_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('I001', 'I026')), 'cris_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('K001', 'K037')), 'ens_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('J001', 'J072')), 'sal_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('B001', 'B007')), 'tpub_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('M001', 'M018') |
-                   no_monetario['clave'].between('F007', 'F014')), 'tfor_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('F001', 'F006') |
-                   no_monetario['clave'].between('R005', 'R008') |
-                    no_monetario['clave'].between('R010', 'R011')), 'com_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('E001', 'E034') |
-                   no_monetario['clave'].between('H134', 'H135') |
-                    no_monetario['clave'].between('L001', 'L029') |
-                     no_monetario['clave'].between('N003', 'N005') |
-                      (no_monetario['clave'] == 'R009')), 'edre_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('E002', 'E003') |
-                   no_monetario['clave'].between('H134', 'H135')), 'edba_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('D001', 'D026') |
-                  (no_monetario['clave'] == 'H132')), 'cuip_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('H123', 'H131') |
-                   (no_monetario['clave'] == 'H133')), 'accp_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('N001', 'N002') |
-                   no_monetario['clave'].between('N006', 'N016') |
-                    no_monetario['clave'].between('T901', 'T915') |
-                     (no_monetario['clave'] == 'R012')), 'otr_nm'] = no_monetario['gasnomon']
-no_monetario.loc[(no_monetario['clave'].between('T901', 'T915') |
-                  (no_monetario['clave'] == 'N013')), 'reda_nm'] = no_monetario['gasnomon']
-
-# Gasto no monetario en Alimentos deflactado (semanal)
-no_monetario['ali_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['ali_nm']/d11w08, 
-                          np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['ali_nm']/d11w09,
-                           np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['ali_nm']/d11w10,
-                                    no_monetario['ali_nm']/d11w11)))
-
-# Gasto no monetario en Alcohol y tabaco deflactado (semanal)
-no_monetario['alta_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['alta_nm']/d12w08,
-                           np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['alta_nm']/d12w09,
-                            np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['alta_nm']/d12w10,
-                                      no_monetario['alta_nm']/d12w11)))
-
-# Gasto no monetario en Vestido y calzado deflactado (trimestral)
-no_monetario['veca_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['veca_nm']/d2t05,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['veca_nm']/d2t06,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['veca_nm']/d2t07,
-                                      no_monetario['veca_nm']/d2t08)))
-
-# Gasto no monetario en viviendas y servicios de conservación deflactado (mensual)
-no_monetario['viv_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['viv_nm']/d3m07,
-                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['viv_nm']/d3m08,
-                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['viv_nm']/d3m09,
-                                     no_monetario['viv_nm']/d3m10)))
-
-# Gasto no monetario en Artículos de limpieza deflactado (mensual)
-no_monetario['lim_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['lim_nm']/d42m07,
-                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['lim_nm']/d42m08,
-                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['lim_nm']/d42m09,
-                                     no_monetario['lim_nm']/d42m10)))
-
-# Gasto no monetario en Cristalería y blancos deflactado (trimestral)
-no_monetario['cris_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['cris_nm']/d42t05,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['cris_nm']/d42t06,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['cris_nm']/d42t07,
-                                      no_monetario['cris_nm']/d42t08)))
-
-# Gasto no monetario en Enseres domésticos y muebles deflactado (semestral)
-no_monetario['ens_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['ens_nm']/d41s02,
-                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['ens_nm']/d41s03,
-                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['ens_nm']/d41s04,
-                                     no_monetario['ens_nm']/d41s05)))
-
-# Gasto no monetario en Salud deflactado (trimestral)
-no_monetario['sal_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['sal_nm']/d51t05,
-                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['sal_nm']/d51t06,
-                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['sal_nm']/d51t07,
-                                     no_monetario['sal_nm']/d51t08)))
-
-# Gasto no monetario en Transporte público deflactado (semanal)
-no_monetario['tpub_nm'] = np.where(no_monetario['decena'].isin(['1','2','3']), no_monetario['tpub_nm']/d611w08,
-                           np.where(no_monetario['decena'].isin(['4','5','6']), no_monetario['tpub_nm']/d611w09,
-                            np.where(no_monetario['decena'].isin(['7','8','9']), no_monetario['tpub_nm']/d611w10,
-                                      no_monetario['tpub_nm']/d611w11)))
-
-# Gasto no monetario en Transporte foráneo deflactado (semestral)
-no_monetario['tfor_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['tfor_nm']/d6s02,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['tfor_nm']/d6s03,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['tfor_nm']/d6s04,
-                                      no_monetario['tfor_nm']/d6s05)))
-
-# Gasto no monetario en Comunicaciones deflactado (mensual)
-no_monetario['com_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['com_nm']/d6m07,
-                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['com_nm']/d6m08,
-                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['com_nm']/d6m09,
-                                     no_monetario['com_nm']/d6m10)))
-
-# Gasto no monetario en Educación y recreación deflactado (mensual)
-no_monetario['edre_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['edre_nm']/d7m07,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['edre_nm']/d7m08,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['edre_nm']/d7m09,
-                                      no_monetario['edre_nm']/d7m10)))
-
-# Gasto no monetario en Educación básica deflactado (mensual)
-no_monetario['edba_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['edba_nm']/d7m07,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['edba_nm']/d7m08,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['edba_nm']/d7m09,
-                                      no_monetario['edba_nm']/d7m10)))
-
-# Gasto no monetario en Cuidado personal deflactado (mensual)
-no_monetario['cuip_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['cuip_nm']/d23m07,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['cuip_nm']/d23m08,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['cuip_nm']/d23m09,
-                                      no_monetario['cuip_nm']/d23m10)))
-
-# Gasto no monetario en Accesorios personales deflactado (trimestral)
-no_monetario['accp_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['accp_nm']/d23t05,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['accp_nm']/d23t06,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['accp_nm']/d23t07,
-                                      no_monetario['accp_nm']/d23t08)))
-
-# Gasto no monetario en Otros gastos y transferencias deflactado (semestral)
-no_monetario['otr_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['otr_nm']/dINPCs02,
-                          np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['otr_nm']/dINPCs03,
-                           np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['otr_nm']/dINPCs04,
-                                     no_monetario['otr_nm']/dINPCs05)))
-
-# Gasto no monetario en Regalos Otorgados deflactado
-no_monetario['reda_nm'] = np.where(no_monetario['decena'].isin(['1','2']), no_monetario['reda_nm']/dINPCs02,
-                           np.where(no_monetario['decena'].isin(['3','4','5']), no_monetario['reda_nm']/dINPCs03,
-                            np.where(no_monetario['decena'].isin(['6','7','8']), no_monetario['reda_nm']/dINPCs04,
-                                      no_monetario['reda_nm']/dINPCs05)))
+        # Aplicar deflactores utilizando pipe
+    def aplicar_deflactores(df):
+        for col_name in deflactores.keys():
+            df[col_name] = deflactar(df, col_name, deflactores)
+        
+        return df
+    
+    # Aplicar funciones utilizando pipe
+    return (gastoshogar.copy()
+                       .pipe(merge_gastopersonas)
+                       .pipe(establecer_base_frecuencia)
+                       .pipe(definir_decena)
+                       .pipe(convertir_variables)
+                       .pipe(seleccionar_rubros)
+                       .pipe(controlar_frecuencia_regalos)
+                       .pipe(deflactar_rubros)
+                       .pipe(aplicar_deflactores))
+                  
+no_monetario = indicador_no_monetario(gastoshogar)
 ```
 
 **Se guarda la base de datos** 
 ```{python}
-no_monetario.to_csv(current_directory + '/Output/Data/' + '/ingresonomonetario_def22.csv', index = False)
+no_monetario.to_csv(current_directory + '/Output/Data/' + '/ingresonomonetario_def22_2.csv', index = False)
 ```
 
 **Construcción de la base de pagos en especie a partir de la base de gasto no monetario**  
 
 ```{python}
-# Construcción de la base de pagos en especie a partir de la base de gasto no monetario
-pagos_especie = no_monetario[no_monetario['esp'] == 1]
+def indicador_pagos_especie(no_monetario):
+    # Función para filtrar pagos en especie
+    def filtrar_pagos_especie(df):
+        return df[df['esp'] == 1]
 
-pagos_especie = pagos_especie.groupby(['folioviv', 'foliohog'])[['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm',
-                                       'lim_nm', 'cris_nm', 'ens_nm', 'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm',
-                                       'edba_nm', 'cuip_nm', 'accp_nm', 'otr_nm', 'reda_nm']].sum(numeric_only = True)
+    # Función para agrupar y sumar gastos no monetarios
+    def agrupar_y_sumar(df):
+        columnas_gasto = ['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm', 'lim_nm', 'cris_nm', 'ens_nm', 
+                          'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm', 'edba_nm', 'cuip_nm', 'accp_nm', 
+                          'otr_nm', 'reda_nm']
+        df_agrupado = df.groupby(['folioviv', 'foliohog'])[columnas_gasto
+                                                          ].sum(numeric_only = True).reset_index()
+        return df_agrupado
+  
+    # Función para renombrar las columnas
+    def renombrar_columnas(df):
+        nuevas_columnas = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 
+                           'cris_nme', 'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 
+                           'cuip_nme', 'accp_nme', 'otr_nme', 'reda_nme']
+        df.columns = nuevas_columnas
+        return df
 
-pagos_especie = pagos_especie.reset_index()
+    # Construcción de la base de pagos en especie utilizando pipe
+    return (no_monetario.copy()
+                        .pipe(filtrar_pagos_especie)
+                        .pipe(agrupar_y_sumar)
+                        .pipe(renombrar_columnas))
 
-pagos_especie.columns = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 
-                         'cris_nme', 'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 
-                         'cuip_nme', 'accp_nme', 'otr_nme', 'reda_nme']
+pagos_especie = indicador_pagos_especie(no_monetario)
 ```
 
 **Se guarda la base de datos** 
 ```{python}
-pagos_especie.to_csv(current_directory + '/Output/Data/' + '/esp_def22.csv', index = False)
+pagos_especie.to_csv(current_directory + '/Output/Data/' + '/esp_def22_2.csv', index = False)
 ```
 
 

@@ -4594,163 +4594,224 @@ de incorporar los ingresos por este concepto en la medición</p>
 <p>Creación del ingreso monetario deflactado a pesos de agosto del
 2022</p>
 <div class="sourceCode" id="cb85"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb85-1"><a href="#cb85-1" tabindex="-1"></a>trabajos <span class="op">=</span> pd.read_csv(current_directory <span class="op">+</span> <span class="st">&quot;/Bases de datos/trabajos.csv&quot;</span>, low_memory <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb86"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb86-1"><a href="#cb86-1" tabindex="-1"></a>aguinaldos <span class="op">=</span> trabajos.copy()</span>
-<span id="cb86-2"><a href="#cb86-2" tabindex="-1"></a></span>
-<span id="cb86-3"><a href="#cb86-3" tabindex="-1"></a><span class="co">#Convirtiendo variables string a numericas</span></span>
-<span id="cb86-4"><a href="#cb86-4" tabindex="-1"></a>aguinaldos[[<span class="st">&#39;numren&#39;</span>, <span class="st">&#39;id_trabajo&#39;</span>, <span class="st">&#39;pres_2&#39;</span>]</span>
-<span id="cb86-5"><a href="#cb86-5" tabindex="-1"></a>           ] <span class="op">=</span> aguinaldos[[<span class="st">&#39;numren&#39;</span>, <span class="st">&#39;id_trabajo&#39;</span>, <span class="st">&#39;pres_2&#39;</span>]</span>
-<span id="cb86-6"><a href="#cb86-6" tabindex="-1"></a>                          ].<span class="bu">apply</span>(pd.to_numeric, errors <span class="op">=</span> <span class="st">&#39;coerce&#39;</span>)</span>
-<span id="cb86-7"><a href="#cb86-7" tabindex="-1"></a></span>
-<span id="cb86-8"><a href="#cb86-8" tabindex="-1"></a><span class="co">#Generando la base de aguinaldo</span></span>
-<span id="cb86-9"><a href="#cb86-9" tabindex="-1"></a>aguinaldos <span class="op">=</span> pd.pivot_table(aguinaldos, </span>
-<span id="cb86-10"><a href="#cb86-10" tabindex="-1"></a>                             index<span class="op">=</span>[<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;numren&#39;</span>], </span>
-<span id="cb86-11"><a href="#cb86-11" tabindex="-1"></a>                              columns <span class="op">=</span> <span class="st">&#39;id_trabajo&#39;</span>, </span>
-<span id="cb86-12"><a href="#cb86-12" tabindex="-1"></a>                               values<span class="op">=</span>[<span class="st">&#39;pres_2&#39;</span>], </span>
-<span id="cb86-13"><a href="#cb86-13" tabindex="-1"></a>                                aggfunc <span class="op">=</span> np.<span class="bu">sum</span>, </span>
-<span id="cb86-14"><a href="#cb86-14" tabindex="-1"></a>                                 fill_value <span class="op">=</span> <span class="dv">0</span>)</span>
-<span id="cb86-15"><a href="#cb86-15" tabindex="-1"></a>                                 </span>
-<span id="cb86-16"><a href="#cb86-16" tabindex="-1"></a>aguinaldos.columns <span class="op">=</span> [<span class="ss">f&#39;</span><span class="sc">{</span>i<span class="sc">}{</span>j<span class="sc">}</span><span class="ss">&#39;</span> <span class="cf">for</span> i, j <span class="kw">in</span> aguinaldos.columns]</span>
-<span id="cb86-17"><a href="#cb86-17" tabindex="-1"></a>aguinaldos <span class="op">=</span> aguinaldos.reset_index()</span>
-<span id="cb86-18"><a href="#cb86-18" tabindex="-1"></a></span>
-<span id="cb86-19"><a href="#cb86-19" tabindex="-1"></a>aguinaldos[<span class="st">&#39;trab&#39;</span>] <span class="op">=</span> <span class="dv">1</span> <span class="co"># Población con al menos un empleo </span></span>
-<span id="cb86-20"><a href="#cb86-20" tabindex="-1"></a></span>
-<span id="cb86-21"><a href="#cb86-21" tabindex="-1"></a>aguinaldos[<span class="st">&#39;aguinaldo1&#39;</span>] <span class="op">=</span> np.where(aguinaldos[<span class="st">&#39;pres_21&#39;</span>] <span class="op">==</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">0</span>) <span class="co"># Aguinaldo trabajo principal</span></span>
-<span id="cb86-22"><a href="#cb86-22" tabindex="-1"></a>aguinaldos[<span class="st">&#39;aguinaldo2&#39;</span>] <span class="op">=</span> np.where(aguinaldos[<span class="st">&#39;pres_22&#39;</span>] <span class="op">==</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">0</span>) <span class="co"># Aguinaldo trabajo secundario</span></span>
-<span id="cb86-23"><a href="#cb86-23" tabindex="-1"></a></span>
-<span id="cb86-24"><a href="#cb86-24" tabindex="-1"></a>aguinaldos <span class="op">=</span> aguinaldos[[<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;numren&#39;</span>, <span class="st">&#39;aguinaldo1&#39;</span>, <span class="st">&#39;aguinaldo2&#39;</span>, <span class="st">&#39;trab&#39;</span>]]</span></code></pre></div>
+<div class="sourceCode" id="cb86"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb86-1"><a href="#cb86-1" tabindex="-1"></a><span class="kw">def</span> indicador_aguinaldos(trabajos):</span>
+<span id="cb86-2"><a href="#cb86-2" tabindex="-1"></a>    <span class="kw">def</span> convertir_a_numerico(df):</span>
+<span id="cb86-3"><a href="#cb86-3" tabindex="-1"></a>        columnas_a_convertir <span class="op">=</span> [<span class="st">&#39;numren&#39;</span>, <span class="st">&#39;id_trabajo&#39;</span>, <span class="st">&#39;pres_2&#39;</span>]</span>
+<span id="cb86-4"><a href="#cb86-4" tabindex="-1"></a>        df[columnas_a_convertir] <span class="op">=</span> df[columnas_a_convertir</span>
+<span id="cb86-5"><a href="#cb86-5" tabindex="-1"></a>                                     ].<span class="bu">apply</span>(pd.to_numeric, errors <span class="op">=</span> <span class="st">&#39;coerce&#39;</span>)</span>
+<span id="cb86-6"><a href="#cb86-6" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb86-7"><a href="#cb86-7" tabindex="-1"></a>    </span>
+<span id="cb86-8"><a href="#cb86-8" tabindex="-1"></a>    <span class="kw">def</span> generar_base_aguinaldo(df):</span>
+<span id="cb86-9"><a href="#cb86-9" tabindex="-1"></a>        df <span class="op">=</span> pd.pivot_table(df, </span>
+<span id="cb86-10"><a href="#cb86-10" tabindex="-1"></a>                            index <span class="op">=</span> [<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;numren&#39;</span>], </span>
+<span id="cb86-11"><a href="#cb86-11" tabindex="-1"></a>                            columns <span class="op">=</span> <span class="st">&#39;id_trabajo&#39;</span>, </span>
+<span id="cb86-12"><a href="#cb86-12" tabindex="-1"></a>                            values <span class="op">=</span> [<span class="st">&#39;pres_2&#39;</span>], </span>
+<span id="cb86-13"><a href="#cb86-13" tabindex="-1"></a>                            aggfunc <span class="op">=</span> np.<span class="bu">sum</span>, </span>
+<span id="cb86-14"><a href="#cb86-14" tabindex="-1"></a>                            fill_value <span class="op">=</span> <span class="dv">0</span>)</span>
+<span id="cb86-15"><a href="#cb86-15" tabindex="-1"></a>        df.columns <span class="op">=</span> [<span class="ss">f&#39;</span><span class="sc">{</span>i<span class="sc">}{</span>j<span class="sc">}</span><span class="ss">&#39;</span> <span class="cf">for</span> i, j <span class="kw">in</span> df.columns]</span>
+<span id="cb86-16"><a href="#cb86-16" tabindex="-1"></a>        df <span class="op">=</span> df.reset_index()</span>
+<span id="cb86-17"><a href="#cb86-17" tabindex="-1"></a>        </span>
+<span id="cb86-18"><a href="#cb86-18" tabindex="-1"></a>        <span class="cf">return</span> df </span>
+<span id="cb86-19"><a href="#cb86-19" tabindex="-1"></a>    </span>
+<span id="cb86-20"><a href="#cb86-20" tabindex="-1"></a>    <span class="kw">def</span> agregar_columnas_aguinaldo(df):</span>
+<span id="cb86-21"><a href="#cb86-21" tabindex="-1"></a>        df[<span class="st">&#39;trab&#39;</span>] <span class="op">=</span> <span class="dv">1</span>  <span class="co"># Población con al menos un empleo </span></span>
+<span id="cb86-22"><a href="#cb86-22" tabindex="-1"></a>        df[<span class="st">&#39;aguinaldo1&#39;</span>] <span class="op">=</span> np.where(df.get(<span class="st">&#39;pres_21&#39;</span>, <span class="dv">0</span>) <span class="op">==</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">0</span>)  <span class="co"># Aguinaldo trabajo principal</span></span>
+<span id="cb86-23"><a href="#cb86-23" tabindex="-1"></a>        df[<span class="st">&#39;aguinaldo2&#39;</span>] <span class="op">=</span> np.where(df.get(<span class="st">&#39;pres_22&#39;</span>, <span class="dv">0</span>) <span class="op">==</span> <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">0</span>)  <span class="co"># Aguinaldo trabajo secundario</span></span>
+<span id="cb86-24"><a href="#cb86-24" tabindex="-1"></a>        </span>
+<span id="cb86-25"><a href="#cb86-25" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb86-26"><a href="#cb86-26" tabindex="-1"></a>    </span>
+<span id="cb86-27"><a href="#cb86-27" tabindex="-1"></a>    <span class="kw">def</span> seleccionar_columnas_finales(df):</span>
+<span id="cb86-28"><a href="#cb86-28" tabindex="-1"></a>        columnas_finales <span class="op">=</span> [<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;numren&#39;</span>, <span class="st">&#39;aguinaldo1&#39;</span>, <span class="st">&#39;aguinaldo2&#39;</span>, <span class="st">&#39;trab&#39;</span>]</span>
+<span id="cb86-29"><a href="#cb86-29" tabindex="-1"></a>        </span>
+<span id="cb86-30"><a href="#cb86-30" tabindex="-1"></a>        <span class="cf">return</span> df[columnas_finales]</span>
+<span id="cb86-31"><a href="#cb86-31" tabindex="-1"></a>    </span>
+<span id="cb86-32"><a href="#cb86-32" tabindex="-1"></a>    <span class="co"># Aplicando las funciones utilizando pipe</span></span>
+<span id="cb86-33"><a href="#cb86-33" tabindex="-1"></a>    <span class="cf">return</span> (trabajos.copy()</span>
+<span id="cb86-34"><a href="#cb86-34" tabindex="-1"></a>                    .pipe(convertir_a_numerico)</span>
+<span id="cb86-35"><a href="#cb86-35" tabindex="-1"></a>                    .pipe(generar_base_aguinaldo)</span>
+<span id="cb86-36"><a href="#cb86-36" tabindex="-1"></a>                    .pipe(agregar_columnas_aguinaldo)</span>
+<span id="cb86-37"><a href="#cb86-37" tabindex="-1"></a>                    .pipe(seleccionar_columnas_finales))</span>
+<span id="cb86-38"><a href="#cb86-38" tabindex="-1"></a>                    </span>
+<span id="cb86-39"><a href="#cb86-39" tabindex="-1"></a>aguinaldos <span class="op">=</span> indicador_aguinaldos(trabajos)</span></code></pre></div>
 <p><strong>Se guarda la base de datos</strong></p>
-<div class="sourceCode" id="cb87"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb87-1"><a href="#cb87-1" tabindex="-1"></a>aguinaldos.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;aguinaldo22.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb87"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb87-1"><a href="#cb87-1" tabindex="-1"></a>aguinaldos.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;aguinaldo22_2.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
 <p><strong>Ahora se incorpora a la base de ingresos</strong></p>
 <div class="sourceCode" id="cb88"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb88-1"><a href="#cb88-1" tabindex="-1"></a>ingresos <span class="op">=</span> pd.read_csv(current_directory <span class="op">+</span> <span class="st">&quot;/Bases de datos/ingresos.csv&quot;</span>, low_memory <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb89"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb89-1"><a href="#cb89-1" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> ingresos.copy()</span>
-<span id="cb89-2"><a href="#cb89-2" tabindex="-1"></a></span>
-<span id="cb89-3"><a href="#cb89-3" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> pd.merge(ingresos, </span>
-<span id="cb89-4"><a href="#cb89-4" tabindex="-1"></a>                               aguinaldos, </span>
-<span id="cb89-5"><a href="#cb89-5" tabindex="-1"></a>                                on <span class="op">=</span> [<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;numren&#39;</span>], </span>
-<span id="cb89-6"><a href="#cb89-6" tabindex="-1"></a>                                 how <span class="op">=</span> <span class="st">&#39;outer&#39;</span>) </span>
-<span id="cb89-7"><a href="#cb89-7" tabindex="-1"></a></span>
-<span id="cb89-8"><a href="#cb89-8" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> ingreso_deflactado[<span class="op">~</span>(((ingreso_deflactado[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;P009&#39;</span>) <span class="op">&amp;</span> (ingreso_deflactado[<span class="st">&#39;aguinaldo1&#39;</span>] <span class="op">!=</span> <span class="dv">1</span>)) <span class="op">|</span></span>
-<span id="cb89-9"><a href="#cb89-9" tabindex="-1"></a>                                          ((ingreso_deflactado[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;P016&#39;</span>) <span class="op">&amp;</span> (ingreso_deflactado[<span class="st">&#39;aguinaldo2&#39;</span>] <span class="op">!=</span> <span class="dv">1</span>)))]</span></code></pre></div>
-<p>Una vez realizado lo anterior, se procede a deflactar el ingreso
-recibido por los hogares a precios de agosto de 2022. Para ello, se
-utilizan las variables meses, las cuales toman los valores 2 a 10 e
-indican el mes en que se recibió el ingreso respectivo.</p>
+<p>Se procede a deflactar el ingreso recibido por los hogares a precios
+de agosto de 2022. Para ello, se utilizan las variables meses, las
+cuales toman los valores 2 a 10 e indican el mes en que se recibió el
+ingreso respectivo.</p>
 <p><strong>Definición de los deflactores 2022</strong></p>
-<div class="sourceCode" id="cb90"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb90-1"><a href="#cb90-1" tabindex="-1"></a><span class="co"># Definición de los deflactores 2022 </span></span>
-<span id="cb90-2"><a href="#cb90-2" tabindex="-1"></a>dic21 <span class="op">=</span> <span class="fl">0.9475376203</span>    </span>
-<span id="cb90-3"><a href="#cb90-3" tabindex="-1"></a>ene22 <span class="op">=</span> <span class="fl">0.9531433002</span></span>
-<span id="cb90-4"><a href="#cb90-4" tabindex="-1"></a>feb22 <span class="op">=</span> <span class="fl">0.9610510246</span>    </span>
-<span id="cb90-5"><a href="#cb90-5" tabindex="-1"></a>mar22 <span class="op">=</span> <span class="fl">0.9705661414</span>    </span>
-<span id="cb90-6"><a href="#cb90-6" tabindex="-1"></a>abr22 <span class="op">=</span> <span class="fl">0.9758164180</span>    </span>
-<span id="cb90-7"><a href="#cb90-7" tabindex="-1"></a>may22 <span class="op">=</span> <span class="fl">0.9775368933</span></span>
-<span id="cb90-8"><a href="#cb90-8" tabindex="-1"></a>jun22 <span class="op">=</span> <span class="fl">0.9857919437</span>    </span>
-<span id="cb90-9"><a href="#cb90-9" tabindex="-1"></a>jul22 <span class="op">=</span> <span class="fl">0.9930938669</span></span>
-<span id="cb90-10"><a href="#cb90-10" tabindex="-1"></a>ago22 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb90-11"><a href="#cb90-11" tabindex="-1"></a>sep22 <span class="op">=</span> <span class="fl">1.0062034038</span></span>
-<span id="cb90-12"><a href="#cb90-12" tabindex="-1"></a>oct22 <span class="op">=</span> <span class="fl">1.0118979346</span></span>
-<span id="cb90-13"><a href="#cb90-13" tabindex="-1"></a>nov22 <span class="op">=</span> <span class="fl">1.0177217030</span></span>
-<span id="cb90-14"><a href="#cb90-14" tabindex="-1"></a>dic22 <span class="op">=</span> <span class="fl">1.0216069077</span></span></code></pre></div>
-<div class="sourceCode" id="cb91"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb91-1"><a href="#cb91-1" tabindex="-1"></a><span class="co">#Convirtiendo variables string a numericas</span></span>
-<span id="cb91-2"><a href="#cb91-2" tabindex="-1"></a>ingreso_deflactado[[<span class="st">&#39;mes_1&#39;</span>, <span class="st">&#39;mes_2&#39;</span>, <span class="st">&#39;mes_3&#39;</span>, <span class="st">&#39;mes_4&#39;</span>, <span class="st">&#39;mes_5&#39;</span>, <span class="st">&#39;mes_6&#39;</span>, <span class="st">&#39;ing_1&#39;</span>, <span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]</span>
-<span id="cb91-3"><a href="#cb91-3" tabindex="-1"></a>                     ] <span class="op">=</span> ingreso_deflactado[[<span class="st">&#39;mes_1&#39;</span>, <span class="st">&#39;mes_2&#39;</span>, <span class="st">&#39;mes_3&#39;</span>, <span class="st">&#39;mes_4&#39;</span>, <span class="st">&#39;mes_5&#39;</span>, <span class="st">&#39;mes_6&#39;</span>, <span class="st">&#39;ing_1&#39;</span>, <span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>,</span>
-<span id="cb91-4"><a href="#cb91-4" tabindex="-1"></a>                                               <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]</span>
-<span id="cb91-5"><a href="#cb91-5" tabindex="-1"></a>                                              ].<span class="bu">apply</span>(pd.to_numeric, errors <span class="op">=</span> <span class="st">&#39;coerce&#39;</span>)</span>
-<span id="cb91-6"><a href="#cb91-6" tabindex="-1"></a></span>
-<span id="cb91-7"><a href="#cb91-7" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_6&#39;</span>] <span class="op">=</span> np.where(ingreso_deflactado[<span class="st">&#39;mes_6&#39;</span>].isna(), </span>
-<span id="cb91-8"><a href="#cb91-8" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_6&#39;</span>] ,</span>
-<span id="cb91-9"><a href="#cb91-9" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_6&#39;</span>] <span class="op">==</span> <span class="dv">2</span>, </span>
-<span id="cb91-10"><a href="#cb91-10" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_6&#39;</span>] <span class="op">/</span> feb22,</span>
-<span id="cb91-11"><a href="#cb91-11" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_6&#39;</span>] <span class="op">==</span> <span class="dv">3</span>, </span>
-<span id="cb91-12"><a href="#cb91-12" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_6&#39;</span>] <span class="op">/</span> mar22,</span>
-<span id="cb91-13"><a href="#cb91-13" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_6&#39;</span>] <span class="op">==</span> <span class="dv">4</span>, </span>
-<span id="cb91-14"><a href="#cb91-14" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_6&#39;</span>] <span class="op">/</span> abr22,</span>
-<span id="cb91-15"><a href="#cb91-15" tabindex="-1"></a>                                         ingreso_deflactado[<span class="st">&#39;ing_6&#39;</span>] <span class="op">/</span> may22))))</span>
-<span id="cb91-16"><a href="#cb91-16" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_5&#39;</span>] <span class="op">=</span> np.where(ingreso_deflactado[<span class="st">&#39;mes_5&#39;</span>].isna(), </span>
-<span id="cb91-17"><a href="#cb91-17" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_5&#39;</span>] ,</span>
-<span id="cb91-18"><a href="#cb91-18" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_5&#39;</span>] <span class="op">==</span> <span class="dv">3</span>, </span>
-<span id="cb91-19"><a href="#cb91-19" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_5&#39;</span>] <span class="op">/</span> mar22,</span>
-<span id="cb91-20"><a href="#cb91-20" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_5&#39;</span>] <span class="op">==</span> <span class="dv">4</span>, </span>
-<span id="cb91-21"><a href="#cb91-21" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_5&#39;</span>] <span class="op">/</span> abr22,</span>
-<span id="cb91-22"><a href="#cb91-22" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_5&#39;</span>] <span class="op">==</span> <span class="dv">5</span>, </span>
-<span id="cb91-23"><a href="#cb91-23" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_5&#39;</span>] <span class="op">/</span> may22,</span>
-<span id="cb91-24"><a href="#cb91-24" tabindex="-1"></a>                                         ingreso_deflactado[<span class="st">&#39;ing_5&#39;</span>] <span class="op">/</span> jun22))))</span>
-<span id="cb91-25"><a href="#cb91-25" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_4&#39;</span>] <span class="op">=</span> np.where(ingreso_deflactado[<span class="st">&#39;mes_4&#39;</span>].isna(), </span>
-<span id="cb91-26"><a href="#cb91-26" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_4&#39;</span>] ,</span>
-<span id="cb91-27"><a href="#cb91-27" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_4&#39;</span>] <span class="op">==</span> <span class="dv">4</span>,  </span>
-<span id="cb91-28"><a href="#cb91-28" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_4&#39;</span>] <span class="op">/</span> abr22,</span>
-<span id="cb91-29"><a href="#cb91-29" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_4&#39;</span>] <span class="op">==</span> <span class="dv">5</span>, </span>
-<span id="cb91-30"><a href="#cb91-30" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_4&#39;</span>] <span class="op">/</span> may22,</span>
-<span id="cb91-31"><a href="#cb91-31" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_4&#39;</span>] <span class="op">==</span> <span class="dv">6</span>, </span>
-<span id="cb91-32"><a href="#cb91-32" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_4&#39;</span>] <span class="op">/</span> jun22,</span>
-<span id="cb91-33"><a href="#cb91-33" tabindex="-1"></a>                                         ingreso_deflactado[<span class="st">&#39;ing_4&#39;</span>] <span class="op">/</span> jul22))))</span>
-<span id="cb91-34"><a href="#cb91-34" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_3&#39;</span>] <span class="op">=</span> np.where(ingreso_deflactado[<span class="st">&#39;mes_3&#39;</span>].isna(), </span>
-<span id="cb91-35"><a href="#cb91-35" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_3&#39;</span>] ,</span>
-<span id="cb91-36"><a href="#cb91-36" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_3&#39;</span>] <span class="op">==</span> <span class="dv">5</span>, </span>
-<span id="cb91-37"><a href="#cb91-37" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_3&#39;</span>] <span class="op">/</span> may22,</span>
-<span id="cb91-38"><a href="#cb91-38" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_3&#39;</span>] <span class="op">==</span> <span class="dv">6</span>,  </span>
-<span id="cb91-39"><a href="#cb91-39" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_3&#39;</span>] <span class="op">/</span> jun22,</span>
-<span id="cb91-40"><a href="#cb91-40" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_3&#39;</span>] <span class="op">==</span> <span class="dv">7</span>, </span>
-<span id="cb91-41"><a href="#cb91-41" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_3&#39;</span>] <span class="op">/</span> jul22,</span>
-<span id="cb91-42"><a href="#cb91-42" tabindex="-1"></a>                                         ingreso_deflactado[<span class="st">&#39;ing_3&#39;</span>] <span class="op">/</span> ago22))))</span>
-<span id="cb91-43"><a href="#cb91-43" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_2&#39;</span>] <span class="op">=</span> np.where(ingreso_deflactado[<span class="st">&#39;mes_2&#39;</span>].isna(), </span>
-<span id="cb91-44"><a href="#cb91-44" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_2&#39;</span>] ,</span>
-<span id="cb91-45"><a href="#cb91-45" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_2&#39;</span>] <span class="op">==</span> <span class="dv">6</span>, </span>
-<span id="cb91-46"><a href="#cb91-46" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_2&#39;</span>] <span class="op">/</span> jun22,</span>
-<span id="cb91-47"><a href="#cb91-47" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_2&#39;</span>] <span class="op">==</span> <span class="dv">7</span>, </span>
-<span id="cb91-48"><a href="#cb91-48" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_2&#39;</span>] <span class="op">/</span> jul22,</span>
-<span id="cb91-49"><a href="#cb91-49" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_2&#39;</span>] <span class="op">==</span> <span class="dv">8</span>, </span>
-<span id="cb91-50"><a href="#cb91-50" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_2&#39;</span>] <span class="op">/</span> ago22,</span>
-<span id="cb91-51"><a href="#cb91-51" tabindex="-1"></a>                                         ingreso_deflactado[<span class="st">&#39;ing_2&#39;</span>] <span class="op">/</span> sep22))))</span>
-<span id="cb91-52"><a href="#cb91-52" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">=</span> np.where(ingreso_deflactado[<span class="st">&#39;mes_1&#39;</span>].isna(), </span>
-<span id="cb91-53"><a href="#cb91-53" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] ,</span>
-<span id="cb91-54"><a href="#cb91-54" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_1&#39;</span>] <span class="op">==</span> <span class="dv">7</span>, </span>
-<span id="cb91-55"><a href="#cb91-55" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span> jul22,</span>
-<span id="cb91-56"><a href="#cb91-56" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_1&#39;</span>] <span class="op">==</span> <span class="dv">8</span>, </span>
-<span id="cb91-57"><a href="#cb91-57" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span> ago22,</span>
-<span id="cb91-58"><a href="#cb91-58" tabindex="-1"></a>                              np.where(ingreso_deflactado[<span class="st">&#39;mes_1&#39;</span>] <span class="op">==</span> <span class="dv">9</span>, </span>
-<span id="cb91-59"><a href="#cb91-59" tabindex="-1"></a>                                        ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span> sep22,</span>
-<span id="cb91-60"><a href="#cb91-60" tabindex="-1"></a>                                         ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span> oct22))))</span></code></pre></div>
+<div class="sourceCode" id="cb89"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb89-1"><a href="#cb89-1" tabindex="-1"></a>deflactores <span class="op">=</span> {</span>
+<span id="cb89-2"><a href="#cb89-2" tabindex="-1"></a>    <span class="dv">1</span>: <span class="fl">0.9531433002</span>,</span>
+<span id="cb89-3"><a href="#cb89-3" tabindex="-1"></a>    <span class="dv">2</span>: <span class="fl">0.9610510246</span>,</span>
+<span id="cb89-4"><a href="#cb89-4" tabindex="-1"></a>    <span class="dv">3</span>: <span class="fl">0.9705661414</span>,</span>
+<span id="cb89-5"><a href="#cb89-5" tabindex="-1"></a>    <span class="dv">4</span>: <span class="fl">0.9758164180</span>,</span>
+<span id="cb89-6"><a href="#cb89-6" tabindex="-1"></a>    <span class="dv">5</span>: <span class="fl">0.9775368933</span>,</span>
+<span id="cb89-7"><a href="#cb89-7" tabindex="-1"></a>    <span class="dv">6</span>: <span class="fl">0.9857919437</span>,</span>
+<span id="cb89-8"><a href="#cb89-8" tabindex="-1"></a>    <span class="dv">7</span>: <span class="fl">0.9930938669</span>,</span>
+<span id="cb89-9"><a href="#cb89-9" tabindex="-1"></a>    <span class="dv">8</span>: <span class="fl">1.0000000000</span>,</span>
+<span id="cb89-10"><a href="#cb89-10" tabindex="-1"></a>    <span class="dv">9</span>: <span class="fl">1.0062034038</span>,</span>
+<span id="cb89-11"><a href="#cb89-11" tabindex="-1"></a>    <span class="dv">10</span>: <span class="fl">1.0118979346</span>,</span>
+<span id="cb89-12"><a href="#cb89-12" tabindex="-1"></a>    <span class="dv">11</span>: <span class="fl">1.0177217030</span>,</span>
+<span id="cb89-13"><a href="#cb89-13" tabindex="-1"></a>    <span class="dv">12</span>: <span class="fl">1.0216069077</span>,</span>
+<span id="cb89-14"><a href="#cb89-14" tabindex="-1"></a>    <span class="st">&#39;dic21&#39;</span>: <span class="fl">0.9475376203</span></span>
+<span id="cb89-15"><a href="#cb89-15" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb90"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb90-1"><a href="#cb90-1" tabindex="-1"></a><span class="kw">def</span> indicador_ingreso_deflactado(ingresos):</span>
+<span id="cb90-2"><a href="#cb90-2" tabindex="-1"></a>    <span class="kw">def</span> merge_aguinaldos(df, aguinaldos):</span>
+<span id="cb90-3"><a href="#cb90-3" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Fusiona las tablas de ingresos y aguinaldos.&quot;&quot;&quot;</span></span>
+<span id="cb90-4"><a href="#cb90-4" tabindex="-1"></a>        <span class="cf">return</span> pd.merge(df, </span>
+<span id="cb90-5"><a href="#cb90-5" tabindex="-1"></a>                         aguinaldos, </span>
+<span id="cb90-6"><a href="#cb90-6" tabindex="-1"></a>                          on <span class="op">=</span> [<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;numren&#39;</span>], </span>
+<span id="cb90-7"><a href="#cb90-7" tabindex="-1"></a>                           how <span class="op">=</span> <span class="st">&#39;outer&#39;</span>)</span>
+<span id="cb90-8"><a href="#cb90-8" tabindex="-1"></a>    </span>
+<span id="cb90-9"><a href="#cb90-9" tabindex="-1"></a>    <span class="kw">def</span> filtrar_aguinaldos(df):</span>
+<span id="cb90-10"><a href="#cb90-10" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Filtra las filas basadas en las condiciones de aguinaldo.&quot;&quot;&quot;</span></span>
+<span id="cb90-11"><a href="#cb90-11" tabindex="-1"></a>        condicion <span class="op">=</span> <span class="op">~</span>(((df[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;P009&#39;</span>) <span class="op">&amp;</span> (df[<span class="st">&#39;aguinaldo1&#39;</span>] <span class="op">!=</span> <span class="dv">1</span>)) <span class="op">|</span></span>
+<span id="cb90-12"><a href="#cb90-12" tabindex="-1"></a>                      ((df[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;P016&#39;</span>) <span class="op">&amp;</span> (df[<span class="st">&#39;aguinaldo2&#39;</span>] <span class="op">!=</span> <span class="dv">1</span>)))</span>
+<span id="cb90-13"><a href="#cb90-13" tabindex="-1"></a>                      </span>
+<span id="cb90-14"><a href="#cb90-14" tabindex="-1"></a>        <span class="cf">return</span> df[condicion]</span>
+<span id="cb90-15"><a href="#cb90-15" tabindex="-1"></a>    </span>
+<span id="cb90-16"><a href="#cb90-16" tabindex="-1"></a>    <span class="kw">def</span> convertir_a_numerico(df):</span>
+<span id="cb90-17"><a href="#cb90-17" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Convierte columnas específicas a tipo numérico.&quot;&quot;&quot;</span></span>
+<span id="cb90-18"><a href="#cb90-18" tabindex="-1"></a>        columnas_a_convertir <span class="op">=</span> [<span class="st">&#39;mes_1&#39;</span>, <span class="st">&#39;mes_2&#39;</span>, <span class="st">&#39;mes_3&#39;</span>, <span class="st">&#39;mes_4&#39;</span>, <span class="st">&#39;mes_5&#39;</span>, <span class="st">&#39;mes_6&#39;</span>, </span>
+<span id="cb90-19"><a href="#cb90-19" tabindex="-1"></a>                                <span class="st">&#39;ing_1&#39;</span>, <span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]</span>
+<span id="cb90-20"><a href="#cb90-20" tabindex="-1"></a>        df[columnas_a_convertir] <span class="op">=</span> df[columnas_a_convertir].<span class="bu">apply</span>(pd.to_numeric, errors <span class="op">=</span> <span class="st">&#39;coerce&#39;</span>)</span>
+<span id="cb90-21"><a href="#cb90-21" tabindex="-1"></a>        </span>
+<span id="cb90-22"><a href="#cb90-22" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb90-23"><a href="#cb90-23" tabindex="-1"></a>    </span>
+<span id="cb90-24"><a href="#cb90-24" tabindex="-1"></a>        <span class="co"># Función auxiliar para deflactar ingresos</span></span>
+<span id="cb90-25"><a href="#cb90-25" tabindex="-1"></a>    <span class="kw">def</span> deflactar_ingreso(df, col_ingreso, col_mes):</span>
+<span id="cb90-26"><a href="#cb90-26" tabindex="-1"></a>        <span class="kw">def</span> deflactar(row):</span>
+<span id="cb90-27"><a href="#cb90-27" tabindex="-1"></a>            mes <span class="op">=</span> row[col_mes]</span>
+<span id="cb90-28"><a href="#cb90-28" tabindex="-1"></a>            ingreso <span class="op">=</span> row[col_ingreso]</span>
+<span id="cb90-29"><a href="#cb90-29" tabindex="-1"></a>            <span class="cf">if</span> pd.isna(mes) <span class="kw">or</span> pd.isna(ingreso):</span>
+<span id="cb90-30"><a href="#cb90-30" tabindex="-1"></a>                <span class="cf">return</span> ingreso</span>
+<span id="cb90-31"><a href="#cb90-31" tabindex="-1"></a>            <span class="cf">return</span> ingreso <span class="op">/</span> deflactores.get(mes, <span class="fl">1.0</span>)</span>
+<span id="cb90-32"><a href="#cb90-32" tabindex="-1"></a>    </span>
+<span id="cb90-33"><a href="#cb90-33" tabindex="-1"></a>        df[col_ingreso] <span class="op">=</span> df.<span class="bu">apply</span>(deflactar, axis <span class="op">=</span> <span class="dv">1</span>)</span>
+<span id="cb90-34"><a href="#cb90-34" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb90-35"><a href="#cb90-35" tabindex="-1"></a></span>
+<span id="cb90-36"><a href="#cb90-36" tabindex="-1"></a>        <span class="co"># Función auxiliar para deflactar ingresos</span></span>
+<span id="cb90-37"><a href="#cb90-37" tabindex="-1"></a>        <span class="co"># Aplicar la función a cada columna de ingreso</span></span>
+<span id="cb90-38"><a href="#cb90-38" tabindex="-1"></a>    <span class="kw">def</span> aplicar_deflactores(df):</span>
+<span id="cb90-39"><a href="#cb90-39" tabindex="-1"></a>        ingresos_meses <span class="op">=</span> [</span>
+<span id="cb90-40"><a href="#cb90-40" tabindex="-1"></a>            (<span class="st">&#39;ing_6&#39;</span>, <span class="st">&#39;mes_6&#39;</span>),</span>
+<span id="cb90-41"><a href="#cb90-41" tabindex="-1"></a>            (<span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;mes_5&#39;</span>),</span>
+<span id="cb90-42"><a href="#cb90-42" tabindex="-1"></a>            (<span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;mes_4&#39;</span>),</span>
+<span id="cb90-43"><a href="#cb90-43" tabindex="-1"></a>            (<span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;mes_3&#39;</span>),</span>
+<span id="cb90-44"><a href="#cb90-44" tabindex="-1"></a>            (<span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;mes_2&#39;</span>),</span>
+<span id="cb90-45"><a href="#cb90-45" tabindex="-1"></a>            (<span class="st">&#39;ing_1&#39;</span>, <span class="st">&#39;mes_1&#39;</span>)</span>
+<span id="cb90-46"><a href="#cb90-46" tabindex="-1"></a>        ]</span>
+<span id="cb90-47"><a href="#cb90-47" tabindex="-1"></a>        </span>
+<span id="cb90-48"><a href="#cb90-48" tabindex="-1"></a>        <span class="cf">for</span> col_ingreso, col_mes <span class="kw">in</span> ingresos_meses:</span>
+<span id="cb90-49"><a href="#cb90-49" tabindex="-1"></a>            df <span class="op">=</span> deflactar_ingreso(df, col_ingreso, col_mes)</span>
+<span id="cb90-50"><a href="#cb90-50" tabindex="-1"></a>    </span>
+<span id="cb90-51"><a href="#cb90-51" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb90-52"><a href="#cb90-52" tabindex="-1"></a></span>
+<span id="cb90-53"><a href="#cb90-53" tabindex="-1"></a>    <span class="co">#def deflactar_ingreso(df, mes_col, ing_col):</span></span>
+<span id="cb90-54"><a href="#cb90-54" tabindex="-1"></a>    <span class="co">#    &quot;&quot;&quot;Aplica los deflactores a los ingresos según el mes correspondiente.&quot;&quot;&quot;</span></span>
+<span id="cb90-55"><a href="#cb90-55" tabindex="-1"></a>    <span class="co">#    deflactor_col = f&#39;deflactor_{mes_col}&#39;</span></span>
+<span id="cb90-56"><a href="#cb90-56" tabindex="-1"></a>    <span class="co">#    df[deflactor_col] = df[mes_col].map(deflactores)</span></span>
+<span id="cb90-57"><a href="#cb90-57" tabindex="-1"></a>    <span class="co">#    df[ing_col] = df[ing_col] / df[deflactor_col]</span></span>
+<span id="cb90-58"><a href="#cb90-58" tabindex="-1"></a>        </span>
+<span id="cb90-59"><a href="#cb90-59" tabindex="-1"></a>    <span class="co">#    return df.drop(columns=[deflactor_col])</span></span>
+<span id="cb90-60"><a href="#cb90-60" tabindex="-1"></a>    </span>
+<span id="cb90-61"><a href="#cb90-61" tabindex="-1"></a>    <span class="co">#def aplicar_deflactores(df):</span></span>
+<span id="cb90-62"><a href="#cb90-62" tabindex="-1"></a>    <span class="co">#    &quot;&quot;&quot;Deflacta los ingresos para cada mes.&quot;&quot;&quot;</span></span>
+<span id="cb90-63"><a href="#cb90-63" tabindex="-1"></a>    <span class="co">#    for i in range(1, 7):</span></span>
+<span id="cb90-64"><a href="#cb90-64" tabindex="-1"></a>    <span class="co">#        mes_col = f&#39;mes_{i}&#39;</span></span>
+<span id="cb90-65"><a href="#cb90-65" tabindex="-1"></a>    <span class="co">#        ing_col = f&#39;ing_{i}&#39;</span></span>
+<span id="cb90-66"><a href="#cb90-66" tabindex="-1"></a>    <span class="co">#        df = df.pipe(deflactar_ingreso, mes_col, ing_col)</span></span>
+<span id="cb90-67"><a href="#cb90-67" tabindex="-1"></a>    <span class="co">#        </span></span>
+<span id="cb90-68"><a href="#cb90-68" tabindex="-1"></a>    <span class="co">#    return df</span></span>
+<span id="cb90-69"><a href="#cb90-69" tabindex="-1"></a>    </span>
+<span id="cb90-70"><a href="#cb90-70" tabindex="-1"></a>        <span class="co"># Aplicando las funciones utilizando pipe</span></span>
+<span id="cb90-71"><a href="#cb90-71" tabindex="-1"></a>    <span class="cf">return</span> (ingresos.copy()</span>
+<span id="cb90-72"><a href="#cb90-72" tabindex="-1"></a>                    .pipe(merge_aguinaldos, aguinaldos)</span>
+<span id="cb90-73"><a href="#cb90-73" tabindex="-1"></a>                    .pipe(filtrar_aguinaldos)</span>
+<span id="cb90-74"><a href="#cb90-74" tabindex="-1"></a>                    .pipe(convertir_a_numerico)</span>
+<span id="cb90-75"><a href="#cb90-75" tabindex="-1"></a>                    .pipe(aplicar_deflactores)</span>
+<span id="cb90-76"><a href="#cb90-76" tabindex="-1"></a>                    )</span>
+<span id="cb90-77"><a href="#cb90-77" tabindex="-1"></a>    </span>
+<span id="cb90-78"><a href="#cb90-78" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> indicador_ingreso_deflactado(ingresos)</span></code></pre></div>
 <p>Se deflactan las claves P008 y P015 (Reparto de utilidades) y P009 y
 P016 (aguinaldo) con los deflactores de mayo a agosto 2022 y de
 diciembre de 2021 a agosto 2022, respectivamente, y se obtiene el
 promedio mensual.</p>
+<div class="sourceCode" id="cb91"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb91-1"><a href="#cb91-1" tabindex="-1"></a><span class="co"># Definición de los deflactores 2022</span></span>
+<span id="cb91-2"><a href="#cb91-2" tabindex="-1"></a>deflactores <span class="op">=</span> {</span>
+<span id="cb91-3"><a href="#cb91-3" tabindex="-1"></a>    <span class="st">&#39;dic21&#39;</span>: <span class="fl">0.9475376203</span>, <span class="st">&#39;ene22&#39;</span>: <span class="fl">0.9531433002</span>, <span class="st">&#39;feb22&#39;</span>: <span class="fl">0.9610510246</span>,</span>
+<span id="cb91-4"><a href="#cb91-4" tabindex="-1"></a>    <span class="st">&#39;mar22&#39;</span>: <span class="fl">0.9705661414</span>, <span class="st">&#39;abr22&#39;</span>: <span class="fl">0.9758164180</span>, <span class="st">&#39;may22&#39;</span>: <span class="fl">0.9775368933</span>,</span>
+<span id="cb91-5"><a href="#cb91-5" tabindex="-1"></a>    <span class="st">&#39;jun22&#39;</span>: <span class="fl">0.9857919437</span>, <span class="st">&#39;jul22&#39;</span>: <span class="fl">0.9930938669</span>, <span class="st">&#39;ago22&#39;</span>: <span class="fl">1.0000000000</span>,</span>
+<span id="cb91-6"><a href="#cb91-6" tabindex="-1"></a>    <span class="st">&#39;sep22&#39;</span>: <span class="fl">1.0062034038</span>, <span class="st">&#39;oct22&#39;</span>: <span class="fl">1.0118979346</span>, <span class="st">&#39;nov22&#39;</span>: <span class="fl">1.0177217030</span>,</span>
+<span id="cb91-7"><a href="#cb91-7" tabindex="-1"></a>    <span class="st">&#39;dic22&#39;</span>: <span class="fl">1.0216069077</span></span>
+<span id="cb91-8"><a href="#cb91-8" tabindex="-1"></a>}</span></code></pre></div>
 <div class="sourceCode" id="cb92"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb92-1"><a href="#cb92-1" tabindex="-1"></a>index <span class="op">=</span> [<span class="st">&#39;P008&#39;</span>, <span class="st">&#39;P009&#39;</span>, <span class="st">&#39;P015&#39;</span>, <span class="st">&#39;P016&#39;</span>]</span></code></pre></div>
-<div class="sourceCode" id="cb93"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb93-1"><a href="#cb93-1" tabindex="-1"></a>ingreso_deflactado.loc[ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].isin([<span class="st">&#39;P008&#39;</span>, <span class="st">&#39;P015&#39;</span>]), <span class="st">&#39;ing_1&#39;</span>] <span class="op">=</span> ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span> may22 <span class="op">/</span> <span class="dv">12</span></span>
-<span id="cb93-2"><a href="#cb93-2" tabindex="-1"></a>ingreso_deflactado.loc[ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].isin([<span class="st">&#39;P009&#39;</span>, <span class="st">&#39;P016&#39;</span>]), <span class="st">&#39;ing_1&#39;</span>] <span class="op">=</span> ingreso_deflactado[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span> dic21 <span class="op">/</span> <span class="dv">12</span></span>
-<span id="cb93-3"><a href="#cb93-3" tabindex="-1"></a></span>
-<span id="cb93-4"><a href="#cb93-4" tabindex="-1"></a>cols <span class="op">=</span> [<span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]</span>
-<span id="cb93-5"><a href="#cb93-5" tabindex="-1"></a><span class="cf">for</span> col <span class="kw">in</span> cols:</span>
-<span id="cb93-6"><a href="#cb93-6" tabindex="-1"></a>    ingreso_deflactado.loc[ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].isin(index) <span class="op">&amp;</span> ([col] <span class="op">==</span> <span class="dv">0</span>), col] <span class="op">=</span> <span class="va">None</span></span>
-<span id="cb93-7"><a href="#cb93-7" tabindex="-1"></a>    </span>
-<span id="cb93-8"><a href="#cb93-8" tabindex="-1"></a><span class="co"># Una vez realizada la deflactación, se procede a obtener el ingreso mensual promedio en los últimos seis meses, para cada persona y clave de ingreso</span></span>
-<span id="cb93-9"><a href="#cb93-9" tabindex="-1"></a>ingreso_deflactado[<span class="st">&#39;ing_mens&#39;</span>] <span class="op">=</span> ingreso_deflactado[[<span class="st">&#39;ing_1&#39;</span>, <span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]].mean(axis <span class="op">=</span> <span class="dv">1</span>, skipna <span class="op">=</span> <span class="va">True</span>)</span>
-<span id="cb93-10"><a href="#cb93-10" tabindex="-1"></a></span>
-<span id="cb93-11"><a href="#cb93-11" tabindex="-1"></a><span class="co"># Para obtener el ingreso corriente monetario, se seleccionan las claves de ingreso correspondientes</span></span>
-<span id="cb93-12"><a href="#cb93-12" tabindex="-1"></a>ingreso_deflactado.loc[((ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P001&#39;</span>, <span class="st">&#39;P009&#39;</span>)) <span class="op">|</span></span>
-<span id="cb93-13"><a href="#cb93-13" tabindex="-1"></a>                        (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P011&#39;</span>, <span class="st">&#39;P016&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-14"><a href="#cb93-14" tabindex="-1"></a>                         (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P018&#39;</span>, <span class="st">&#39;P048&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-15"><a href="#cb93-15" tabindex="-1"></a>                          (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P067&#39;</span>, <span class="st">&#39;P081&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-16"><a href="#cb93-16" tabindex="-1"></a>                           (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P101&#39;</span>, <span class="st">&#39;P108&#39;</span>))), <span class="st">&#39;ing_mon&#39;</span>] <span class="op">=</span> ingreso_deflactado[<span class="st">&#39;ing_mens&#39;</span>]</span>
-<span id="cb93-17"><a href="#cb93-17" tabindex="-1"></a></span>
-<span id="cb93-18"><a href="#cb93-18" tabindex="-1"></a><span class="co"># Para obtener el ingreso laboral, se seleccionan las claves de ingreso correspondientes</span></span>
-<span id="cb93-19"><a href="#cb93-19" tabindex="-1"></a>ingreso_deflactado.loc[((ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P001&#39;</span>, <span class="st">&#39;P009&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-20"><a href="#cb93-20" tabindex="-1"></a>                        (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P011&#39;</span>, <span class="st">&#39;P016&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-21"><a href="#cb93-21" tabindex="-1"></a>                         (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P018&#39;</span>, <span class="st">&#39;P022&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-22"><a href="#cb93-22" tabindex="-1"></a>                          (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P067&#39;</span>, <span class="st">&#39;P081&#39;</span>))), <span class="st">&#39;ing_lab&#39;</span>] <span class="op">=</span> ingreso_deflactado[<span class="st">&#39;ing_mens&#39;</span>]</span>
-<span id="cb93-23"><a href="#cb93-23" tabindex="-1"></a></span>
-<span id="cb93-24"><a href="#cb93-24" tabindex="-1"></a><span class="co"># Para obtener el ingreso por rentas, se seleccionan las claves de ingreso correspondientes</span></span>
-<span id="cb93-25"><a href="#cb93-25" tabindex="-1"></a>ingreso_deflactado.loc[ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P023&#39;</span>, <span class="st">&#39;P031&#39;</span>), <span class="st">&#39;ing_ren&#39;</span>] <span class="op">=</span> ingreso_deflactado[<span class="st">&#39;ing_mens&#39;</span>]</span>
-<span id="cb93-26"><a href="#cb93-26" tabindex="-1"></a></span>
-<span id="cb93-27"><a href="#cb93-27" tabindex="-1"></a><span class="co"># Para obtener el ingreso por transferencias, se seleccionan las claves de ingreso correspondientes</span></span>
-<span id="cb93-28"><a href="#cb93-28" tabindex="-1"></a>ingreso_deflactado.loc[((ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P032&#39;</span>, <span class="st">&#39;P048&#39;</span>)) <span class="op">|</span> </span>
-<span id="cb93-29"><a href="#cb93-29" tabindex="-1"></a>                        (ingreso_deflactado[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P101&#39;</span>, <span class="st">&#39;P108&#39;</span>))), <span class="st">&#39;ing_tra&#39;</span>] <span class="op">=</span> ingreso_deflactado[<span class="st">&#39;ing_mens&#39;</span>]</span>
-<span id="cb93-30"><a href="#cb93-30" tabindex="-1"></a></span>
-<span id="cb93-31"><a href="#cb93-31" tabindex="-1"></a><span class="co"># Se estima el total de ingresos de cada  hogar</span></span>
-<span id="cb93-32"><a href="#cb93-32" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> ingreso_deflactado.groupby([<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>])[[<span class="st">&#39;ing_mon&#39;</span>, <span class="st">&#39;ing_lab&#39;</span>, <span class="st">&#39;ing_ren&#39;</span>, <span class="st">&#39;ing_tra&#39;</span>]</span>
-<span id="cb93-33"><a href="#cb93-33" tabindex="-1"></a>                                                                          ].<span class="bu">sum</span>(numeric_only <span class="op">=</span> <span class="va">True</span>)</span>
-<span id="cb93-34"><a href="#cb93-34" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> ingreso_deflactado.reset_index()</span></code></pre></div>
+<div class="sourceCode" id="cb93"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb93-1"><a href="#cb93-1" tabindex="-1"></a><span class="kw">def</span> indicador_ingreso_deflactado_anexoa(ingreso_deflactado):</span>
+<span id="cb93-2"><a href="#cb93-2" tabindex="-1"></a>    <span class="kw">def</span> deflactar_ing_1(df):</span>
+<span id="cb93-3"><a href="#cb93-3" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Aplica deflactores específicos a ing_1 según la clave.&quot;&quot;&quot;</span></span>
+<span id="cb93-4"><a href="#cb93-4" tabindex="-1"></a>        df.loc[df[<span class="st">&#39;clave&#39;</span>].isin([<span class="st">&#39;P008&#39;</span>, <span class="st">&#39;P015&#39;</span>]), <span class="st">&#39;ing_1&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span>deflactores[<span class="st">&#39;may22&#39;</span>] <span class="op">/</span> <span class="dv">12</span></span>
+<span id="cb93-5"><a href="#cb93-5" tabindex="-1"></a>        df.loc[df[<span class="st">&#39;clave&#39;</span>].isin([<span class="st">&#39;P009&#39;</span>, <span class="st">&#39;P016&#39;</span>]), <span class="st">&#39;ing_1&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;ing_1&#39;</span>] <span class="op">/</span>deflactores[<span class="st">&#39;dic21&#39;</span>] <span class="op">/</span> <span class="dv">12</span></span>
+<span id="cb93-6"><a href="#cb93-6" tabindex="-1"></a>      </span>
+<span id="cb93-7"><a href="#cb93-7" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb93-8"><a href="#cb93-8" tabindex="-1"></a></span>
+<span id="cb93-9"><a href="#cb93-9" tabindex="-1"></a>    <span class="kw">def</span> poner_nulos(df):</span>
+<span id="cb93-10"><a href="#cb93-10" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Pone valores nulos en ciertas columnas si las condiciones se cumplen.&quot;&quot;&quot;</span></span>
+<span id="cb93-11"><a href="#cb93-11" tabindex="-1"></a>        cols <span class="op">=</span> [<span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]</span>
+<span id="cb93-12"><a href="#cb93-12" tabindex="-1"></a>        <span class="cf">for</span> col <span class="kw">in</span> cols:</span>
+<span id="cb93-13"><a href="#cb93-13" tabindex="-1"></a>            df.loc[df[<span class="st">&#39;clave&#39;</span>].isin(index) <span class="op">&amp;</span> (df[col] <span class="op">==</span> <span class="dv">0</span>), col] <span class="op">=</span> <span class="va">None</span></span>
+<span id="cb93-14"><a href="#cb93-14" tabindex="-1"></a>            </span>
+<span id="cb93-15"><a href="#cb93-15" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb93-16"><a href="#cb93-16" tabindex="-1"></a>    </span>
+<span id="cb93-17"><a href="#cb93-17" tabindex="-1"></a>    <span class="kw">def</span> calcular_ingreso_mensual(df):</span>
+<span id="cb93-18"><a href="#cb93-18" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Calcula el ingreso mensual promedio en los últimos seis meses.&quot;&quot;&quot;</span></span>
+<span id="cb93-19"><a href="#cb93-19" tabindex="-1"></a>        df[<span class="st">&#39;ing_mens&#39;</span>] <span class="op">=</span> df[[<span class="st">&#39;ing_1&#39;</span>, <span class="st">&#39;ing_2&#39;</span>, <span class="st">&#39;ing_3&#39;</span>, <span class="st">&#39;ing_4&#39;</span>, <span class="st">&#39;ing_5&#39;</span>, <span class="st">&#39;ing_6&#39;</span>]].mean(axis <span class="op">=</span> <span class="dv">1</span>, skipna <span class="op">=</span> <span class="va">True</span>)</span>
+<span id="cb93-20"><a href="#cb93-20" tabindex="-1"></a>        </span>
+<span id="cb93-21"><a href="#cb93-21" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb93-22"><a href="#cb93-22" tabindex="-1"></a>    </span>
+<span id="cb93-23"><a href="#cb93-23" tabindex="-1"></a>    <span class="kw">def</span> clasificar_ingresos(df):</span>
+<span id="cb93-24"><a href="#cb93-24" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Clasifica los ingresos en categorías específicas.&quot;&quot;&quot;</span></span>
+<span id="cb93-25"><a href="#cb93-25" tabindex="-1"></a>        condiciones_mon <span class="op">=</span> ((df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P001&#39;</span>, <span class="st">&#39;P009&#39;</span>)) <span class="op">|</span></span>
+<span id="cb93-26"><a href="#cb93-26" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P011&#39;</span>, <span class="st">&#39;P016&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-27"><a href="#cb93-27" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P018&#39;</span>, <span class="st">&#39;P048&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-28"><a href="#cb93-28" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P067&#39;</span>, <span class="st">&#39;P081&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-29"><a href="#cb93-29" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P101&#39;</span>, <span class="st">&#39;P108&#39;</span>)))</span>
+<span id="cb93-30"><a href="#cb93-30" tabindex="-1"></a>        </span>
+<span id="cb93-31"><a href="#cb93-31" tabindex="-1"></a>        condiciones_lab <span class="op">=</span> ((df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P001&#39;</span>, <span class="st">&#39;P009&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-32"><a href="#cb93-32" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P011&#39;</span>, <span class="st">&#39;P016&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-33"><a href="#cb93-33" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P018&#39;</span>, <span class="st">&#39;P022&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-34"><a href="#cb93-34" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P067&#39;</span>, <span class="st">&#39;P081&#39;</span>)))</span>
+<span id="cb93-35"><a href="#cb93-35" tabindex="-1"></a>        </span>
+<span id="cb93-36"><a href="#cb93-36" tabindex="-1"></a>        condiciones_ren <span class="op">=</span> (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P023&#39;</span>, <span class="st">&#39;P031&#39;</span>))</span>
+<span id="cb93-37"><a href="#cb93-37" tabindex="-1"></a>        condiciones_tra <span class="op">=</span> ((df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P032&#39;</span>, <span class="st">&#39;P048&#39;</span>)) <span class="op">|</span> </span>
+<span id="cb93-38"><a href="#cb93-38" tabindex="-1"></a>                           (df[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;P101&#39;</span>, <span class="st">&#39;P108&#39;</span>)))</span>
+<span id="cb93-39"><a href="#cb93-39" tabindex="-1"></a>        </span>
+<span id="cb93-40"><a href="#cb93-40" tabindex="-1"></a>        df.loc[condiciones_mon, <span class="st">&#39;ing_mon&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;ing_mens&#39;</span>]</span>
+<span id="cb93-41"><a href="#cb93-41" tabindex="-1"></a>        df.loc[condiciones_lab, <span class="st">&#39;ing_lab&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;ing_mens&#39;</span>]</span>
+<span id="cb93-42"><a href="#cb93-42" tabindex="-1"></a>        df.loc[condiciones_ren, <span class="st">&#39;ing_ren&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;ing_mens&#39;</span>]</span>
+<span id="cb93-43"><a href="#cb93-43" tabindex="-1"></a>        df.loc[condiciones_tra, <span class="st">&#39;ing_tra&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;ing_mens&#39;</span>]</span>
+<span id="cb93-44"><a href="#cb93-44" tabindex="-1"></a>        </span>
+<span id="cb93-45"><a href="#cb93-45" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb93-46"><a href="#cb93-46" tabindex="-1"></a>    </span>
+<span id="cb93-47"><a href="#cb93-47" tabindex="-1"></a>    <span class="kw">def</span> sumar_ingresos_hogar(df):</span>
+<span id="cb93-48"><a href="#cb93-48" tabindex="-1"></a>        <span class="co">&quot;&quot;&quot;Suma los ingresos por hogar.&quot;&quot;&quot;</span></span>
+<span id="cb93-49"><a href="#cb93-49" tabindex="-1"></a>        df <span class="op">=</span> df.groupby([<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>])[[<span class="st">&#39;ing_mon&#39;</span>, <span class="st">&#39;ing_lab&#39;</span>, <span class="st">&#39;ing_ren&#39;</span>, <span class="st">&#39;ing_tra&#39;</span>]</span>
+<span id="cb93-50"><a href="#cb93-50" tabindex="-1"></a>                                                  ].<span class="bu">sum</span>(numeric_only <span class="op">=</span> <span class="va">True</span>).reset_index()</span>
+<span id="cb93-51"><a href="#cb93-51" tabindex="-1"></a>        </span>
+<span id="cb93-52"><a href="#cb93-52" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb93-53"><a href="#cb93-53" tabindex="-1"></a>      </span>
+<span id="cb93-54"><a href="#cb93-54" tabindex="-1"></a>    <span class="co"># Aplicando las funciones utilizando pipe</span></span>
+<span id="cb93-55"><a href="#cb93-55" tabindex="-1"></a>    <span class="cf">return</span>(ingreso_deflactado.copy()</span>
+<span id="cb93-56"><a href="#cb93-56" tabindex="-1"></a>                             .pipe(deflactar_ing_1)</span>
+<span id="cb93-57"><a href="#cb93-57" tabindex="-1"></a>                             .pipe(poner_nulos)</span>
+<span id="cb93-58"><a href="#cb93-58" tabindex="-1"></a>                             .pipe(calcular_ingreso_mensual)</span>
+<span id="cb93-59"><a href="#cb93-59" tabindex="-1"></a>                             .pipe(clasificar_ingresos)</span>
+<span id="cb93-60"><a href="#cb93-60" tabindex="-1"></a>                             .pipe(sumar_ingresos_hogar))</span>
+<span id="cb93-61"><a href="#cb93-61" tabindex="-1"></a></span>
+<span id="cb93-62"><a href="#cb93-62" tabindex="-1"></a>ingreso_deflactado <span class="op">=</span> indicador_ingreso_deflactado_anexoa(ingreso_deflactado)</span></code></pre></div>
 <p><strong>Se guarda la base de datos</strong></p>
-<div class="sourceCode" id="cb94"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb94-1"><a href="#cb94-1" tabindex="-1"></a>ingreso_deflactado.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;/ingreso_deflactado22.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb94"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb94-1"><a href="#cb94-1" tabindex="-1"></a>ingreso_deflactado.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;/ingreso_deflactado22_2.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
 </div>
 <div id="no-monetario-1" class="section level6">
 <h6>No Monetario</h6>
@@ -4761,300 +4822,291 @@ obtiene una variable que identifique la decena de levantamiento.</p>
 <p>Creación del ingreso no monetario deflactado a pesos de agosto del
 2022.</p>
 <div class="sourceCode" id="cb95"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb95-1"><a href="#cb95-1" tabindex="-1"></a>gastoshogar <span class="op">=</span> pd.read_csv(current_directory <span class="op">+</span> <span class="st">&quot;/Bases de datos/gastoshogar.csv&quot;</span>, low_memory <span class="op">=</span> <span class="va">False</span>).astype(<span class="bu">str</span>)</span>
-<span id="cb95-2"><a href="#cb95-2" tabindex="-1"></a>gastospersona <span class="op">=</span> pd.read_csv(current_directory <span class="op">+</span> <span class="st">&quot;/Bases de datos/gastospersona.csv&quot;</span>, low_memory <span class="op">=</span> <span class="va">False</span>).astype(<span class="bu">str</span>)</span>
-<span id="cb95-3"><a href="#cb95-3" tabindex="-1"></a></span>
-<span id="cb95-4"><a href="#cb95-4" tabindex="-1"></a>gastoshogar[<span class="st">&#39;base&#39;</span>] <span class="op">=</span> <span class="dv">1</span></span></code></pre></div>
-<div class="sourceCode" id="cb96"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb96-1"><a href="#cb96-1" tabindex="-1"></a>no_monetario <span class="op">=</span> pd.concat([gastoshogar, gastospersona], </span>
-<span id="cb96-2"><a href="#cb96-2" tabindex="-1"></a>                          ignore_index <span class="op">=</span> <span class="va">True</span>)</span>
-<span id="cb96-3"><a href="#cb96-3" tabindex="-1"></a>                          </span>
-<span id="cb96-4"><a href="#cb96-4" tabindex="-1"></a>no_monetario.loc[no_monetario[<span class="st">&#39;base&#39;</span>].isna(), <span class="st">&#39;base&#39;</span>] <span class="op">=</span> <span class="dv">2</span></span>
-<span id="cb96-5"><a href="#cb96-5" tabindex="-1"></a></span>
-<span id="cb96-6"><a href="#cb96-6" tabindex="-1"></a>no_monetario.loc[no_monetario[<span class="st">&#39;base&#39;</span>] <span class="op">==</span> <span class="dv">2</span>, <span class="st">&#39;frecuencia&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;frec_rem&#39;</span>]</span>
-<span id="cb96-7"><a href="#cb96-7" tabindex="-1"></a></span>
-<span id="cb96-8"><a href="#cb96-8" tabindex="-1"></a><span class="co"># En el caso de la información de gasto no monetario, para deflactar se utiliza la decena de levantamiento de la encuesta, </span></span>
-<span id="cb96-9"><a href="#cb96-9" tabindex="-1"></a><span class="co"># la cual se encuentra en la octava posición del folio de la vivienda. En primer lugar se obtiene una variable que </span></span>
-<span id="cb96-10"><a href="#cb96-10" tabindex="-1"></a><span class="co"># identifique la decena de levantamiento.  </span></span>
-<span id="cb96-11"><a href="#cb96-11" tabindex="-1"></a></span>
-<span id="cb96-12"><a href="#cb96-12" tabindex="-1"></a>no_monetario[<span class="st">&#39;decena&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;folioviv&#39;</span>].astype(<span class="bu">str</span>).<span class="bu">str</span>.zfill(<span class="dv">10</span>).<span class="bu">str</span>[<span class="dv">7</span>]</span></code></pre></div>
+<span id="cb95-2"><a href="#cb95-2" tabindex="-1"></a>gastospersona <span class="op">=</span> pd.read_csv(current_directory <span class="op">+</span> <span class="st">&quot;/Bases de datos/gastospersona.csv&quot;</span>, low_memory <span class="op">=</span> <span class="va">False</span>).astype(<span class="bu">str</span>)</span></code></pre></div>
 <p><strong>Definición de los deflactores</strong></p>
+<div class="sourceCode" id="cb96"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb96-1"><a href="#cb96-1" tabindex="-1"></a><span class="co"># Definición de los deflactores</span></span>
+<span id="cb96-2"><a href="#cb96-2" tabindex="-1"></a>d11w07 <span class="op">=</span> <span class="fl">0.9869825057</span></span>
+<span id="cb96-3"><a href="#cb96-3" tabindex="-1"></a>d11w08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-4"><a href="#cb96-4" tabindex="-1"></a>d11w09 <span class="op">=</span> <span class="fl">1.0130754464</span></span>
+<span id="cb96-5"><a href="#cb96-5" tabindex="-1"></a>d11w10 <span class="op">=</span> <span class="fl">1.0178275200</span></span>
+<span id="cb96-6"><a href="#cb96-6" tabindex="-1"></a>d11w11 <span class="op">=</span> <span class="fl">1.0207468579</span></span>
+<span id="cb96-7"><a href="#cb96-7" tabindex="-1"></a></span>
+<span id="cb96-8"><a href="#cb96-8" tabindex="-1"></a><span class="co"># Rubro 1.2 semanal, Bebidas alcohólicas y tabaco       </span></span>
+<span id="cb96-9"><a href="#cb96-9" tabindex="-1"></a>d12w07 <span class="op">=</span> <span class="fl">0.9923340135</span></span>
+<span id="cb96-10"><a href="#cb96-10" tabindex="-1"></a>d12w08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-11"><a href="#cb96-11" tabindex="-1"></a>d12w09 <span class="op">=</span> <span class="fl">1.0035071112</span></span>
+<span id="cb96-12"><a href="#cb96-12" tabindex="-1"></a>d12w10 <span class="op">=</span> <span class="fl">1.0111808568</span></span>
+<span id="cb96-13"><a href="#cb96-13" tabindex="-1"></a>d12w11 <span class="op">=</span> <span class="fl">1.0131982216</span></span>
+<span id="cb96-14"><a href="#cb96-14" tabindex="-1"></a></span>
+<span id="cb96-15"><a href="#cb96-15" tabindex="-1"></a><span class="co"># Rubro 2 trimestral, Vestido, calzado y accesorios     </span></span>
+<span id="cb96-16"><a href="#cb96-16" tabindex="-1"></a>d2t05 <span class="op">=</span> <span class="fl">0.9899050815</span></span>
+<span id="cb96-17"><a href="#cb96-17" tabindex="-1"></a>d2t06 <span class="op">=</span> <span class="fl">0.9941003723</span></span>
+<span id="cb96-18"><a href="#cb96-18" tabindex="-1"></a>d2t07 <span class="op">=</span> <span class="fl">0.9997465345</span></span>
+<span id="cb96-19"><a href="#cb96-19" tabindex="-1"></a>d2t08 <span class="op">=</span> <span class="fl">1.0083352270</span></span>
+<span id="cb96-20"><a href="#cb96-20" tabindex="-1"></a></span>
+<span id="cb96-21"><a href="#cb96-21" tabindex="-1"></a><span class="co"># Rubro 3 mensual, viviendas        </span></span>
+<span id="cb96-22"><a href="#cb96-22" tabindex="-1"></a>d3m07 <span class="op">=</span> <span class="fl">0.9998142481</span></span>
+<span id="cb96-23"><a href="#cb96-23" tabindex="-1"></a>d3m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-24"><a href="#cb96-24" tabindex="-1"></a>d3m09 <span class="op">=</span> <span class="fl">0.9978682753</span></span>
+<span id="cb96-25"><a href="#cb96-25" tabindex="-1"></a>d3m10 <span class="op">=</span> <span class="fl">1.0031577830</span></span>
+<span id="cb96-26"><a href="#cb96-26" tabindex="-1"></a>d3m11 <span class="op">=</span> <span class="fl">1.0197073965</span></span>
+<span id="cb96-27"><a href="#cb96-27" tabindex="-1"></a></span>
+<span id="cb96-28"><a href="#cb96-28" tabindex="-1"></a><span class="co"># Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar       </span></span>
+<span id="cb96-29"><a href="#cb96-29" tabindex="-1"></a>d42m07 <span class="op">=</span> <span class="fl">0.9894769136</span></span>
+<span id="cb96-30"><a href="#cb96-30" tabindex="-1"></a>d42m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-31"><a href="#cb96-31" tabindex="-1"></a>d42m09 <span class="op">=</span> <span class="fl">1.0086286240</span></span>
+<span id="cb96-32"><a href="#cb96-32" tabindex="-1"></a>d42m10 <span class="op">=</span> <span class="fl">1.0182083142</span></span>
+<span id="cb96-33"><a href="#cb96-33" tabindex="-1"></a>d42m11 <span class="op">=</span> <span class="fl">1.0237613131</span></span>
+<span id="cb96-34"><a href="#cb96-34" tabindex="-1"></a></span>
+<span id="cb96-35"><a href="#cb96-35" tabindex="-1"></a><span class="co"># Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar        </span></span>
+<span id="cb96-36"><a href="#cb96-36" tabindex="-1"></a>d42t05 <span class="op">=</span> <span class="fl">0.9787953163</span></span>
+<span id="cb96-37"><a href="#cb96-37" tabindex="-1"></a>d42t06 <span class="op">=</span> <span class="fl">0.9897197934</span></span>
+<span id="cb96-38"><a href="#cb96-38" tabindex="-1"></a>d42t07 <span class="op">=</span> <span class="fl">0.9993685126</span></span>
+<span id="cb96-39"><a href="#cb96-39" tabindex="-1"></a>d42t08 <span class="op">=</span> <span class="fl">1.0089456461</span></span>
+<span id="cb96-40"><a href="#cb96-40" tabindex="-1"></a></span>
+<span id="cb96-41"><a href="#cb96-41" tabindex="-1"></a><span class="co"># Rubro 4.1 semestral, Muebles y aparatos dómesticos        </span></span>
+<span id="cb96-42"><a href="#cb96-42" tabindex="-1"></a>d41s02 <span class="op">=</span> <span class="fl">1.0003069312</span></span>
+<span id="cb96-43"><a href="#cb96-43" tabindex="-1"></a>d41s03 <span class="op">=</span> <span class="fl">0.9993861376</span></span>
+<span id="cb96-44"><a href="#cb96-44" tabindex="-1"></a>d41s04 <span class="op">=</span> <span class="fl">0.9992122603</span></span>
+<span id="cb96-45"><a href="#cb96-45" tabindex="-1"></a>d41s05 <span class="op">=</span> <span class="fl">0.9991442214</span></span>
+<span id="cb96-46"><a href="#cb96-46" tabindex="-1"></a></span>
+<span id="cb96-47"><a href="#cb96-47" tabindex="-1"></a><span class="co"># Rubro 5.1 trimestral, Salud       </span></span>
+<span id="cb96-48"><a href="#cb96-48" tabindex="-1"></a>d51t05 <span class="op">=</span> <span class="fl">0.9909917367</span></span>
+<span id="cb96-49"><a href="#cb96-49" tabindex="-1"></a>d51t06 <span class="op">=</span> <span class="fl">0.9954834527</span></span>
+<span id="cb96-50"><a href="#cb96-50" tabindex="-1"></a>d51t07 <span class="op">=</span> <span class="fl">0.9994564693</span></span>
+<span id="cb96-51"><a href="#cb96-51" tabindex="-1"></a>d51t08 <span class="op">=</span> <span class="fl">1.0030487384</span></span>
+<span id="cb96-52"><a href="#cb96-52" tabindex="-1"></a></span>
+<span id="cb96-53"><a href="#cb96-53" tabindex="-1"></a><span class="co"># Rubro 6.1.1 semanal, Transporte público urbano        </span></span>
+<span id="cb96-54"><a href="#cb96-54" tabindex="-1"></a>d611w07 <span class="op">=</span> <span class="fl">0.9963207274</span></span>
+<span id="cb96-55"><a href="#cb96-55" tabindex="-1"></a>d611w08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-56"><a href="#cb96-56" tabindex="-1"></a>d611w09 <span class="op">=</span> <span class="fl">1.0034865488</span></span>
+<span id="cb96-57"><a href="#cb96-57" tabindex="-1"></a>d611w10 <span class="op">=</span> <span class="fl">1.0052385833</span></span>
+<span id="cb96-58"><a href="#cb96-58" tabindex="-1"></a>d611w11 <span class="op">=</span> <span class="fl">1.0064912880</span></span>
+<span id="cb96-59"><a href="#cb96-59" tabindex="-1"></a></span>
+<span id="cb96-60"><a href="#cb96-60" tabindex="-1"></a><span class="co"># Rubro 6 mensual, Transporte       </span></span>
+<span id="cb96-61"><a href="#cb96-61" tabindex="-1"></a>d6m07 <span class="op">=</span> <span class="fl">0.9987845893</span></span>
+<span id="cb96-62"><a href="#cb96-62" tabindex="-1"></a>d6m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-63"><a href="#cb96-63" tabindex="-1"></a>d6m09 <span class="op">=</span> <span class="fl">1.0001664946</span></span>
+<span id="cb96-64"><a href="#cb96-64" tabindex="-1"></a>d6m10 <span class="op">=</span> <span class="fl">1.0057274150</span></span>
+<span id="cb96-65"><a href="#cb96-65" tabindex="-1"></a>d6m11 <span class="op">=</span> <span class="fl">1.0076837268</span></span>
+<span id="cb96-66"><a href="#cb96-66" tabindex="-1"></a></span>
+<span id="cb96-67"><a href="#cb96-67" tabindex="-1"></a><span class="co"># Rubro 6 semestral, Transporte     </span></span>
+<span id="cb96-68"><a href="#cb96-68" tabindex="-1"></a>d6s02 <span class="op">=</span> <span class="fl">0.9808628306</span></span>
+<span id="cb96-69"><a href="#cb96-69" tabindex="-1"></a>d6s03 <span class="op">=</span> <span class="fl">0.9879901879</span></span>
+<span id="cb96-70"><a href="#cb96-70" tabindex="-1"></a>d6s04 <span class="op">=</span> <span class="fl">0.9927380596</span></span>
+<span id="cb96-71"><a href="#cb96-71" tabindex="-1"></a>d6s05 <span class="op">=</span> <span class="fl">0.9969378864</span></span>
+<span id="cb96-72"><a href="#cb96-72" tabindex="-1"></a></span>
+<span id="cb96-73"><a href="#cb96-73" tabindex="-1"></a><span class="co"># Rubro 7 mensual, Educación y esparcimiento        </span></span>
+<span id="cb96-74"><a href="#cb96-74" tabindex="-1"></a>d7m07 <span class="op">=</span> <span class="fl">0.9961413091</span></span>
+<span id="cb96-75"><a href="#cb96-75" tabindex="-1"></a>d7m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-76"><a href="#cb96-76" tabindex="-1"></a>d7m09 <span class="op">=</span> <span class="fl">1.0095233900</span></span>
+<span id="cb96-77"><a href="#cb96-77" tabindex="-1"></a>d7m10 <span class="op">=</span> <span class="fl">1.0144128271</span></span>
+<span id="cb96-78"><a href="#cb96-78" tabindex="-1"></a>d7m11 <span class="op">=</span> <span class="fl">1.0174522069</span></span>
+<span id="cb96-79"><a href="#cb96-79" tabindex="-1"></a></span>
+<span id="cb96-80"><a href="#cb96-80" tabindex="-1"></a><span class="co"># Rubro 2.3 mensual, Accesorios y cuidados del vestido      </span></span>
+<span id="cb96-81"><a href="#cb96-81" tabindex="-1"></a>d23m07 <span class="op">=</span> <span class="fl">0.9952443607</span></span>
+<span id="cb96-82"><a href="#cb96-82" tabindex="-1"></a>d23m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
+<span id="cb96-83"><a href="#cb96-83" tabindex="-1"></a>d23m09 <span class="op">=</span> <span class="fl">1.0081869233</span></span>
+<span id="cb96-84"><a href="#cb96-84" tabindex="-1"></a>d23m10 <span class="op">=</span> <span class="fl">1.0108184343</span></span>
+<span id="cb96-85"><a href="#cb96-85" tabindex="-1"></a>d23m11 <span class="op">=</span> <span class="fl">1.0072323555</span></span>
+<span id="cb96-86"><a href="#cb96-86" tabindex="-1"></a></span>
+<span id="cb96-87"><a href="#cb96-87" tabindex="-1"></a><span class="co"># Rubro 2.3 trimestral,  Accesorios y cuidados del vestido      </span></span>
+<span id="cb96-88"><a href="#cb96-88" tabindex="-1"></a>d23t05 <span class="op">=</span> <span class="fl">0.9914948875</span></span>
+<span id="cb96-89"><a href="#cb96-89" tabindex="-1"></a>d23t06 <span class="op">=</span> <span class="fl">0.9956428139</span></span>
+<span id="cb96-90"><a href="#cb96-90" tabindex="-1"></a>d23t07 <span class="op">=</span> <span class="fl">1.0011437613</span></span>
+<span id="cb96-91"><a href="#cb96-91" tabindex="-1"></a>d23t08 <span class="op">=</span> <span class="fl">1.0063351192</span></span>
+<span id="cb96-92"><a href="#cb96-92" tabindex="-1"></a></span>
+<span id="cb96-93"><a href="#cb96-93" tabindex="-1"></a><span class="co"># INPC semestral        </span></span>
+<span id="cb96-94"><a href="#cb96-94" tabindex="-1"></a>dINPCs02 <span class="op">=</span> <span class="fl">0.9773093813</span></span>
+<span id="cb96-95"><a href="#cb96-95" tabindex="-1"></a>dINPCs03 <span class="op">=</span> <span class="fl">0.9838008772</span></span>
+<span id="cb96-96"><a href="#cb96-96" tabindex="-1"></a>dINPCs04 <span class="op">=</span> <span class="fl">0.9897404209</span></span>
+<span id="cb96-97"><a href="#cb96-97" tabindex="-1"></a>dINPCs05 <span class="op">=</span> <span class="fl">0.9957540070</span></span></code></pre></div>
+<p>Se cambia la estructura de los deflactores del código anterior para
+reducir el cálculo como el chunk de la <code>Opción 1</code>. Se
+seleccionan los deflactores que solamente pertencen al cálculo de los
+rubros:</p>
 <div class="sourceCode" id="cb97"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb97-1"><a href="#cb97-1" tabindex="-1"></a><span class="co"># Definición de los deflactores</span></span>
-<span id="cb97-2"><a href="#cb97-2" tabindex="-1"></a>d11w07 <span class="op">=</span> <span class="fl">0.9869825057</span></span>
-<span id="cb97-3"><a href="#cb97-3" tabindex="-1"></a>d11w08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-4"><a href="#cb97-4" tabindex="-1"></a>d11w09 <span class="op">=</span> <span class="fl">1.0130754464</span></span>
-<span id="cb97-5"><a href="#cb97-5" tabindex="-1"></a>d11w10 <span class="op">=</span> <span class="fl">1.0178275200</span></span>
-<span id="cb97-6"><a href="#cb97-6" tabindex="-1"></a>d11w11 <span class="op">=</span> <span class="fl">1.0207468579</span></span>
-<span id="cb97-7"><a href="#cb97-7" tabindex="-1"></a></span>
-<span id="cb97-8"><a href="#cb97-8" tabindex="-1"></a><span class="co"># Rubro 1.2 semanal, Bebidas alcohólicas y tabaco       </span></span>
-<span id="cb97-9"><a href="#cb97-9" tabindex="-1"></a>d12w07 <span class="op">=</span> <span class="fl">0.9923340135</span></span>
-<span id="cb97-10"><a href="#cb97-10" tabindex="-1"></a>d12w08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-11"><a href="#cb97-11" tabindex="-1"></a>d12w09 <span class="op">=</span> <span class="fl">1.0035071112</span></span>
-<span id="cb97-12"><a href="#cb97-12" tabindex="-1"></a>d12w10 <span class="op">=</span> <span class="fl">1.0111808568</span></span>
-<span id="cb97-13"><a href="#cb97-13" tabindex="-1"></a>d12w11 <span class="op">=</span> <span class="fl">1.0131982216</span></span>
-<span id="cb97-14"><a href="#cb97-14" tabindex="-1"></a></span>
-<span id="cb97-15"><a href="#cb97-15" tabindex="-1"></a><span class="co"># Rubro 2 trimestral, Vestido, calzado y accesorios     </span></span>
-<span id="cb97-16"><a href="#cb97-16" tabindex="-1"></a>d2t05 <span class="op">=</span> <span class="fl">0.9899050815</span></span>
-<span id="cb97-17"><a href="#cb97-17" tabindex="-1"></a>d2t06 <span class="op">=</span> <span class="fl">0.9941003723</span></span>
-<span id="cb97-18"><a href="#cb97-18" tabindex="-1"></a>d2t07 <span class="op">=</span> <span class="fl">0.9997465345</span></span>
-<span id="cb97-19"><a href="#cb97-19" tabindex="-1"></a>d2t08 <span class="op">=</span> <span class="fl">1.0083352270</span></span>
-<span id="cb97-20"><a href="#cb97-20" tabindex="-1"></a></span>
-<span id="cb97-21"><a href="#cb97-21" tabindex="-1"></a><span class="co"># Rubro 3 mensual, viviendas        </span></span>
-<span id="cb97-22"><a href="#cb97-22" tabindex="-1"></a>d3m07 <span class="op">=</span> <span class="fl">0.9998142481</span></span>
-<span id="cb97-23"><a href="#cb97-23" tabindex="-1"></a>d3m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-24"><a href="#cb97-24" tabindex="-1"></a>d3m09 <span class="op">=</span> <span class="fl">0.9978682753</span></span>
-<span id="cb97-25"><a href="#cb97-25" tabindex="-1"></a>d3m10 <span class="op">=</span> <span class="fl">1.0031577830</span></span>
-<span id="cb97-26"><a href="#cb97-26" tabindex="-1"></a>d3m11 <span class="op">=</span> <span class="fl">1.0197073965</span></span>
-<span id="cb97-27"><a href="#cb97-27" tabindex="-1"></a></span>
-<span id="cb97-28"><a href="#cb97-28" tabindex="-1"></a><span class="co"># Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar       </span></span>
-<span id="cb97-29"><a href="#cb97-29" tabindex="-1"></a>d42m07 <span class="op">=</span> <span class="fl">0.9894769136</span></span>
-<span id="cb97-30"><a href="#cb97-30" tabindex="-1"></a>d42m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-31"><a href="#cb97-31" tabindex="-1"></a>d42m09 <span class="op">=</span> <span class="fl">1.0086286240</span></span>
-<span id="cb97-32"><a href="#cb97-32" tabindex="-1"></a>d42m10 <span class="op">=</span> <span class="fl">1.0182083142</span></span>
-<span id="cb97-33"><a href="#cb97-33" tabindex="-1"></a>d42m11 <span class="op">=</span> <span class="fl">1.0237613131</span></span>
-<span id="cb97-34"><a href="#cb97-34" tabindex="-1"></a></span>
-<span id="cb97-35"><a href="#cb97-35" tabindex="-1"></a><span class="co"># Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar        </span></span>
-<span id="cb97-36"><a href="#cb97-36" tabindex="-1"></a>d42t05 <span class="op">=</span> <span class="fl">0.9787953163</span></span>
-<span id="cb97-37"><a href="#cb97-37" tabindex="-1"></a>d42t06 <span class="op">=</span> <span class="fl">0.9897197934</span></span>
-<span id="cb97-38"><a href="#cb97-38" tabindex="-1"></a>d42t07 <span class="op">=</span> <span class="fl">0.9993685126</span></span>
-<span id="cb97-39"><a href="#cb97-39" tabindex="-1"></a>d42t08 <span class="op">=</span> <span class="fl">1.0089456461</span></span>
-<span id="cb97-40"><a href="#cb97-40" tabindex="-1"></a></span>
-<span id="cb97-41"><a href="#cb97-41" tabindex="-1"></a><span class="co"># Rubro 4.1 semestral, Muebles y aparatos dómesticos        </span></span>
-<span id="cb97-42"><a href="#cb97-42" tabindex="-1"></a>d41s02 <span class="op">=</span> <span class="fl">1.0003069312</span></span>
-<span id="cb97-43"><a href="#cb97-43" tabindex="-1"></a>d41s03 <span class="op">=</span> <span class="fl">0.9993861376</span></span>
-<span id="cb97-44"><a href="#cb97-44" tabindex="-1"></a>d41s04 <span class="op">=</span> <span class="fl">0.9992122603</span></span>
-<span id="cb97-45"><a href="#cb97-45" tabindex="-1"></a>d41s05 <span class="op">=</span> <span class="fl">0.9991442214</span></span>
-<span id="cb97-46"><a href="#cb97-46" tabindex="-1"></a></span>
-<span id="cb97-47"><a href="#cb97-47" tabindex="-1"></a><span class="co"># Rubro 5.1 trimestral, Salud       </span></span>
-<span id="cb97-48"><a href="#cb97-48" tabindex="-1"></a>d51t05 <span class="op">=</span> <span class="fl">0.9909917367</span></span>
-<span id="cb97-49"><a href="#cb97-49" tabindex="-1"></a>d51t06 <span class="op">=</span> <span class="fl">0.9954834527</span></span>
-<span id="cb97-50"><a href="#cb97-50" tabindex="-1"></a>d51t07 <span class="op">=</span> <span class="fl">0.9994564693</span></span>
-<span id="cb97-51"><a href="#cb97-51" tabindex="-1"></a>d51t08 <span class="op">=</span> <span class="fl">1.0030487384</span></span>
-<span id="cb97-52"><a href="#cb97-52" tabindex="-1"></a></span>
-<span id="cb97-53"><a href="#cb97-53" tabindex="-1"></a><span class="co"># Rubro 6.1.1 semanal, Transporte público urbano        </span></span>
-<span id="cb97-54"><a href="#cb97-54" tabindex="-1"></a>d611w07 <span class="op">=</span> <span class="fl">0.9963207274</span></span>
-<span id="cb97-55"><a href="#cb97-55" tabindex="-1"></a>d611w08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-56"><a href="#cb97-56" tabindex="-1"></a>d611w09 <span class="op">=</span> <span class="fl">1.0034865488</span></span>
-<span id="cb97-57"><a href="#cb97-57" tabindex="-1"></a>d611w10 <span class="op">=</span> <span class="fl">1.0052385833</span></span>
-<span id="cb97-58"><a href="#cb97-58" tabindex="-1"></a>d611w11 <span class="op">=</span> <span class="fl">1.0064912880</span></span>
-<span id="cb97-59"><a href="#cb97-59" tabindex="-1"></a></span>
-<span id="cb97-60"><a href="#cb97-60" tabindex="-1"></a><span class="co"># Rubro 6 mensual, Transporte       </span></span>
-<span id="cb97-61"><a href="#cb97-61" tabindex="-1"></a>d6m07 <span class="op">=</span> <span class="fl">0.9987845893</span></span>
-<span id="cb97-62"><a href="#cb97-62" tabindex="-1"></a>d6m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-63"><a href="#cb97-63" tabindex="-1"></a>d6m09 <span class="op">=</span> <span class="fl">1.0001664946</span></span>
-<span id="cb97-64"><a href="#cb97-64" tabindex="-1"></a>d6m10 <span class="op">=</span> <span class="fl">1.0057274150</span></span>
-<span id="cb97-65"><a href="#cb97-65" tabindex="-1"></a>d6m11 <span class="op">=</span> <span class="fl">1.0076837268</span></span>
-<span id="cb97-66"><a href="#cb97-66" tabindex="-1"></a></span>
-<span id="cb97-67"><a href="#cb97-67" tabindex="-1"></a><span class="co"># Rubro 6 semestral, Transporte     </span></span>
-<span id="cb97-68"><a href="#cb97-68" tabindex="-1"></a>d6s02 <span class="op">=</span> <span class="fl">0.9808628306</span></span>
-<span id="cb97-69"><a href="#cb97-69" tabindex="-1"></a>d6s03 <span class="op">=</span> <span class="fl">0.9879901879</span></span>
-<span id="cb97-70"><a href="#cb97-70" tabindex="-1"></a>d6s04 <span class="op">=</span> <span class="fl">0.9927380596</span></span>
-<span id="cb97-71"><a href="#cb97-71" tabindex="-1"></a>d6s05 <span class="op">=</span> <span class="fl">0.9969378864</span></span>
-<span id="cb97-72"><a href="#cb97-72" tabindex="-1"></a></span>
-<span id="cb97-73"><a href="#cb97-73" tabindex="-1"></a><span class="co"># Rubro 7 mensual, Educación y esparcimiento        </span></span>
-<span id="cb97-74"><a href="#cb97-74" tabindex="-1"></a>d7m07 <span class="op">=</span> <span class="fl">0.9961413091</span></span>
-<span id="cb97-75"><a href="#cb97-75" tabindex="-1"></a>d7m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-76"><a href="#cb97-76" tabindex="-1"></a>d7m09 <span class="op">=</span> <span class="fl">1.0095233900</span></span>
-<span id="cb97-77"><a href="#cb97-77" tabindex="-1"></a>d7m10 <span class="op">=</span> <span class="fl">1.0144128271</span></span>
-<span id="cb97-78"><a href="#cb97-78" tabindex="-1"></a>d7m11 <span class="op">=</span> <span class="fl">1.0174522069</span></span>
-<span id="cb97-79"><a href="#cb97-79" tabindex="-1"></a></span>
-<span id="cb97-80"><a href="#cb97-80" tabindex="-1"></a><span class="co"># Rubro 2.3 mensual, Accesorios y cuidados del vestido      </span></span>
-<span id="cb97-81"><a href="#cb97-81" tabindex="-1"></a>d23m07 <span class="op">=</span> <span class="fl">0.9952443607</span></span>
-<span id="cb97-82"><a href="#cb97-82" tabindex="-1"></a>d23m08 <span class="op">=</span> <span class="fl">1.0000000000</span></span>
-<span id="cb97-83"><a href="#cb97-83" tabindex="-1"></a>d23m09 <span class="op">=</span> <span class="fl">1.0081869233</span></span>
-<span id="cb97-84"><a href="#cb97-84" tabindex="-1"></a>d23m10 <span class="op">=</span> <span class="fl">1.0108184343</span></span>
-<span id="cb97-85"><a href="#cb97-85" tabindex="-1"></a>d23m11 <span class="op">=</span> <span class="fl">1.0072323555</span></span>
-<span id="cb97-86"><a href="#cb97-86" tabindex="-1"></a></span>
-<span id="cb97-87"><a href="#cb97-87" tabindex="-1"></a><span class="co"># Rubro 2.3 trimestral,  Accesorios y cuidados del vestido      </span></span>
-<span id="cb97-88"><a href="#cb97-88" tabindex="-1"></a>d23t05 <span class="op">=</span> <span class="fl">0.9914948875</span></span>
-<span id="cb97-89"><a href="#cb97-89" tabindex="-1"></a>d23t06 <span class="op">=</span> <span class="fl">0.9956428139</span></span>
-<span id="cb97-90"><a href="#cb97-90" tabindex="-1"></a>d23t07 <span class="op">=</span> <span class="fl">1.0011437613</span></span>
-<span id="cb97-91"><a href="#cb97-91" tabindex="-1"></a>d23t08 <span class="op">=</span> <span class="fl">1.0063351192</span></span>
-<span id="cb97-92"><a href="#cb97-92" tabindex="-1"></a></span>
-<span id="cb97-93"><a href="#cb97-93" tabindex="-1"></a><span class="co"># INPC semestral        </span></span>
-<span id="cb97-94"><a href="#cb97-94" tabindex="-1"></a>dINPCs02 <span class="op">=</span> <span class="fl">0.9773093813</span></span>
-<span id="cb97-95"><a href="#cb97-95" tabindex="-1"></a>dINPCs03 <span class="op">=</span> <span class="fl">0.9838008772</span></span>
-<span id="cb97-96"><a href="#cb97-96" tabindex="-1"></a>dINPCs04 <span class="op">=</span> <span class="fl">0.9897404209</span></span>
-<span id="cb97-97"><a href="#cb97-97" tabindex="-1"></a>dINPCs05 <span class="op">=</span> <span class="fl">0.9957540070</span></span></code></pre></div>
-<p><strong>Una vez definidos los deflactores, se seleccionan los
-rubros</strong></p>
-<div class="sourceCode" id="cb98"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb98-1"><a href="#cb98-1" tabindex="-1"></a><span class="co">#Convirtiendo variables string a numericas</span></span>
-<span id="cb98-2"><a href="#cb98-2" tabindex="-1"></a>no_monetario[[<span class="st">&#39;gas_nm_tri&#39;</span>, <span class="st">&#39;gasto_nm&#39;</span>]] <span class="op">=</span> no_monetario[[<span class="st">&#39;gas_nm_tri&#39;</span>, <span class="st">&#39;gasto_nm&#39;</span>]</span>
-<span id="cb98-3"><a href="#cb98-3" tabindex="-1"></a>                                                        ].<span class="bu">apply</span>(pd.to_numeric, errors <span class="op">=</span> <span class="st">&#39;coerce&#39;</span>)</span>
-<span id="cb98-4"><a href="#cb98-4" tabindex="-1"></a></span>
-<span id="cb98-5"><a href="#cb98-5" tabindex="-1"></a><span class="co"># Una vez definidos los deflactores, se seleccionan los rubros</span></span>
-<span id="cb98-6"><a href="#cb98-6" tabindex="-1"></a>no_monetario[<span class="st">&#39;gasnomon&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gas_nm_tri&#39;</span>] <span class="op">/</span> <span class="dv">3</span></span>
-<span id="cb98-7"><a href="#cb98-7" tabindex="-1"></a>no_monetario.loc[no_monetario[<span class="st">&#39;tipo_gasto&#39;</span>] <span class="op">==</span> <span class="st">&#39;G4&#39;</span>, <span class="st">&#39;esp&#39;</span>] <span class="op">=</span> <span class="dv">1</span></span>
-<span id="cb98-8"><a href="#cb98-8" tabindex="-1"></a>no_monetario.loc[no_monetario[<span class="st">&#39;tipo_gasto&#39;</span>].isin([<span class="st">&#39;G5&#39;</span>, <span class="st">&#39;G6&#39;</span>]), <span class="st">&#39;reg&#39;</span>] <span class="op">=</span> <span class="dv">1</span></span>
-<span id="cb98-9"><a href="#cb98-9" tabindex="-1"></a>no_monetario <span class="op">=</span> no_monetario.loc[<span class="op">~</span>no_monetario[<span class="st">&#39;tipo_gasto&#39;</span>].isin([<span class="st">&#39;G2&#39;</span>, <span class="st">&#39;G3&#39;</span>, <span class="st">&#39;G7&#39;</span>])]</span>
-<span id="cb98-10"><a href="#cb98-10" tabindex="-1"></a></span>
-<span id="cb98-11"><a href="#cb98-11" tabindex="-1"></a><span class="co"># Control para la frecuencia de los regalos recibidos por el hogar</span></span>
-<span id="cb98-12"><a href="#cb98-12" tabindex="-1"></a>no_monetario <span class="op">=</span> no_monetario[<span class="op">~</span>(((no_monetario[<span class="st">&#39;frecuencia&#39;</span>].between(<span class="st">&#39;5&#39;</span>, <span class="st">&#39;6&#39;</span>)) <span class="op">|</span></span>
-<span id="cb98-13"><a href="#cb98-13" tabindex="-1"></a>                               (no_monetario[<span class="st">&#39;frecuencia&#39;</span>].isna()) <span class="op">|</span></span>
-<span id="cb98-14"><a href="#cb98-14" tabindex="-1"></a>                                (no_monetario[<span class="st">&#39;frecuencia&#39;</span>] <span class="op">==</span> <span class="st">&#39;0&#39;</span>)) <span class="op">&amp;</span></span>
-<span id="cb98-15"><a href="#cb98-15" tabindex="-1"></a>                                 (no_monetario[<span class="st">&#39;base&#39;</span>] <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span></span>
-<span id="cb98-16"><a href="#cb98-16" tabindex="-1"></a>                                  (no_monetario[<span class="st">&#39;tipo_gasto&#39;</span>] <span class="op">==</span> <span class="st">&#39;G5&#39;</span>))]</span>
-<span id="cb98-17"><a href="#cb98-17" tabindex="-1"></a></span>
-<span id="cb98-18"><a href="#cb98-18" tabindex="-1"></a><span class="co"># Control para la frecuencia de los regalos recibidos por persona</span></span>
-<span id="cb98-19"><a href="#cb98-19" tabindex="-1"></a>no_monetario <span class="op">=</span> no_monetario[<span class="op">~</span>(((no_monetario[<span class="st">&#39;frecuencia&#39;</span>] <span class="op">==</span> <span class="st">&#39;9&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-20"><a href="#cb98-20" tabindex="-1"></a>                              (no_monetario[<span class="st">&#39;frecuencia&#39;</span>].isna())) <span class="op">&amp;</span></span>
-<span id="cb98-21"><a href="#cb98-21" tabindex="-1"></a>                               (no_monetario[<span class="st">&#39;base&#39;</span>] <span class="op">==</span> <span class="dv">2</span>) <span class="op">&amp;</span></span>
-<span id="cb98-22"><a href="#cb98-22" tabindex="-1"></a>                                (no_monetario[<span class="st">&#39;tipo_gasto&#39;</span>] <span class="op">==</span> <span class="st">&#39;G5&#39;</span>))]</span>
-<span id="cb98-23"><a href="#cb98-23" tabindex="-1"></a></span>
-<span id="cb98-24"><a href="#cb98-24" tabindex="-1"></a><span class="co"># Se deflactan los rubros del gasto no monetario según la decena de levantamiento </span></span>
-<span id="cb98-25"><a href="#cb98-25" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;A001&#39;</span>, <span class="st">&#39;A222&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-26"><a href="#cb98-26" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;A242&#39;</span>, <span class="st">&#39;A247&#39;</span>)), <span class="st">&#39;ali_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-27"><a href="#cb98-27" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;A223&#39;</span>, <span class="st">&#39;A241&#39;</span>)), <span class="st">&#39;alta_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-28"><a href="#cb98-28" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;H001&#39;</span>, <span class="st">&#39;H122&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-29"><a href="#cb98-29" tabindex="-1"></a>                  (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;H136&#39;</span>)), <span class="st">&#39;veca_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-30"><a href="#cb98-30" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;G001&#39;</span>, <span class="st">&#39;G016&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-31"><a href="#cb98-31" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;R001&#39;</span>, <span class="st">&#39;R004&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-32"><a href="#cb98-32" tabindex="-1"></a>                    (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;R013&#39;</span>)), <span class="st">&#39;viv_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-33"><a href="#cb98-33" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;C001&#39;</span>, <span class="st">&#39;C024&#39;</span>)), <span class="st">&#39;lim_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-34"><a href="#cb98-34" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;I001&#39;</span>, <span class="st">&#39;I026&#39;</span>)), <span class="st">&#39;cris_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-35"><a href="#cb98-35" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;K001&#39;</span>, <span class="st">&#39;K037&#39;</span>)), <span class="st">&#39;ens_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-36"><a href="#cb98-36" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;J001&#39;</span>, <span class="st">&#39;J072&#39;</span>)), <span class="st">&#39;sal_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-37"><a href="#cb98-37" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;B001&#39;</span>, <span class="st">&#39;B007&#39;</span>)), <span class="st">&#39;tpub_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-38"><a href="#cb98-38" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;M001&#39;</span>, <span class="st">&#39;M018&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-39"><a href="#cb98-39" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;F007&#39;</span>, <span class="st">&#39;F014&#39;</span>)), <span class="st">&#39;tfor_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-40"><a href="#cb98-40" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;F001&#39;</span>, <span class="st">&#39;F006&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-41"><a href="#cb98-41" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;R005&#39;</span>, <span class="st">&#39;R008&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-42"><a href="#cb98-42" tabindex="-1"></a>                    no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;R010&#39;</span>, <span class="st">&#39;R011&#39;</span>)), <span class="st">&#39;com_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-43"><a href="#cb98-43" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;E001&#39;</span>, <span class="st">&#39;E034&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-44"><a href="#cb98-44" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;H134&#39;</span>, <span class="st">&#39;H135&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-45"><a href="#cb98-45" tabindex="-1"></a>                    no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;L001&#39;</span>, <span class="st">&#39;L029&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-46"><a href="#cb98-46" tabindex="-1"></a>                     no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;N003&#39;</span>, <span class="st">&#39;N005&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-47"><a href="#cb98-47" tabindex="-1"></a>                      (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;R009&#39;</span>)), <span class="st">&#39;edre_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-48"><a href="#cb98-48" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;E002&#39;</span>, <span class="st">&#39;E003&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-49"><a href="#cb98-49" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;H134&#39;</span>, <span class="st">&#39;H135&#39;</span>)), <span class="st">&#39;edba_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-50"><a href="#cb98-50" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;D001&#39;</span>, <span class="st">&#39;D026&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-51"><a href="#cb98-51" tabindex="-1"></a>                  (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;H132&#39;</span>)), <span class="st">&#39;cuip_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-52"><a href="#cb98-52" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;H123&#39;</span>, <span class="st">&#39;H131&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-53"><a href="#cb98-53" tabindex="-1"></a>                   (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;H133&#39;</span>)), <span class="st">&#39;accp_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-54"><a href="#cb98-54" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;N001&#39;</span>, <span class="st">&#39;N002&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-55"><a href="#cb98-55" tabindex="-1"></a>                   no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;N006&#39;</span>, <span class="st">&#39;N016&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-56"><a href="#cb98-56" tabindex="-1"></a>                    no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;T901&#39;</span>, <span class="st">&#39;T915&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-57"><a href="#cb98-57" tabindex="-1"></a>                     (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;R012&#39;</span>)), <span class="st">&#39;otr_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-58"><a href="#cb98-58" tabindex="-1"></a>no_monetario.loc[(no_monetario[<span class="st">&#39;clave&#39;</span>].between(<span class="st">&#39;T901&#39;</span>, <span class="st">&#39;T915&#39;</span>) <span class="op">|</span></span>
-<span id="cb98-59"><a href="#cb98-59" tabindex="-1"></a>                  (no_monetario[<span class="st">&#39;clave&#39;</span>] <span class="op">==</span> <span class="st">&#39;N013&#39;</span>)), <span class="st">&#39;reda_nm&#39;</span>] <span class="op">=</span> no_monetario[<span class="st">&#39;gasnomon&#39;</span>]</span>
-<span id="cb98-60"><a href="#cb98-60" tabindex="-1"></a></span>
-<span id="cb98-61"><a href="#cb98-61" tabindex="-1"></a><span class="co"># Gasto no monetario en Alimentos deflactado (semanal)</span></span>
-<span id="cb98-62"><a href="#cb98-62" tabindex="-1"></a>no_monetario[<span class="st">&#39;ali_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>,<span class="st">&#39;3&#39;</span>]), no_monetario[<span class="st">&#39;ali_nm&#39;</span>]<span class="op">/</span>d11w08, </span>
-<span id="cb98-63"><a href="#cb98-63" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>,<span class="st">&#39;6&#39;</span>]), no_monetario[<span class="st">&#39;ali_nm&#39;</span>]<span class="op">/</span>d11w09,</span>
-<span id="cb98-64"><a href="#cb98-64" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>,<span class="st">&#39;9&#39;</span>]), no_monetario[<span class="st">&#39;ali_nm&#39;</span>]<span class="op">/</span>d11w10,</span>
-<span id="cb98-65"><a href="#cb98-65" tabindex="-1"></a>                                    no_monetario[<span class="st">&#39;ali_nm&#39;</span>]<span class="op">/</span>d11w11)))</span>
-<span id="cb98-66"><a href="#cb98-66" tabindex="-1"></a></span>
-<span id="cb98-67"><a href="#cb98-67" tabindex="-1"></a><span class="co"># Gasto no monetario en Alcohol y tabaco deflactado (semanal)</span></span>
-<span id="cb98-68"><a href="#cb98-68" tabindex="-1"></a>no_monetario[<span class="st">&#39;alta_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>,<span class="st">&#39;3&#39;</span>]), no_monetario[<span class="st">&#39;alta_nm&#39;</span>]<span class="op">/</span>d12w08,</span>
-<span id="cb98-69"><a href="#cb98-69" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>,<span class="st">&#39;6&#39;</span>]), no_monetario[<span class="st">&#39;alta_nm&#39;</span>]<span class="op">/</span>d12w09,</span>
-<span id="cb98-70"><a href="#cb98-70" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>,<span class="st">&#39;9&#39;</span>]), no_monetario[<span class="st">&#39;alta_nm&#39;</span>]<span class="op">/</span>d12w10,</span>
-<span id="cb98-71"><a href="#cb98-71" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;alta_nm&#39;</span>]<span class="op">/</span>d12w11)))</span>
-<span id="cb98-72"><a href="#cb98-72" tabindex="-1"></a></span>
-<span id="cb98-73"><a href="#cb98-73" tabindex="-1"></a><span class="co"># Gasto no monetario en Vestido y calzado deflactado (trimestral)</span></span>
-<span id="cb98-74"><a href="#cb98-74" tabindex="-1"></a>no_monetario[<span class="st">&#39;veca_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;veca_nm&#39;</span>]<span class="op">/</span>d2t05,</span>
-<span id="cb98-75"><a href="#cb98-75" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;veca_nm&#39;</span>]<span class="op">/</span>d2t06,</span>
-<span id="cb98-76"><a href="#cb98-76" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;veca_nm&#39;</span>]<span class="op">/</span>d2t07,</span>
-<span id="cb98-77"><a href="#cb98-77" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;veca_nm&#39;</span>]<span class="op">/</span>d2t08)))</span>
-<span id="cb98-78"><a href="#cb98-78" tabindex="-1"></a></span>
-<span id="cb98-79"><a href="#cb98-79" tabindex="-1"></a><span class="co"># Gasto no monetario en viviendas y servicios de conservación deflactado (mensual)</span></span>
-<span id="cb98-80"><a href="#cb98-80" tabindex="-1"></a>no_monetario[<span class="st">&#39;viv_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;viv_nm&#39;</span>]<span class="op">/</span>d3m07,</span>
-<span id="cb98-81"><a href="#cb98-81" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;viv_nm&#39;</span>]<span class="op">/</span>d3m08,</span>
-<span id="cb98-82"><a href="#cb98-82" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;viv_nm&#39;</span>]<span class="op">/</span>d3m09,</span>
-<span id="cb98-83"><a href="#cb98-83" tabindex="-1"></a>                                     no_monetario[<span class="st">&#39;viv_nm&#39;</span>]<span class="op">/</span>d3m10)))</span>
-<span id="cb98-84"><a href="#cb98-84" tabindex="-1"></a></span>
-<span id="cb98-85"><a href="#cb98-85" tabindex="-1"></a><span class="co"># Gasto no monetario en Artículos de limpieza deflactado (mensual)</span></span>
-<span id="cb98-86"><a href="#cb98-86" tabindex="-1"></a>no_monetario[<span class="st">&#39;lim_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;lim_nm&#39;</span>]<span class="op">/</span>d42m07,</span>
-<span id="cb98-87"><a href="#cb98-87" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;lim_nm&#39;</span>]<span class="op">/</span>d42m08,</span>
-<span id="cb98-88"><a href="#cb98-88" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;lim_nm&#39;</span>]<span class="op">/</span>d42m09,</span>
-<span id="cb98-89"><a href="#cb98-89" tabindex="-1"></a>                                     no_monetario[<span class="st">&#39;lim_nm&#39;</span>]<span class="op">/</span>d42m10)))</span>
-<span id="cb98-90"><a href="#cb98-90" tabindex="-1"></a></span>
-<span id="cb98-91"><a href="#cb98-91" tabindex="-1"></a><span class="co"># Gasto no monetario en Cristalería y blancos deflactado (trimestral)</span></span>
-<span id="cb98-92"><a href="#cb98-92" tabindex="-1"></a>no_monetario[<span class="st">&#39;cris_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;cris_nm&#39;</span>]<span class="op">/</span>d42t05,</span>
-<span id="cb98-93"><a href="#cb98-93" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;cris_nm&#39;</span>]<span class="op">/</span>d42t06,</span>
-<span id="cb98-94"><a href="#cb98-94" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;cris_nm&#39;</span>]<span class="op">/</span>d42t07,</span>
-<span id="cb98-95"><a href="#cb98-95" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;cris_nm&#39;</span>]<span class="op">/</span>d42t08)))</span>
-<span id="cb98-96"><a href="#cb98-96" tabindex="-1"></a></span>
-<span id="cb98-97"><a href="#cb98-97" tabindex="-1"></a><span class="co"># Gasto no monetario en Enseres domésticos y muebles deflactado (semestral)</span></span>
-<span id="cb98-98"><a href="#cb98-98" tabindex="-1"></a>no_monetario[<span class="st">&#39;ens_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;ens_nm&#39;</span>]<span class="op">/</span>d41s02,</span>
-<span id="cb98-99"><a href="#cb98-99" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;ens_nm&#39;</span>]<span class="op">/</span>d41s03,</span>
-<span id="cb98-100"><a href="#cb98-100" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;ens_nm&#39;</span>]<span class="op">/</span>d41s04,</span>
-<span id="cb98-101"><a href="#cb98-101" tabindex="-1"></a>                                     no_monetario[<span class="st">&#39;ens_nm&#39;</span>]<span class="op">/</span>d41s05)))</span>
-<span id="cb98-102"><a href="#cb98-102" tabindex="-1"></a></span>
-<span id="cb98-103"><a href="#cb98-103" tabindex="-1"></a><span class="co"># Gasto no monetario en Salud deflactado (trimestral)</span></span>
-<span id="cb98-104"><a href="#cb98-104" tabindex="-1"></a>no_monetario[<span class="st">&#39;sal_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;sal_nm&#39;</span>]<span class="op">/</span>d51t05,</span>
-<span id="cb98-105"><a href="#cb98-105" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;sal_nm&#39;</span>]<span class="op">/</span>d51t06,</span>
-<span id="cb98-106"><a href="#cb98-106" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;sal_nm&#39;</span>]<span class="op">/</span>d51t07,</span>
-<span id="cb98-107"><a href="#cb98-107" tabindex="-1"></a>                                     no_monetario[<span class="st">&#39;sal_nm&#39;</span>]<span class="op">/</span>d51t08)))</span>
-<span id="cb98-108"><a href="#cb98-108" tabindex="-1"></a></span>
-<span id="cb98-109"><a href="#cb98-109" tabindex="-1"></a><span class="co"># Gasto no monetario en Transporte público deflactado (semanal)</span></span>
-<span id="cb98-110"><a href="#cb98-110" tabindex="-1"></a>no_monetario[<span class="st">&#39;tpub_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>,<span class="st">&#39;3&#39;</span>]), no_monetario[<span class="st">&#39;tpub_nm&#39;</span>]<span class="op">/</span>d611w08,</span>
-<span id="cb98-111"><a href="#cb98-111" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>,<span class="st">&#39;6&#39;</span>]), no_monetario[<span class="st">&#39;tpub_nm&#39;</span>]<span class="op">/</span>d611w09,</span>
-<span id="cb98-112"><a href="#cb98-112" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>,<span class="st">&#39;9&#39;</span>]), no_monetario[<span class="st">&#39;tpub_nm&#39;</span>]<span class="op">/</span>d611w10,</span>
-<span id="cb98-113"><a href="#cb98-113" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;tpub_nm&#39;</span>]<span class="op">/</span>d611w11)))</span>
-<span id="cb98-114"><a href="#cb98-114" tabindex="-1"></a></span>
-<span id="cb98-115"><a href="#cb98-115" tabindex="-1"></a><span class="co"># Gasto no monetario en Transporte foráneo deflactado (semestral)</span></span>
-<span id="cb98-116"><a href="#cb98-116" tabindex="-1"></a>no_monetario[<span class="st">&#39;tfor_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;tfor_nm&#39;</span>]<span class="op">/</span>d6s02,</span>
-<span id="cb98-117"><a href="#cb98-117" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;tfor_nm&#39;</span>]<span class="op">/</span>d6s03,</span>
-<span id="cb98-118"><a href="#cb98-118" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;tfor_nm&#39;</span>]<span class="op">/</span>d6s04,</span>
-<span id="cb98-119"><a href="#cb98-119" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;tfor_nm&#39;</span>]<span class="op">/</span>d6s05)))</span>
-<span id="cb98-120"><a href="#cb98-120" tabindex="-1"></a></span>
-<span id="cb98-121"><a href="#cb98-121" tabindex="-1"></a><span class="co"># Gasto no monetario en Comunicaciones deflactado (mensual)</span></span>
-<span id="cb98-122"><a href="#cb98-122" tabindex="-1"></a>no_monetario[<span class="st">&#39;com_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;com_nm&#39;</span>]<span class="op">/</span>d6m07,</span>
-<span id="cb98-123"><a href="#cb98-123" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;com_nm&#39;</span>]<span class="op">/</span>d6m08,</span>
-<span id="cb98-124"><a href="#cb98-124" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;com_nm&#39;</span>]<span class="op">/</span>d6m09,</span>
-<span id="cb98-125"><a href="#cb98-125" tabindex="-1"></a>                                     no_monetario[<span class="st">&#39;com_nm&#39;</span>]<span class="op">/</span>d6m10)))</span>
-<span id="cb98-126"><a href="#cb98-126" tabindex="-1"></a></span>
-<span id="cb98-127"><a href="#cb98-127" tabindex="-1"></a><span class="co"># Gasto no monetario en Educación y recreación deflactado (mensual)</span></span>
-<span id="cb98-128"><a href="#cb98-128" tabindex="-1"></a>no_monetario[<span class="st">&#39;edre_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;edre_nm&#39;</span>]<span class="op">/</span>d7m07,</span>
-<span id="cb98-129"><a href="#cb98-129" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;edre_nm&#39;</span>]<span class="op">/</span>d7m08,</span>
-<span id="cb98-130"><a href="#cb98-130" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;edre_nm&#39;</span>]<span class="op">/</span>d7m09,</span>
-<span id="cb98-131"><a href="#cb98-131" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;edre_nm&#39;</span>]<span class="op">/</span>d7m10)))</span>
-<span id="cb98-132"><a href="#cb98-132" tabindex="-1"></a></span>
-<span id="cb98-133"><a href="#cb98-133" tabindex="-1"></a><span class="co"># Gasto no monetario en Educación básica deflactado (mensual)</span></span>
-<span id="cb98-134"><a href="#cb98-134" tabindex="-1"></a>no_monetario[<span class="st">&#39;edba_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;edba_nm&#39;</span>]<span class="op">/</span>d7m07,</span>
-<span id="cb98-135"><a href="#cb98-135" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;edba_nm&#39;</span>]<span class="op">/</span>d7m08,</span>
-<span id="cb98-136"><a href="#cb98-136" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;edba_nm&#39;</span>]<span class="op">/</span>d7m09,</span>
-<span id="cb98-137"><a href="#cb98-137" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;edba_nm&#39;</span>]<span class="op">/</span>d7m10)))</span>
-<span id="cb98-138"><a href="#cb98-138" tabindex="-1"></a></span>
-<span id="cb98-139"><a href="#cb98-139" tabindex="-1"></a><span class="co"># Gasto no monetario en Cuidado personal deflactado (mensual)</span></span>
-<span id="cb98-140"><a href="#cb98-140" tabindex="-1"></a>no_monetario[<span class="st">&#39;cuip_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;cuip_nm&#39;</span>]<span class="op">/</span>d23m07,</span>
-<span id="cb98-141"><a href="#cb98-141" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;cuip_nm&#39;</span>]<span class="op">/</span>d23m08,</span>
-<span id="cb98-142"><a href="#cb98-142" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;cuip_nm&#39;</span>]<span class="op">/</span>d23m09,</span>
-<span id="cb98-143"><a href="#cb98-143" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;cuip_nm&#39;</span>]<span class="op">/</span>d23m10)))</span>
-<span id="cb98-144"><a href="#cb98-144" tabindex="-1"></a></span>
-<span id="cb98-145"><a href="#cb98-145" tabindex="-1"></a><span class="co"># Gasto no monetario en Accesorios personales deflactado (trimestral)</span></span>
-<span id="cb98-146"><a href="#cb98-146" tabindex="-1"></a>no_monetario[<span class="st">&#39;accp_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;accp_nm&#39;</span>]<span class="op">/</span>d23t05,</span>
-<span id="cb98-147"><a href="#cb98-147" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;accp_nm&#39;</span>]<span class="op">/</span>d23t06,</span>
-<span id="cb98-148"><a href="#cb98-148" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;accp_nm&#39;</span>]<span class="op">/</span>d23t07,</span>
-<span id="cb98-149"><a href="#cb98-149" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;accp_nm&#39;</span>]<span class="op">/</span>d23t08)))</span>
-<span id="cb98-150"><a href="#cb98-150" tabindex="-1"></a></span>
-<span id="cb98-151"><a href="#cb98-151" tabindex="-1"></a><span class="co"># Gasto no monetario en Otros gastos y transferencias deflactado (semestral)</span></span>
-<span id="cb98-152"><a href="#cb98-152" tabindex="-1"></a>no_monetario[<span class="st">&#39;otr_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;otr_nm&#39;</span>]<span class="op">/</span>dINPCs02,</span>
-<span id="cb98-153"><a href="#cb98-153" tabindex="-1"></a>                          np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;otr_nm&#39;</span>]<span class="op">/</span>dINPCs03,</span>
-<span id="cb98-154"><a href="#cb98-154" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;otr_nm&#39;</span>]<span class="op">/</span>dINPCs04,</span>
-<span id="cb98-155"><a href="#cb98-155" tabindex="-1"></a>                                     no_monetario[<span class="st">&#39;otr_nm&#39;</span>]<span class="op">/</span>dINPCs05)))</span>
-<span id="cb98-156"><a href="#cb98-156" tabindex="-1"></a></span>
-<span id="cb98-157"><a href="#cb98-157" tabindex="-1"></a><span class="co"># Gasto no monetario en Regalos Otorgados deflactado</span></span>
-<span id="cb98-158"><a href="#cb98-158" tabindex="-1"></a>no_monetario[<span class="st">&#39;reda_nm&#39;</span>] <span class="op">=</span> np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>,<span class="st">&#39;2&#39;</span>]), no_monetario[<span class="st">&#39;reda_nm&#39;</span>]<span class="op">/</span>dINPCs02,</span>
-<span id="cb98-159"><a href="#cb98-159" tabindex="-1"></a>                           np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>,<span class="st">&#39;4&#39;</span>,<span class="st">&#39;5&#39;</span>]), no_monetario[<span class="st">&#39;reda_nm&#39;</span>]<span class="op">/</span>dINPCs03,</span>
-<span id="cb98-160"><a href="#cb98-160" tabindex="-1"></a>                            np.where(no_monetario[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>,<span class="st">&#39;7&#39;</span>,<span class="st">&#39;8&#39;</span>]), no_monetario[<span class="st">&#39;reda_nm&#39;</span>]<span class="op">/</span>dINPCs04,</span>
-<span id="cb98-161"><a href="#cb98-161" tabindex="-1"></a>                                      no_monetario[<span class="st">&#39;reda_nm&#39;</span>]<span class="op">/</span>dINPCs05)))</span></code></pre></div>
+<span id="cb97-2"><a href="#cb97-2" tabindex="-1"></a>deflactores <span class="op">=</span> {</span>
+<span id="cb97-3"><a href="#cb97-3" tabindex="-1"></a>    <span class="st">&#39;ali_nm&#39;</span>: [<span class="fl">1.0000000000</span>, <span class="fl">1.0130754464</span>, <span class="fl">1.0178275200</span>, <span class="fl">1.0207468579</span>],</span>
+<span id="cb97-4"><a href="#cb97-4" tabindex="-1"></a>    <span class="st">&#39;alta_nm&#39;</span>: [<span class="fl">1.0000000000</span>, <span class="fl">1.0035071112</span>, <span class="fl">1.0111808568</span>, <span class="fl">1.0131982216</span>],</span>
+<span id="cb97-5"><a href="#cb97-5" tabindex="-1"></a>    <span class="st">&#39;veca_nm&#39;</span>: [<span class="fl">0.9899050815</span>, <span class="fl">0.9941003723</span>, <span class="fl">0.9997465345</span>, <span class="fl">1.0083352270</span>],</span>
+<span id="cb97-6"><a href="#cb97-6" tabindex="-1"></a>    <span class="st">&#39;viv_nm&#39;</span>: [<span class="fl">0.9998142481</span>, <span class="fl">1.0000000000</span>, <span class="fl">0.9978682753</span>, <span class="fl">1.0031577830</span>],</span>
+<span id="cb97-7"><a href="#cb97-7" tabindex="-1"></a>    <span class="st">&#39;lim_nm&#39;</span>: [<span class="fl">0.9894769136</span>, <span class="fl">1.0000000000</span>, <span class="fl">1.0086286240</span>, <span class="fl">1.0182083142</span>],</span>
+<span id="cb97-8"><a href="#cb97-8" tabindex="-1"></a>    <span class="st">&#39;cris_nm&#39;</span>: [<span class="fl">0.9787953163</span>, <span class="fl">0.9897197934</span>, <span class="fl">0.9993685126</span>, <span class="fl">1.0089456461</span>],</span>
+<span id="cb97-9"><a href="#cb97-9" tabindex="-1"></a>    <span class="st">&#39;ens_nm&#39;</span>: [<span class="fl">1.0003069312</span>, <span class="fl">0.9993861376</span>, <span class="fl">0.9992122603</span>, <span class="fl">0.9991442214</span>],</span>
+<span id="cb97-10"><a href="#cb97-10" tabindex="-1"></a>    <span class="st">&#39;sal_nm&#39;</span>: [<span class="fl">0.9909917367</span>, <span class="fl">0.9954834527</span>, <span class="fl">0.9994564693</span>, <span class="fl">1.0030487384</span>],</span>
+<span id="cb97-11"><a href="#cb97-11" tabindex="-1"></a>    <span class="st">&#39;tpub_nm&#39;</span>: [<span class="fl">1.0000000000</span>, <span class="fl">1.0034865488</span>, <span class="fl">1.0052385833</span>, <span class="fl">1.0064912880</span>],</span>
+<span id="cb97-12"><a href="#cb97-12" tabindex="-1"></a>    <span class="st">&#39;tfor_nm&#39;</span>: [<span class="fl">0.9808628306</span>, <span class="fl">0.9879901879</span>, <span class="fl">0.9927380596</span>, <span class="fl">0.9969378864</span>],</span>
+<span id="cb97-13"><a href="#cb97-13" tabindex="-1"></a>    <span class="st">&#39;com_nm&#39;</span>: [<span class="fl">0.9987845893</span>, <span class="fl">1.0000000000</span>, <span class="fl">1.0001664946</span>, <span class="fl">1.0057274150</span>],</span>
+<span id="cb97-14"><a href="#cb97-14" tabindex="-1"></a>    <span class="st">&#39;edre_nm&#39;</span>: [<span class="fl">0.9961413091</span>, <span class="fl">1.0000000000</span>, <span class="fl">1.0095233900</span>, <span class="fl">1.0144128271</span>],</span>
+<span id="cb97-15"><a href="#cb97-15" tabindex="-1"></a>    <span class="st">&#39;edba_nm&#39;</span>: [<span class="fl">0.9961413091</span>, <span class="fl">1.0000000000</span>, <span class="fl">1.0095233900</span>, <span class="fl">1.0144128271</span>],</span>
+<span id="cb97-16"><a href="#cb97-16" tabindex="-1"></a>    <span class="st">&#39;cuip_nm&#39;</span>: [<span class="fl">0.9952443607</span>, <span class="fl">1.0000000000</span>, <span class="fl">1.0081869233</span>, <span class="fl">1.0108184343</span>],</span>
+<span id="cb97-17"><a href="#cb97-17" tabindex="-1"></a>    <span class="st">&#39;accp_nm&#39;</span>: [<span class="fl">0.9914948875</span>, <span class="fl">0.9956428139</span>, <span class="fl">1.0011437613</span>, <span class="fl">1.0063351192</span>],</span>
+<span id="cb97-18"><a href="#cb97-18" tabindex="-1"></a>    <span class="st">&#39;otr_nm&#39;</span>: [<span class="fl">0.9773093813</span>, <span class="fl">0.9838008772</span>, <span class="fl">0.9897404209</span>, <span class="fl">0.9957540070</span>],</span>
+<span id="cb97-19"><a href="#cb97-19" tabindex="-1"></a>    <span class="st">&#39;reda_nm&#39;</span>: [<span class="fl">0.9773093813</span>, <span class="fl">0.9838008772</span>, <span class="fl">0.9897404209</span>, <span class="fl">0.9957540070</span>]</span>
+<span id="cb97-20"><a href="#cb97-20" tabindex="-1"></a>}</span>
+<span id="cb97-21"><a href="#cb97-21" tabindex="-1"></a>deflactores.keys()</span></code></pre></div>
+<div class="sourceCode" id="cb98"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb98-1"><a href="#cb98-1" tabindex="-1"></a><span class="kw">def</span> indicador_no_monetario(gastoshogar):</span>
+<span id="cb98-2"><a href="#cb98-2" tabindex="-1"></a>    <span class="co"># Definir funciones auxiliares</span></span>
+<span id="cb98-3"><a href="#cb98-3" tabindex="-1"></a>    <span class="kw">def</span> merge_gastopersonas(df):</span>
+<span id="cb98-4"><a href="#cb98-4" tabindex="-1"></a>        df[<span class="st">&#39;base&#39;</span>] <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb98-5"><a href="#cb98-5" tabindex="-1"></a>        df <span class="op">=</span> pd.concat([df, gastospersona], ignore_index <span class="op">=</span> <span class="va">True</span>)</span>
+<span id="cb98-6"><a href="#cb98-6" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-7"><a href="#cb98-7" tabindex="-1"></a>    </span>
+<span id="cb98-8"><a href="#cb98-8" tabindex="-1"></a>    <span class="kw">def</span> establecer_base_frecuencia(df):</span>
+<span id="cb98-9"><a href="#cb98-9" tabindex="-1"></a>        df.loc[df[<span class="st">&#39;base&#39;</span>].isna(), <span class="st">&#39;base&#39;</span>] <span class="op">=</span> <span class="dv">2</span></span>
+<span id="cb98-10"><a href="#cb98-10" tabindex="-1"></a>        df.loc[df[<span class="st">&#39;base&#39;</span>] <span class="op">==</span> <span class="dv">2</span>, <span class="st">&#39;frecuencia&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;frec_rem&#39;</span>]</span>
+<span id="cb98-11"><a href="#cb98-11" tabindex="-1"></a>        </span>
+<span id="cb98-12"><a href="#cb98-12" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-13"><a href="#cb98-13" tabindex="-1"></a>    </span>
+<span id="cb98-14"><a href="#cb98-14" tabindex="-1"></a>    <span class="kw">def</span> definir_decena(df):</span>
+<span id="cb98-15"><a href="#cb98-15" tabindex="-1"></a>        df[<span class="st">&#39;decena&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;folioviv&#39;</span>].astype(<span class="bu">str</span>).<span class="bu">str</span>.zfill(<span class="dv">10</span>).<span class="bu">str</span>[<span class="dv">7</span>]</span>
+<span id="cb98-16"><a href="#cb98-16" tabindex="-1"></a>        </span>
+<span id="cb98-17"><a href="#cb98-17" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-18"><a href="#cb98-18" tabindex="-1"></a>    </span>
+<span id="cb98-19"><a href="#cb98-19" tabindex="-1"></a>    <span class="kw">def</span> convertir_variables(df):</span>
+<span id="cb98-20"><a href="#cb98-20" tabindex="-1"></a>        df[[<span class="st">&#39;gas_nm_tri&#39;</span>, <span class="st">&#39;gasto_nm&#39;</span>]] <span class="op">=</span> df[[<span class="st">&#39;gas_nm_tri&#39;</span>, <span class="st">&#39;gasto_nm&#39;</span>]].<span class="bu">apply</span>(pd.to_numeric, errors <span class="op">=</span> <span class="st">&#39;coerce&#39;</span>)</span>
+<span id="cb98-21"><a href="#cb98-21" tabindex="-1"></a>        </span>
+<span id="cb98-22"><a href="#cb98-22" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-23"><a href="#cb98-23" tabindex="-1"></a>    </span>
+<span id="cb98-24"><a href="#cb98-24" tabindex="-1"></a>    <span class="kw">def</span> seleccionar_rubros(df):</span>
+<span id="cb98-25"><a href="#cb98-25" tabindex="-1"></a>        df[<span class="st">&#39;gasnomon&#39;</span>] <span class="op">=</span> df[<span class="st">&#39;gas_nm_tri&#39;</span>] <span class="op">/</span> <span class="dv">3</span></span>
+<span id="cb98-26"><a href="#cb98-26" tabindex="-1"></a>        df.loc[df[<span class="st">&#39;tipo_gasto&#39;</span>] <span class="op">==</span> <span class="st">&#39;G4&#39;</span>, <span class="st">&#39;esp&#39;</span>] <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb98-27"><a href="#cb98-27" tabindex="-1"></a>        df.loc[df[<span class="st">&#39;tipo_gasto&#39;</span>].isin([<span class="st">&#39;G5&#39;</span>, <span class="st">&#39;G6&#39;</span>]), <span class="st">&#39;reg&#39;</span>] <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb98-28"><a href="#cb98-28" tabindex="-1"></a>        df <span class="op">=</span> df.loc[<span class="op">~</span>df[<span class="st">&#39;tipo_gasto&#39;</span>].isin([<span class="st">&#39;G2&#39;</span>, <span class="st">&#39;G3&#39;</span>, <span class="st">&#39;G7&#39;</span>])]</span>
+<span id="cb98-29"><a href="#cb98-29" tabindex="-1"></a>        </span>
+<span id="cb98-30"><a href="#cb98-30" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-31"><a href="#cb98-31" tabindex="-1"></a>    </span>
+<span id="cb98-32"><a href="#cb98-32" tabindex="-1"></a>    <span class="kw">def</span> controlar_frecuencia_regalos(df):</span>
+<span id="cb98-33"><a href="#cb98-33" tabindex="-1"></a>        df <span class="op">=</span> df[<span class="op">~</span>(((df[<span class="st">&#39;frecuencia&#39;</span>].between(<span class="st">&#39;5&#39;</span>, <span class="st">&#39;6&#39;</span>)) <span class="op">|</span></span>
+<span id="cb98-34"><a href="#cb98-34" tabindex="-1"></a>                   (df[<span class="st">&#39;frecuencia&#39;</span>].isna()) <span class="op">|</span></span>
+<span id="cb98-35"><a href="#cb98-35" tabindex="-1"></a>                    (df[<span class="st">&#39;frecuencia&#39;</span>] <span class="op">==</span> <span class="st">&#39;0&#39;</span>)) <span class="op">&amp;</span></span>
+<span id="cb98-36"><a href="#cb98-36" tabindex="-1"></a>                     (df[<span class="st">&#39;base&#39;</span>] <span class="op">==</span> <span class="dv">1</span>) <span class="op">&amp;</span></span>
+<span id="cb98-37"><a href="#cb98-37" tabindex="-1"></a>                      (df[<span class="st">&#39;tipo_gasto&#39;</span>] <span class="op">==</span> <span class="st">&#39;G5&#39;</span>))]</span>
+<span id="cb98-38"><a href="#cb98-38" tabindex="-1"></a>    </span>
+<span id="cb98-39"><a href="#cb98-39" tabindex="-1"></a>        df <span class="op">=</span> df[<span class="op">~</span>(((df[<span class="st">&#39;frecuencia&#39;</span>] <span class="op">==</span> <span class="st">&#39;9&#39;</span>) <span class="op">|</span></span>
+<span id="cb98-40"><a href="#cb98-40" tabindex="-1"></a>                   (df[<span class="st">&#39;frecuencia&#39;</span>].isna())) <span class="op">&amp;</span></span>
+<span id="cb98-41"><a href="#cb98-41" tabindex="-1"></a>                    (df[<span class="st">&#39;base&#39;</span>] <span class="op">==</span> <span class="dv">2</span>) <span class="op">&amp;</span></span>
+<span id="cb98-42"><a href="#cb98-42" tabindex="-1"></a>                     (df[<span class="st">&#39;tipo_gasto&#39;</span>] <span class="op">==</span> <span class="st">&#39;G5&#39;</span>))]</span>
+<span id="cb98-43"><a href="#cb98-43" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-44"><a href="#cb98-44" tabindex="-1"></a>    </span>
+<span id="cb98-45"><a href="#cb98-45" tabindex="-1"></a>    <span class="kw">def</span> deflactar_rubros(df):</span>
+<span id="cb98-46"><a href="#cb98-46" tabindex="-1"></a>        rubros <span class="op">=</span> [</span>
+<span id="cb98-47"><a href="#cb98-47" tabindex="-1"></a>            (<span class="st">&#39;A001&#39;</span>, <span class="st">&#39;A222&#39;</span>, <span class="st">&#39;ali_nm&#39;</span>),</span>
+<span id="cb98-48"><a href="#cb98-48" tabindex="-1"></a>            (<span class="st">&#39;A242&#39;</span>, <span class="st">&#39;A247&#39;</span>, <span class="st">&#39;ali_nm&#39;</span>),</span>
+<span id="cb98-49"><a href="#cb98-49" tabindex="-1"></a>            (<span class="st">&#39;A223&#39;</span>, <span class="st">&#39;A241&#39;</span>, <span class="st">&#39;alta_nm&#39;</span>),</span>
+<span id="cb98-50"><a href="#cb98-50" tabindex="-1"></a>            (<span class="st">&#39;H001&#39;</span>, <span class="st">&#39;H122&#39;</span>, <span class="st">&#39;veca_nm&#39;</span>),</span>
+<span id="cb98-51"><a href="#cb98-51" tabindex="-1"></a>            (<span class="st">&#39;H136&#39;</span>, <span class="st">&#39;H136&#39;</span>, <span class="st">&#39;veca_nm&#39;</span>),</span>
+<span id="cb98-52"><a href="#cb98-52" tabindex="-1"></a>            (<span class="st">&#39;G001&#39;</span>, <span class="st">&#39;G016&#39;</span>, <span class="st">&#39;viv_nm&#39;</span>),</span>
+<span id="cb98-53"><a href="#cb98-53" tabindex="-1"></a>            (<span class="st">&#39;R001&#39;</span>, <span class="st">&#39;R004&#39;</span>, <span class="st">&#39;viv_nm&#39;</span>),</span>
+<span id="cb98-54"><a href="#cb98-54" tabindex="-1"></a>            (<span class="st">&#39;R013&#39;</span>, <span class="st">&#39;R013&#39;</span>, <span class="st">&#39;viv_nm&#39;</span>),</span>
+<span id="cb98-55"><a href="#cb98-55" tabindex="-1"></a>            (<span class="st">&#39;C001&#39;</span>, <span class="st">&#39;C024&#39;</span>, <span class="st">&#39;lim_nm&#39;</span>),</span>
+<span id="cb98-56"><a href="#cb98-56" tabindex="-1"></a>            (<span class="st">&#39;I001&#39;</span>, <span class="st">&#39;I026&#39;</span>, <span class="st">&#39;cris_nm&#39;</span>),</span>
+<span id="cb98-57"><a href="#cb98-57" tabindex="-1"></a>            (<span class="st">&#39;K001&#39;</span>, <span class="st">&#39;K037&#39;</span>, <span class="st">&#39;ens_nm&#39;</span>),</span>
+<span id="cb98-58"><a href="#cb98-58" tabindex="-1"></a>            (<span class="st">&#39;J001&#39;</span>, <span class="st">&#39;J072&#39;</span>, <span class="st">&#39;sal_nm&#39;</span>),</span>
+<span id="cb98-59"><a href="#cb98-59" tabindex="-1"></a>            (<span class="st">&#39;B001&#39;</span>, <span class="st">&#39;B007&#39;</span>, <span class="st">&#39;tpub_nm&#39;</span>),</span>
+<span id="cb98-60"><a href="#cb98-60" tabindex="-1"></a>            (<span class="st">&#39;M001&#39;</span>, <span class="st">&#39;M018&#39;</span>, <span class="st">&#39;tfor_nm&#39;</span>),</span>
+<span id="cb98-61"><a href="#cb98-61" tabindex="-1"></a>            (<span class="st">&#39;F007&#39;</span>, <span class="st">&#39;F014&#39;</span>, <span class="st">&#39;tfor_nm&#39;</span>),</span>
+<span id="cb98-62"><a href="#cb98-62" tabindex="-1"></a>            (<span class="st">&#39;F001&#39;</span>, <span class="st">&#39;F006&#39;</span>, <span class="st">&#39;com_nm&#39;</span>),</span>
+<span id="cb98-63"><a href="#cb98-63" tabindex="-1"></a>            (<span class="st">&#39;R005&#39;</span>, <span class="st">&#39;R008&#39;</span>, <span class="st">&#39;com_nm&#39;</span>),</span>
+<span id="cb98-64"><a href="#cb98-64" tabindex="-1"></a>            (<span class="st">&#39;R010&#39;</span>, <span class="st">&#39;R011&#39;</span>, <span class="st">&#39;com_nm&#39;</span>),</span>
+<span id="cb98-65"><a href="#cb98-65" tabindex="-1"></a>            (<span class="st">&#39;E001&#39;</span>, <span class="st">&#39;E034&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>),</span>
+<span id="cb98-66"><a href="#cb98-66" tabindex="-1"></a>            (<span class="st">&#39;H134&#39;</span>, <span class="st">&#39;H135&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>),</span>
+<span id="cb98-67"><a href="#cb98-67" tabindex="-1"></a>            (<span class="st">&#39;L001&#39;</span>, <span class="st">&#39;L029&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>),</span>
+<span id="cb98-68"><a href="#cb98-68" tabindex="-1"></a>            (<span class="st">&#39;N003&#39;</span>, <span class="st">&#39;N005&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>),</span>
+<span id="cb98-69"><a href="#cb98-69" tabindex="-1"></a>            (<span class="st">&#39;R009&#39;</span>, <span class="st">&#39;R009&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>),</span>
+<span id="cb98-70"><a href="#cb98-70" tabindex="-1"></a>            (<span class="st">&#39;E002&#39;</span>, <span class="st">&#39;E003&#39;</span>, <span class="st">&#39;edba_nm&#39;</span>),</span>
+<span id="cb98-71"><a href="#cb98-71" tabindex="-1"></a>            (<span class="st">&#39;H134&#39;</span>, <span class="st">&#39;H135&#39;</span>, <span class="st">&#39;edba_nm&#39;</span>),</span>
+<span id="cb98-72"><a href="#cb98-72" tabindex="-1"></a>            (<span class="st">&#39;D001&#39;</span>, <span class="st">&#39;D026&#39;</span>, <span class="st">&#39;cuip_nm&#39;</span>),</span>
+<span id="cb98-73"><a href="#cb98-73" tabindex="-1"></a>            (<span class="st">&#39;H132&#39;</span>, <span class="st">&#39;H132&#39;</span>, <span class="st">&#39;cuip_nm&#39;</span>),</span>
+<span id="cb98-74"><a href="#cb98-74" tabindex="-1"></a>            (<span class="st">&#39;H123&#39;</span>, <span class="st">&#39;H131&#39;</span>, <span class="st">&#39;accp_nm&#39;</span>),</span>
+<span id="cb98-75"><a href="#cb98-75" tabindex="-1"></a>            (<span class="st">&#39;H133&#39;</span>, <span class="st">&#39;H133&#39;</span>, <span class="st">&#39;accp_nm&#39;</span>),</span>
+<span id="cb98-76"><a href="#cb98-76" tabindex="-1"></a>            (<span class="st">&#39;N001&#39;</span>, <span class="st">&#39;N002&#39;</span>, <span class="st">&#39;otr_nm&#39;</span>),</span>
+<span id="cb98-77"><a href="#cb98-77" tabindex="-1"></a>            (<span class="st">&#39;N006&#39;</span>, <span class="st">&#39;N016&#39;</span>, <span class="st">&#39;otr_nm&#39;</span>),</span>
+<span id="cb98-78"><a href="#cb98-78" tabindex="-1"></a>            (<span class="st">&#39;T901&#39;</span>, <span class="st">&#39;T915&#39;</span>, <span class="st">&#39;otr_nm&#39;</span>),</span>
+<span id="cb98-79"><a href="#cb98-79" tabindex="-1"></a>            (<span class="st">&#39;R012&#39;</span>, <span class="st">&#39;R012&#39;</span>, <span class="st">&#39;otr_nm&#39;</span>),</span>
+<span id="cb98-80"><a href="#cb98-80" tabindex="-1"></a>            (<span class="st">&#39;N013&#39;</span>, <span class="st">&#39;N013&#39;</span>, <span class="st">&#39;reda_nm&#39;</span>)</span>
+<span id="cb98-81"><a href="#cb98-81" tabindex="-1"></a>        ]</span>
+<span id="cb98-82"><a href="#cb98-82" tabindex="-1"></a>    </span>
+<span id="cb98-83"><a href="#cb98-83" tabindex="-1"></a>        <span class="cf">for</span> inicio, fin, columna <span class="kw">in</span> rubros:</span>
+<span id="cb98-84"><a href="#cb98-84" tabindex="-1"></a>            df.loc[df[<span class="st">&#39;clave&#39;</span>].between(inicio, fin), columna] <span class="op">=</span> df[<span class="st">&#39;gasnomon&#39;</span>]</span>
+<span id="cb98-85"><a href="#cb98-85" tabindex="-1"></a>        </span>
+<span id="cb98-86"><a href="#cb98-86" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-87"><a href="#cb98-87" tabindex="-1"></a></span>
+<span id="cb98-88"><a href="#cb98-88" tabindex="-1"></a>        <span class="co"># Función auxiliar para deflactar según los deflactores y la decena</span></span>
+<span id="cb98-89"><a href="#cb98-89" tabindex="-1"></a>    <span class="kw">def</span> deflactar(df, col_name, deflactores):</span>
+<span id="cb98-90"><a href="#cb98-90" tabindex="-1"></a>        deflact_values <span class="op">=</span> deflactores[col_name]</span>
+<span id="cb98-91"><a href="#cb98-91" tabindex="-1"></a>        <span class="cf">if</span> <span class="bu">len</span>(deflact_values) <span class="op">==</span> <span class="dv">4</span>:</span>
+<span id="cb98-92"><a href="#cb98-92" tabindex="-1"></a>            conditions <span class="op">=</span> [</span>
+<span id="cb98-93"><a href="#cb98-93" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>, <span class="st">&#39;2&#39;</span>]),</span>
+<span id="cb98-94"><a href="#cb98-94" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;3&#39;</span>, <span class="st">&#39;4&#39;</span>, <span class="st">&#39;5&#39;</span>]),</span>
+<span id="cb98-95"><a href="#cb98-95" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;6&#39;</span>, <span class="st">&#39;7&#39;</span>, <span class="st">&#39;8&#39;</span>]),</span>
+<span id="cb98-96"><a href="#cb98-96" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;9&#39;</span>, <span class="st">&#39;10&#39;</span>, <span class="st">&#39;11&#39;</span>, <span class="st">&#39;0&#39;</span>])</span>
+<span id="cb98-97"><a href="#cb98-97" tabindex="-1"></a>            ]</span>
+<span id="cb98-98"><a href="#cb98-98" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb98-99"><a href="#cb98-99" tabindex="-1"></a>            conditions <span class="op">=</span> [</span>
+<span id="cb98-100"><a href="#cb98-100" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;1&#39;</span>, <span class="st">&#39;2&#39;</span>, <span class="st">&#39;3&#39;</span>]),</span>
+<span id="cb98-101"><a href="#cb98-101" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;4&#39;</span>, <span class="st">&#39;5&#39;</span>, <span class="st">&#39;6&#39;</span>]),</span>
+<span id="cb98-102"><a href="#cb98-102" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;7&#39;</span>, <span class="st">&#39;8&#39;</span>, <span class="st">&#39;9&#39;</span>]),</span>
+<span id="cb98-103"><a href="#cb98-103" tabindex="-1"></a>                df[<span class="st">&#39;decena&#39;</span>].isin([<span class="st">&#39;10&#39;</span>, <span class="st">&#39;11&#39;</span>, <span class="st">&#39;12&#39;</span>, <span class="st">&#39;0&#39;</span>])</span>
+<span id="cb98-104"><a href="#cb98-104" tabindex="-1"></a>            ]</span>
+<span id="cb98-105"><a href="#cb98-105" tabindex="-1"></a>    </span>
+<span id="cb98-106"><a href="#cb98-106" tabindex="-1"></a>        <span class="cf">return</span> np.select(conditions, deflact_values, default <span class="op">=</span> df[col_name])</span>
+<span id="cb98-107"><a href="#cb98-107" tabindex="-1"></a></span>
+<span id="cb98-108"><a href="#cb98-108" tabindex="-1"></a>        <span class="co"># Aplicar deflactores utilizando pipe</span></span>
+<span id="cb98-109"><a href="#cb98-109" tabindex="-1"></a>    <span class="kw">def</span> aplicar_deflactores(df):</span>
+<span id="cb98-110"><a href="#cb98-110" tabindex="-1"></a>        <span class="cf">for</span> col_name <span class="kw">in</span> deflactores.keys():</span>
+<span id="cb98-111"><a href="#cb98-111" tabindex="-1"></a>            df[col_name] <span class="op">=</span> deflactar(df, col_name, deflactores)</span>
+<span id="cb98-112"><a href="#cb98-112" tabindex="-1"></a>        </span>
+<span id="cb98-113"><a href="#cb98-113" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb98-114"><a href="#cb98-114" tabindex="-1"></a>    </span>
+<span id="cb98-115"><a href="#cb98-115" tabindex="-1"></a>    <span class="co"># Aplicar funciones utilizando pipe</span></span>
+<span id="cb98-116"><a href="#cb98-116" tabindex="-1"></a>    <span class="cf">return</span> (gastoshogar.copy()</span>
+<span id="cb98-117"><a href="#cb98-117" tabindex="-1"></a>                       .pipe(merge_gastopersonas)</span>
+<span id="cb98-118"><a href="#cb98-118" tabindex="-1"></a>                       .pipe(establecer_base_frecuencia)</span>
+<span id="cb98-119"><a href="#cb98-119" tabindex="-1"></a>                       .pipe(definir_decena)</span>
+<span id="cb98-120"><a href="#cb98-120" tabindex="-1"></a>                       .pipe(convertir_variables)</span>
+<span id="cb98-121"><a href="#cb98-121" tabindex="-1"></a>                       .pipe(seleccionar_rubros)</span>
+<span id="cb98-122"><a href="#cb98-122" tabindex="-1"></a>                       .pipe(controlar_frecuencia_regalos)</span>
+<span id="cb98-123"><a href="#cb98-123" tabindex="-1"></a>                       .pipe(deflactar_rubros)</span>
+<span id="cb98-124"><a href="#cb98-124" tabindex="-1"></a>                       .pipe(aplicar_deflactores))</span>
+<span id="cb98-125"><a href="#cb98-125" tabindex="-1"></a>                  </span>
+<span id="cb98-126"><a href="#cb98-126" tabindex="-1"></a>no_monetario <span class="op">=</span> indicador_no_monetario(gastoshogar)</span></code></pre></div>
 <p><strong>Se guarda la base de datos</strong></p>
-<div class="sourceCode" id="cb99"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb99-1"><a href="#cb99-1" tabindex="-1"></a>no_monetario.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;/ingresonomonetario_def22.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb99"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb99-1"><a href="#cb99-1" tabindex="-1"></a>no_monetario.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;/ingresonomonetario_def22_2.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
 <p><strong>Construcción de la base de pagos en especie a partir de la
 base de gasto no monetario</strong></p>
-<div class="sourceCode" id="cb100"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb100-1"><a href="#cb100-1" tabindex="-1"></a><span class="co"># Construcción de la base de pagos en especie a partir de la base de gasto no monetario</span></span>
-<span id="cb100-2"><a href="#cb100-2" tabindex="-1"></a>pagos_especie <span class="op">=</span> no_monetario[no_monetario[<span class="st">&#39;esp&#39;</span>] <span class="op">==</span> <span class="dv">1</span>]</span>
-<span id="cb100-3"><a href="#cb100-3" tabindex="-1"></a></span>
-<span id="cb100-4"><a href="#cb100-4" tabindex="-1"></a>pagos_especie <span class="op">=</span> pagos_especie.groupby([<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>])[[<span class="st">&#39;gasto_nm&#39;</span>, <span class="st">&#39;ali_nm&#39;</span>, <span class="st">&#39;alta_nm&#39;</span>, <span class="st">&#39;veca_nm&#39;</span>, <span class="st">&#39;viv_nm&#39;</span>,</span>
-<span id="cb100-5"><a href="#cb100-5" tabindex="-1"></a>                                       <span class="st">&#39;lim_nm&#39;</span>, <span class="st">&#39;cris_nm&#39;</span>, <span class="st">&#39;ens_nm&#39;</span>, <span class="st">&#39;sal_nm&#39;</span>, <span class="st">&#39;tpub_nm&#39;</span>, <span class="st">&#39;tfor_nm&#39;</span>, <span class="st">&#39;com_nm&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>,</span>
-<span id="cb100-6"><a href="#cb100-6" tabindex="-1"></a>                                       <span class="st">&#39;edba_nm&#39;</span>, <span class="st">&#39;cuip_nm&#39;</span>, <span class="st">&#39;accp_nm&#39;</span>, <span class="st">&#39;otr_nm&#39;</span>, <span class="st">&#39;reda_nm&#39;</span>]].<span class="bu">sum</span>(numeric_only <span class="op">=</span> <span class="va">True</span>)</span>
-<span id="cb100-7"><a href="#cb100-7" tabindex="-1"></a></span>
-<span id="cb100-8"><a href="#cb100-8" tabindex="-1"></a>pagos_especie <span class="op">=</span> pagos_especie.reset_index()</span>
-<span id="cb100-9"><a href="#cb100-9" tabindex="-1"></a></span>
-<span id="cb100-10"><a href="#cb100-10" tabindex="-1"></a>pagos_especie.columns <span class="op">=</span> [<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;gasto_nm&#39;</span>, <span class="st">&#39;ali_nme&#39;</span>, <span class="st">&#39;alta_nme&#39;</span>, <span class="st">&#39;veca_nme&#39;</span>, <span class="st">&#39;viv_nme&#39;</span>, <span class="st">&#39;lim_nme&#39;</span>, </span>
-<span id="cb100-11"><a href="#cb100-11" tabindex="-1"></a>                         <span class="st">&#39;cris_nme&#39;</span>, <span class="st">&#39;ens_nme&#39;</span>, <span class="st">&#39;sal_nme&#39;</span>, <span class="st">&#39;tpub_nme&#39;</span>, <span class="st">&#39;tfor_nme&#39;</span>, <span class="st">&#39;com_nme&#39;</span>, <span class="st">&#39;edre_nme&#39;</span>, <span class="st">&#39;edba_nme&#39;</span>, </span>
-<span id="cb100-12"><a href="#cb100-12" tabindex="-1"></a>                         <span class="st">&#39;cuip_nme&#39;</span>, <span class="st">&#39;accp_nme&#39;</span>, <span class="st">&#39;otr_nme&#39;</span>, <span class="st">&#39;reda_nme&#39;</span>]</span></code></pre></div>
+<div class="sourceCode" id="cb100"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb100-1"><a href="#cb100-1" tabindex="-1"></a><span class="kw">def</span> indicador_pagos_especie(no_monetario):</span>
+<span id="cb100-2"><a href="#cb100-2" tabindex="-1"></a>    <span class="co"># Función para filtrar pagos en especie</span></span>
+<span id="cb100-3"><a href="#cb100-3" tabindex="-1"></a>    <span class="kw">def</span> filtrar_pagos_especie(df):</span>
+<span id="cb100-4"><a href="#cb100-4" tabindex="-1"></a>        <span class="cf">return</span> df[df[<span class="st">&#39;esp&#39;</span>] <span class="op">==</span> <span class="dv">1</span>]</span>
+<span id="cb100-5"><a href="#cb100-5" tabindex="-1"></a></span>
+<span id="cb100-6"><a href="#cb100-6" tabindex="-1"></a>    <span class="co"># Función para agrupar y sumar gastos no monetarios</span></span>
+<span id="cb100-7"><a href="#cb100-7" tabindex="-1"></a>    <span class="kw">def</span> agrupar_y_sumar(df):</span>
+<span id="cb100-8"><a href="#cb100-8" tabindex="-1"></a>        columnas_gasto <span class="op">=</span> [<span class="st">&#39;gasto_nm&#39;</span>, <span class="st">&#39;ali_nm&#39;</span>, <span class="st">&#39;alta_nm&#39;</span>, <span class="st">&#39;veca_nm&#39;</span>, <span class="st">&#39;viv_nm&#39;</span>, <span class="st">&#39;lim_nm&#39;</span>, <span class="st">&#39;cris_nm&#39;</span>, <span class="st">&#39;ens_nm&#39;</span>, </span>
+<span id="cb100-9"><a href="#cb100-9" tabindex="-1"></a>                          <span class="st">&#39;sal_nm&#39;</span>, <span class="st">&#39;tpub_nm&#39;</span>, <span class="st">&#39;tfor_nm&#39;</span>, <span class="st">&#39;com_nm&#39;</span>, <span class="st">&#39;edre_nm&#39;</span>, <span class="st">&#39;edba_nm&#39;</span>, <span class="st">&#39;cuip_nm&#39;</span>, <span class="st">&#39;accp_nm&#39;</span>, </span>
+<span id="cb100-10"><a href="#cb100-10" tabindex="-1"></a>                          <span class="st">&#39;otr_nm&#39;</span>, <span class="st">&#39;reda_nm&#39;</span>]</span>
+<span id="cb100-11"><a href="#cb100-11" tabindex="-1"></a>        df_agrupado <span class="op">=</span> df.groupby([<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>])[columnas_gasto</span>
+<span id="cb100-12"><a href="#cb100-12" tabindex="-1"></a>                                                          ].<span class="bu">sum</span>(numeric_only <span class="op">=</span> <span class="va">True</span>).reset_index()</span>
+<span id="cb100-13"><a href="#cb100-13" tabindex="-1"></a>        <span class="cf">return</span> df_agrupado</span>
+<span id="cb100-14"><a href="#cb100-14" tabindex="-1"></a>  </span>
+<span id="cb100-15"><a href="#cb100-15" tabindex="-1"></a>    <span class="co"># Función para renombrar las columnas</span></span>
+<span id="cb100-16"><a href="#cb100-16" tabindex="-1"></a>    <span class="kw">def</span> renombrar_columnas(df):</span>
+<span id="cb100-17"><a href="#cb100-17" tabindex="-1"></a>        nuevas_columnas <span class="op">=</span> [<span class="st">&#39;folioviv&#39;</span>, <span class="st">&#39;foliohog&#39;</span>, <span class="st">&#39;gasto_nm&#39;</span>, <span class="st">&#39;ali_nme&#39;</span>, <span class="st">&#39;alta_nme&#39;</span>, <span class="st">&#39;veca_nme&#39;</span>, <span class="st">&#39;viv_nme&#39;</span>, <span class="st">&#39;lim_nme&#39;</span>, </span>
+<span id="cb100-18"><a href="#cb100-18" tabindex="-1"></a>                           <span class="st">&#39;cris_nme&#39;</span>, <span class="st">&#39;ens_nme&#39;</span>, <span class="st">&#39;sal_nme&#39;</span>, <span class="st">&#39;tpub_nme&#39;</span>, <span class="st">&#39;tfor_nme&#39;</span>, <span class="st">&#39;com_nme&#39;</span>, <span class="st">&#39;edre_nme&#39;</span>, <span class="st">&#39;edba_nme&#39;</span>, </span>
+<span id="cb100-19"><a href="#cb100-19" tabindex="-1"></a>                           <span class="st">&#39;cuip_nme&#39;</span>, <span class="st">&#39;accp_nme&#39;</span>, <span class="st">&#39;otr_nme&#39;</span>, <span class="st">&#39;reda_nme&#39;</span>]</span>
+<span id="cb100-20"><a href="#cb100-20" tabindex="-1"></a>        df.columns <span class="op">=</span> nuevas_columnas</span>
+<span id="cb100-21"><a href="#cb100-21" tabindex="-1"></a>        <span class="cf">return</span> df</span>
+<span id="cb100-22"><a href="#cb100-22" tabindex="-1"></a></span>
+<span id="cb100-23"><a href="#cb100-23" tabindex="-1"></a>    <span class="co"># Construcción de la base de pagos en especie utilizando pipe</span></span>
+<span id="cb100-24"><a href="#cb100-24" tabindex="-1"></a>    <span class="cf">return</span> (no_monetario.copy()</span>
+<span id="cb100-25"><a href="#cb100-25" tabindex="-1"></a>                        .pipe(filtrar_pagos_especie)</span>
+<span id="cb100-26"><a href="#cb100-26" tabindex="-1"></a>                        .pipe(agrupar_y_sumar)</span>
+<span id="cb100-27"><a href="#cb100-27" tabindex="-1"></a>                        .pipe(renombrar_columnas))</span>
+<span id="cb100-28"><a href="#cb100-28" tabindex="-1"></a></span>
+<span id="cb100-29"><a href="#cb100-29" tabindex="-1"></a>pagos_especie <span class="op">=</span> indicador_pagos_especie(no_monetario)</span></code></pre></div>
 <p><strong>Se guarda la base de datos</strong></p>
-<div class="sourceCode" id="cb101"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb101-1"><a href="#cb101-1" tabindex="-1"></a>pagos_especie.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;/esp_def22.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb101"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb101-1"><a href="#cb101-1" tabindex="-1"></a>pagos_especie.to_csv(current_directory <span class="op">+</span> <span class="st">&#39;/Output/Data/&#39;</span> <span class="op">+</span> <span class="st">&#39;/esp_def22_2.csv&#39;</span>, index <span class="op">=</span> <span class="va">False</span>)</span></code></pre></div>
 <p><strong>Construcción de base de regalos a partir de la base no
 monetaria</strong></p>
 <div class="sourceCode" id="cb102"><pre class="sourceCode python fold-show"><code class="sourceCode python"><span id="cb102-1"><a href="#cb102-1" tabindex="-1"></a><span class="co"># Construcción de base de regalos a partir de la base no monetaria</span></span>
