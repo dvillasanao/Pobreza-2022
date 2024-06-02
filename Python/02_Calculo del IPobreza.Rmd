@@ -824,7 +824,7 @@ def indicador_salud(poblacion):
                                                                                   'cony_sa': x['cony'].sum(skipna = True),
                                                                                   'hijo_sa': x['hijo'].sum(skipna = True)})
                                                                                   ).reset_index())
-        df = df_agg.merge(df, on=['folioviv', 'foliohog'])
+        df = df_agg.merge(df, on = ['folioviv', 'foliohog'])
         df.loc[df['jef_sa'] > 0, 'jef_sa'] = 1
         df.loc[df['cony_sa'] > 0, 'cony_sa'] = 1
         df.loc[df['hijo_sa'] > 0, 'hijo_sa'] = 1
@@ -2573,7 +2573,7 @@ def indicador_alimentacion_anexoa(alimentacion):
         df['cpond1'] = np.where(df['alim17_1'] > df['alim17_2'], df['alim17_1'], df['alim17_2']) * 2
         df['cpond3'] = df['alim17_3'] * 1
         df['cpond4'] = df['alim17_4'] * 1
-        df['cpond5'] = df[['alim17_5', 'alim17_6', 'alim17_7']].apply(lambda row: max(row), axis=1) * 4
+        df['cpond5'] = df[['alim17_5', 'alim17_6', 'alim17_7']].apply(lambda row: max(row), axis = 1) * 4
         df['cpond8'] = df['alim17_8'] * 3
         df['cpond9'] = df['alim17_9'] * 4
         df['cpond10'] = df['alim17_10'] * 0.5
@@ -3470,122 +3470,21 @@ gastospersona = pd.read_csv(current_directory + "/Bases de datos/gastospersona.c
 
 **Definición de los deflactores**
 
-```{python}
-# Definición de los deflactores
-d11w07 = 0.9869825057
-d11w08 = 1.0000000000
-d11w09 = 1.0130754464
-d11w10 = 1.0178275200
-d11w11 = 1.0207468579
-
-# Rubro 1.2 semanal, Bebidas alcohólicas y tabaco		
-d12w07 = 0.9923340135
-d12w08 = 1.0000000000
-d12w09 = 1.0035071112
-d12w10 = 1.0111808568
-d12w11 = 1.0131982216
-
-# Rubro 2 trimestral, Vestido, calzado y accesorios		
-d2t05 = 0.9899050815
-d2t06 = 0.9941003723
-d2t07 = 0.9997465345
-d2t08 = 1.0083352270
-
-# Rubro 3 mensual, viviendas		
-d3m07 = 0.9998142481
-d3m08 = 1.0000000000
-d3m09 = 0.9978682753
-d3m10 = 1.0031577830
-d3m11 = 1.0197073965
-
-# Rubro 4.2 mensual, Accesorios y artículos de limpieza para el hogar		
-d42m07 = 0.9894769136
-d42m08 = 1.0000000000
-d42m09 = 1.0086286240
-d42m10 = 1.0182083142
-d42m11 = 1.0237613131
-
-# Rubro 4.2 trimestral, Accesorios y artículos de limpieza para el hogar		
-d42t05 = 0.9787953163
-d42t06 = 0.9897197934
-d42t07 = 0.9993685126
-d42t08 = 1.0089456461
-
-# Rubro 4.1 semestral, Muebles y aparatos dómesticos		
-d41s02 = 1.0003069312
-d41s03 = 0.9993861376
-d41s04 = 0.9992122603
-d41s05 = 0.9991442214
-
-# Rubro 5.1 trimestral, Salud		
-d51t05 = 0.9909917367
-d51t06 = 0.9954834527
-d51t07 = 0.9994564693
-d51t08 = 1.0030487384
-
-# Rubro 6.1.1 semanal, Transporte público urbano		
-d611w07 = 0.9963207274
-d611w08 = 1.0000000000
-d611w09 = 1.0034865488
-d611w10 = 1.0052385833
-d611w11 = 1.0064912880
-
-# Rubro 6 mensual, Transporte		
-d6m07 = 0.9987845893
-d6m08 = 1.0000000000
-d6m09 = 1.0001664946
-d6m10 = 1.0057274150
-d6m11 = 1.0076837268
-
-# Rubro 6 semestral, Transporte		
-d6s02 = 0.9808628306
-d6s03 = 0.9879901879
-d6s04 = 0.9927380596
-d6s05 = 0.9969378864
-
-# Rubro 7 mensual, Educación y esparcimiento		
-d7m07 = 0.9961413091
-d7m08 = 1.0000000000
-d7m09 = 1.0095233900
-d7m10 = 1.0144128271
-d7m11 = 1.0174522069
-
-# Rubro 2.3 mensual, Accesorios y cuidados del vestido		
-d23m07 = 0.9952443607
-d23m08 = 1.0000000000
-d23m09 = 1.0081869233
-d23m10 = 1.0108184343
-d23m11 = 1.0072323555
-
-# Rubro 2.3 trimestral,  Accesorios y cuidados del vestido		
-d23t05 = 0.9914948875
-d23t06 = 0.9956428139
-d23t07 = 1.0011437613
-d23t08 = 1.0063351192
-
-# INPC semestral		
-dINPCs02 = 0.9773093813
-dINPCs03 = 0.9838008772
-dINPCs04 = 0.9897404209
-dINPCs05 = 0.9957540070
-```
-
-
 Se cambia la estructura de los deflactores del código anterior para reducir el cálculo como el chunk de la  `Opción 1`.
 Se seleccionan los deflactores que solamente pertencen al cálculo de los rubros:    
 
 ```{python}
 # Definición de los deflactores
 deflactores = {
-    'ali_nm': [1.0000000000, 1.0130754464, 1.0178275200, 1.0207468579],
-    'alta_nm': [1.0000000000, 1.0035071112, 1.0111808568, 1.0131982216],
+    'ali_nm': [1.0000000000, 1.0130754464, 1.0178275200, 1.0207468579, 1.0000000000],
+    'alta_nm': [1.0000000000, 1.0035071112, 1.0111808568, 1.0131982216, 1.0000000000],
     'veca_nm': [0.9899050815, 0.9941003723, 0.9997465345, 1.0083352270],
     'viv_nm': [0.9998142481, 1.0000000000, 0.9978682753, 1.0031577830],
     'lim_nm': [0.9894769136, 1.0000000000, 1.0086286240, 1.0182083142],
     'cris_nm': [0.9787953163, 0.9897197934, 0.9993685126, 1.0089456461],
     'ens_nm': [1.0003069312, 0.9993861376, 0.9992122603, 0.9991442214],
     'sal_nm': [0.9909917367, 0.9954834527, 0.9994564693, 1.0030487384],
-    'tpub_nm': [1.0000000000, 1.0034865488, 1.0052385833, 1.0064912880],
+    'tpub_nm': [1.0000000000, 1.0034865488, 1.0052385833, 1.0064912880, 1.0000000000],
     'tfor_nm': [0.9808628306, 0.9879901879, 0.9927380596, 0.9969378864],
     'com_nm': [0.9987845893, 1.0000000000, 1.0001664946, 1.0057274150],
     'edre_nm': [0.9961413091, 1.0000000000, 1.0095233900, 1.0144128271],
@@ -3695,14 +3594,15 @@ def indicador_no_monetario(gastoshogar):
                 df['decena'].isin(['1', '2']),
                 df['decena'].isin(['3', '4', '5']),
                 df['decena'].isin(['6', '7', '8']),
-                df['decena'].isin(['9', '10', '11', '0'])
+                df['decena'].isin(['0', '9'])
             ]
         else:
             conditions = [
                 df['decena'].isin(['1', '2', '3']),
                 df['decena'].isin(['4', '5', '6']),
                 df['decena'].isin(['7', '8', '9']),
-                df['decena'].isin(['10', '11', '12', '0'])
+                df['decena'].isin(['0']),
+                df['decena'].isna()
             ]
     
         return np.select(conditions, deflact_values, default = df[col_name])
@@ -3776,22 +3676,41 @@ pagos_especie.to_csv(current_directory + '/Output/Data/' + '/esp_def22_2.csv', i
 **Construcción de base de regalos a partir de la base no monetaria**  
 
 ```{python}
-# Construcción de base de regalos a partir de la base no monetaria
-regalos = no_monetario[no_monetario['reg'] == 1]
+def indicador_regalos(no_monetario):
 
-regalos = regalos.groupby(['folioviv', 'foliohog'])[['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm', 'lim_nm', 'cris_nm',
-                                                     'ens_nm', 'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm', 'edba_nm',
-                                                     'cuip_nm', 'accp_nm', 'otr_nm', 'reda_nm']].sum(numeric_only = True)
-regalos = regalos.reset_index()
+    # Función para filtrar regalos
+    def filtrar_regalos(df):
+        return df[df['reg'] == 1]
+    
+    # Función para agrupar y sumar gastos no monetarios
+    def agrupar_y_sumar(df):
+        columnas_gasto = ['gasto_nm', 'ali_nm', 'alta_nm', 'veca_nm', 'viv_nm', 'lim_nm', 'cris_nm', 'ens_nm', 
+                          'sal_nm', 'tpub_nm', 'tfor_nm', 'com_nm', 'edre_nm', 'edba_nm', 'cuip_nm', 'accp_nm', 
+                          'otr_nm', 'reda_nm']
+        df = df.groupby(['folioviv', 'foliohog'])[columnas_gasto
+                                                 ].sum(numeric_only = True).reset_index()
+        return df
+    
+    # Función para renombrar las columnas
+    def renombrar_columnas_regalos(df):
+        nuevas_columnas = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 
+                           'cris_nmr', 'ens_nmr', 'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 
+                           'cuip_nmr', 'accp_nmr', 'otr_nmr', 'reda_nmr']
+        df.columns = nuevas_columnas
+        return df
+    
+    # Construcción de la base de regalos utilizando pipe
+    return (no_monetario.copy()
+                        .pipe(filtrar_regalos)
+                        .pipe(agrupar_y_sumar)
+                        .pipe(renombrar_columnas_regalos))
 
-regalos.columns = ['folioviv', 'foliohog', 'gasto_nm', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr',
-                   'ens_nmr', 'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr',
-                   'otr_nmr', 'reda_nmr']
+regalos = indicador_regalos(no_monetario)
 ```
 
 **Se guarda la base de datos**
 ```{python}
-regalos.to_csv(current_directory + '/Output/Data/' + '/reg_def22.csv', index = False)
+regalos.to_csv(current_directory + '/Output/Data/' + '/reg_def22_2.csv', index = False)
 ```
 
 
@@ -3871,57 +3790,83 @@ pagos_especie = pd.read_csv(current_directory + '/Output/Data/' + '/esp_def22.cs
 regalos = pd.read_csv(current_directory + '/Output/Data/' + '/reg_def22.csv', low_memory = False)
 ```
 
+
 ```{python}
-ingreso_corriente = concentradohogar[['folioviv', 'foliohog', 'tam_loc', 'factor', 'tot_integ', 'est_dis', 'upm', 'ubica_geo']]
+def ingreso_corriente (concentradohogar):
+    
+    # Función para seleccionar columnas iniciales
+    def seleccionar_columnas_iniciales(df):
+        # Lista de columnas iniciales
+        columnas = ['folioviv', 'foliohog', 'tam_loc', 'factor', 'tot_integ', 'est_dis', 'upm', 'ubica_geo']
+        return df[columnas]
+    
+        # Función para incorporar bases de datos mediante merge
+    def incorporar_base(df, base):
+        return pd.merge(df, 
+                         base, 
+                          on = ['folioviv', 'foliohog'], 
+                           how = 'left')
+     
+    # Función para determinar si es rural o urbano
+    def determinar_rural_urbano(df):
+        df.loc[df['tam_loc'] == 4, 'rururb'] = 1 # Rural
+        df.loc[df['tam_loc'] <= 3, 'rururb'] = 0 # Urbano
+        return df
+    
+    # Función para calcular ingreso corriente no monetario pago en especie
+    def calcular_pago_especie(df):
+        columnas_pago_esp = ['ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme', 'ens_nme', 'sal_nme',
+                             'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'cuip_nme', 'accp_nme', 'otr_nme']
+        df['pago_esp'] = df[columnas_pago_esp].sum(axis = 1)
+        return df
+    
+    # Función para calcular ingreso corriente no monetario regalos en especie
+    def calcular_regalos_especie(df):
+        columnas_reg_esp = ['ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr', 'sal_nmr',
+                            'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr']
+        df['reg_esp'] = df[columnas_reg_esp].sum(axis = 1)
+        return df
+    
+    # Función para calcular ingreso corriente no monetario total
+    def calcular_ingreso_no_monetario(df):
+        df['nomon'] = df[['pago_esp', 'reg_esp']].sum(axis = 1)
+        return df
+    
+    # Función para calcular ingreso corriente total
+    def calcular_ingreso_corriente_total(df):
+        df['ict'] = df[['ing_mon', 'nomon']].sum(axis = 1)
+        return df
+    
+    # Función para seleccionar columnas finales
+    def seleccionar_columnas_finales(df):
+        columnas_finales = ['folioviv', 'foliohog', 'ubica_geo', 'tam_loc', 'est_dis', 'upm', 'factor', 'tot_integ', 'ing_mon',
+                            'ing_lab', 'ing_ren', 'ing_tra', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme',
+                            'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 'cuip_nme', 'accp_nme',
+                            'otr_nme', 'reda_nme', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr',
+                            'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr',
+                            'reda_nmr', 'rururb', 'pago_esp', 'reg_esp', 'nomon', 'ict']
+        return df[columnas_finales]
+    
+    # Construcción de la base ingreso_corriente utilizando pipe
+    return (concentradohogar.copy()
+                            .pipe(seleccionar_columnas_iniciales)
+                            .pipe(incorporar_base, ingreso_deflactado)
+                            .pipe(incorporar_base, pagos_especie)
+                            .pipe(incorporar_base, regalos)
+                            .pipe(determinar_rural_urbano)
+                            .pipe(calcular_pago_especie)
+                            .pipe(calcular_regalos_especie)
+                            .pipe(calcular_ingreso_no_monetario)
+                            .pipe(calcular_ingreso_corriente_total)
+                            .pipe(seleccionar_columnas_finales))
 
-# Incorporación de la base de ingreso monetario deflactado
-ingreso_corriente = pd.merge(ingreso_corriente, 
-                              ingreso_deflactado, 
-                               on = ['folioviv', 'foliohog'], 
-                                how = 'left')
-
-# Incorporación de la base de ingreso no monetario deflactado: pago en especie
-ingreso_corriente = pd.merge(ingreso_corriente,
-                              pagos_especie, 
-                               on = ['folioviv', 'foliohog'], 
-                                how = 'left')
-
-# Incorporación de la base de ingreso no monetario deflactado: regalos en especie
-ingreso_corriente = pd.merge(ingreso_corriente, 
-                              regalos,
-                               on = ['folioviv', 'foliohog'], 
-                                how = 'left')
-
-ingreso_corriente.loc[ingreso_corriente['tam_loc'] == 4, 'rururb'] = 1 # Rural
-ingreso_corriente.loc[ingreso_corriente['tam_loc'] <= 3, 'rururb'] = 0 # Urbano
-
-# Ingreso corriente no monetario pago especie
-ingreso_corriente['pago_esp'] = ingreso_corriente[['ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme', 'ens_nme', 'sal_nme',
-                                                   'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'cuip_nme', 'accp_nme', 'otr_nme']
-                                                  ].sum(axis = 1)
-
-# Ingreso corriente no monetario regalos especie
-ingreso_corriente['reg_esp'] = ingreso_corriente[['ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr', 'sal_nmr',
-                                                  'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr']
-                                                  ].sum(axis = 1)
-
-# Ingreso corriente no monetario
-ingreso_corriente['nomon'] = ingreso_corriente[['pago_esp', 'reg_esp']].sum(axis = 1)
-
-# Se construye el Ingreso Corriente Total con el ingreso monetario y el ingreso no monetario 
-ingreso_corriente['ict'] = ingreso_corriente[['ing_mon', 'nomon']].sum(axis = 1)
-
-ingreso_corriente = ingreso_corriente[['folioviv', 'foliohog', 'ubica_geo', 'tam_loc', 'est_dis', 'upm', 'factor', 'tot_integ', 'ing_mon',
-                                       'ing_lab', 'ing_ren', 'ing_tra', 'ali_nme', 'alta_nme', 'veca_nme', 'viv_nme', 'lim_nme', 'cris_nme',
-                                       'ens_nme', 'sal_nme', 'tpub_nme', 'tfor_nme', 'com_nme', 'edre_nme', 'edba_nme', 'cuip_nme', 'accp_nme',
-                                       'otr_nme', 'reda_nme', 'ali_nmr', 'alta_nmr', 'veca_nmr', 'viv_nmr', 'lim_nmr', 'cris_nmr', 'ens_nmr',
-                                       'sal_nmr', 'tpub_nmr', 'tfor_nmr', 'com_nmr', 'edre_nmr', 'edba_nmr', 'cuip_nmr', 'accp_nmr', 'otr_nmr',
-                                       'reda_nmr', 'rururb', 'pago_esp', 'reg_esp', 'nomon', 'ict']]
+ingreso_corriente = ingreso_corriente (concentradohogar)
 ```
+
 
 **Se guarda la base de datos**
 ```{python}
-ingreso_corriente.to_csv(current_directory + '/Output/Data/' + '/ingresotot22.csv', index = False)
+ingreso_corriente.to_csv(current_directory + '/Output/Data/' + '/ingresotot22_2.csv', index = False)
 ```
 
 #### Construcción del tamaño de hogar con economías de escala y escalas de equivalencia {.tabset .tabset-pills .top2-tiles}  
@@ -3970,42 +3915,55 @@ tam_hogar_escala.to_csv(current_directory + '/Output/Data/' + '/tamhogesc22.csv'
 ##### Opción 2 {.tabset .tabset-pills .top3-tiles}  
 
 ```{python}
-tam_hogar_escala = poblacion.copy()
+def tam_hogar_escala(poblacion): 
 
-# Población objetivo: no se incluye a huéspedes ni trabajadores domésticos
-tam_hogar_escala = tam_hogar_escala.loc[~((tam_hogar_escala['parentesco'] >= 400) & (tam_hogar_escala['parentesco'] < 500) |
-                                          (tam_hogar_escala['parentesco'] >= 700) & (tam_hogar_escala['parentesco'] < 800))]
+    # Función para filtrar la población objetivo
+    def filtrar_poblacion_objetivo(df):
+        return df.loc[~((df['parentesco'] >= 400) & (df['parentesco'] < 500) |
+                        (df['parentesco'] >= 700) & (df['parentesco'] < 800))]
+    
+    # Función para añadir la columna de total de integrantes del hogar
+    def agregar_total_integrantes(df):
+        df['ind'] = 1
+        df['tot_ind'] = df.groupby(['folioviv', 'foliohog'])['ind'].transform('sum')
+        return df
+    
+    # Función para agregar columnas de escalas de equivalencia
+    def agregar_escalas_equivalencia(df):
+        df['n_05'] = ((df['edad'] >= 0) & (df['edad'] <= 5)).astype(int)
+        df['n_6_12'] = ((df['edad'] >= 6) & (df['edad'] <= 12)).astype(int)
+        df['n_13_18'] = ((df['edad'] >= 13) & (df['edad'] <= 18)).astype(int)
+        df['n_19'] = (df['edad'] >= 19).astype(int)
+        return df
+    
+    # Función para calcular la escala del tamaño del hogar
+    def calcular_tamhogesc(df):
+        df['tamhogesc'] = 0
+        df.loc[df['n_05'] == 1, 'tamhogesc'] = df['n_05'] * .7031
+        df.loc[df['n_6_12'] == 1, 'tamhogesc'] = df['n_6_12'] * .7382
+        df.loc[df['n_13_18'] == 1, 'tamhogesc'] = df['n_13_18'] * .7057
+        df.loc[df['n_19'] == 1, 'tamhogesc'] = df['n_19'] * .9945
+        df.loc[df['tot_ind'] == 1, 'tamhogesc'] = 1
+        return df
+    
+    # Función para agrupar por folios y sumar tamhogesc
+    def agrupar_y_sumar_tamhogesc(df):
+        return df.groupby(['folioviv', 'foliohog'])['tamhogesc'].sum().reset_index()
+    
+    # Aplicar funciones en cadena utilizando pipe
+    return (poblacion.copy()
+                     .pipe(filtrar_poblacion_objetivo)
+                     .pipe(agregar_total_integrantes)
+                     .pipe(agregar_escalas_equivalencia)
+                     .pipe(calcular_tamhogesc)
+                     .pipe(agrupar_y_sumar_tamhogesc))
 
-# Total de integrantes del hogar
-tam_hogar_escala['ind'] = 1
-
-tam_hogar_escala['tot_ind'] = tam_hogar_escala.groupby(['folioviv', 'foliohog'])['ind'].transform('sum')
-
-# Escalas de equivalencia 
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 0) & (tam_hogar_escala['edad'] <= 5), 'n_05'] = 1
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 0) | (tam_hogar_escala['edad'] > 5), 'n_05'] = 0
-
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 6) & (tam_hogar_escala['edad'] <= 12), 'n_6_12'] = 1
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 6) | (tam_hogar_escala['edad'] > 12), 'n_6_12'] = 0
-
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 13) & (tam_hogar_escala['edad'] <= 18), 'n_13_18'] = 1
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 13) | (tam_hogar_escala['edad'] > 18), 'n_13_18'] = 0
-
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] >= 19), 'n_19'] = 1
-tam_hogar_escala.loc[(tam_hogar_escala['edad'] < 19), 'n_19'] = 0
-
-tam_hogar_escala.loc[tam_hogar_escala['n_05'] == 1, 'tamhogesc'] = tam_hogar_escala['n_05'] * .7031
-tam_hogar_escala.loc[tam_hogar_escala['n_6_12'] == 1, 'tamhogesc'] = tam_hogar_escala['n_6_12'] * .7382
-tam_hogar_escala.loc[tam_hogar_escala['n_13_18'] == 1, 'tamhogesc'] = tam_hogar_escala['n_13_18'] * .7057
-tam_hogar_escala.loc[tam_hogar_escala['n_19'] == 1, 'tamhogesc'] = tam_hogar_escala['n_19'] * .9945
-tam_hogar_escala.loc[tam_hogar_escala['tot_ind'] == 1, 'tamhogesc'] = 1
-
-tam_hogar_escala = tam_hogar_escala.groupby(['folioviv', 'foliohog'])['tamhogesc'].sum().reset_index()
+tam_hogar_escala = tam_hogar_escala (poblacion)
 ```
 
 **Se guarda la base de datos**
 ```{python}
-tam_hogar_escala.to_csv(current_directory + '/Output/Data/' + '/tamhogesc22.csv', index = False)
+tam_hogar_escala.to_csv(current_directory + '/Output/Data/' + '/tamhogesc22_2.csv', index = False)
 ```
 
 #### Bienestar económico {.tabset .tabset-pills .top2-tiles}  
@@ -4113,41 +4071,60 @@ lp2_rur = 2970.76
 
 
 ```{python}
-# Incorporación de la información sobre el tamaño del hogar ajustado
-p_ingreso = pd.merge(ingreso_corriente, 
-                      tam_hogar_escala, 
-                       on = ['folioviv', 'foliohog'], 
-                        how = 'left')
+def p_ingreso(ingreso_corriente):
+    # Función para incorporar el tamaño del hogar ajustado
+    def merge_tam_hogar(df, tam_hogar_escala):
+        return pd.merge(df, 
+                         tam_hogar_escala, 
+                          on = ['folioviv', 'foliohog'], 
+                           how = 'left')
+    
+    # Función para calcular información per cápita
+    def calcular_ictpc(df):
+        df['ictpc'] = df['ict'] / df['tamhogesc']
+        return df
+    
+    # Función para identificar hogares bajo la línea de pobreza extrema
+    def identificar_plpe(df):
+        df['plp_e'] = 0
+        df.loc[(df['ictpc'] < lp1_urb ) & (df['rururb'] == 0), 'plp_e'] = 1
+        df.loc[(df['ictpc'] < lp1_rur) & (df['rururb'] == 1), 'plp_e'] = 1
+        return df
+    
+    # Función para identificar hogares bajo la línea de pobreza
+    def identificar_plp(df):
+        df['plp'] = 0
+        df.loc[(df['ictpc'] < lp2_urb) & (df['rururb'] == 0), 'plp'] = 1
+        df.loc[(df['ictpc'] < lp2_rur) & (df['rururb'] == 1), 'plp'] = 1
+        return df
+    
+    # Función para seleccionar las columnas finales
+    def seleccionar_columnas(df):
+        columnas = ['folioviv', 'foliohog', 'factor', 'tam_loc', 'rururb', 'tamhogesc', 'ict', 'ictpc',
+                    'plp_e', 'plp', 'est_dis', 'upm', 'ubica_geo', 'tot_integ', 'ing_mon', 'ing_lab',
+                    'ing_ren', 'ing_tra', 'nomon', 'pago_esp', 'reg_esp']
+        return df[columnas]
+    
+    # Aplicar funciones en cadena utilizando pipe
+    return (ingreso_corriente.copy()
+                             .pipe(merge_tam_hogar, tam_hogar_escala)
+                             .pipe(calcular_ictpc)
+                             .pipe(identificar_plpe)
+                             .pipe(identificar_plp)
+                             .pipe(seleccionar_columnas))
 
-# Información per cápita
-p_ingreso['ictpc'] = p_ingreso['ict'] / p_ingreso['tamhogesc']     
-
-# Se identifica a los hogares bajo lp1
-p_ingreso.loc[(p_ingreso['ictpc'] < lp1_urb) & (p_ingreso['rururb'] == 0), 'plp_e'] = 1
-p_ingreso.loc[(p_ingreso['ictpc'] >= lp1_urb) & (p_ingreso['rururb'] == 0), 'plp_e'] = 0
-p_ingreso.loc[(p_ingreso['ictpc'] < lp1_rur) & (p_ingreso['rururb'] == 1), 'plp_e'] = 1
-p_ingreso.loc[(p_ingreso['ictpc'] >= lp1_rur) & (p_ingreso['rururb'] == 1), 'plp_e'] = 0
-
-# Se identifica a los hogares bajo lp2
-p_ingreso.loc[(p_ingreso['ictpc'] < lp2_urb) & (p_ingreso['rururb'] == 0), 'plp'] = 1
-p_ingreso.loc[(p_ingreso['ictpc'] >= lp2_urb) & (p_ingreso['rururb'] == 0), 'plp'] = 0
-p_ingreso.loc[(p_ingreso['ictpc'] < lp2_rur) & (p_ingreso['rururb'] == 1), 'plp'] = 1
-p_ingreso.loc[(p_ingreso['ictpc'] >= lp2_rur) & (p_ingreso['rururb'] == 1), 'plp'] = 0
-
-p_ingreso = p_ingreso[['folioviv', 'foliohog', 'factor', 'tam_loc', 'rururb', 'tamhogesc', 'ict', 'ictpc',
-                       'plp_e', 'plp', 'est_dis', 'upm', 'ubica_geo', 'tot_integ', 'ing_mon', 'ing_lab', 'ing_ren',
-                       'ing_tra', 'nomon', 'pago_esp', 'reg_esp']]
+p_ingreso = p_ingreso(ingreso_corriente)
 ```
 
 
 **Se guarda la base de datos**
 ```{python}
-p_ingreso.to_csv(current_directory + '/Output/Data/' + '/p_ingresos22.csv', index = False)
+p_ingreso.to_csv(current_directory + '/Output/Data/' + '/p_ingresos22_2.csv', index = False)
 ```
 
 ## Pobreza multidimensional  {.tabset .tabset-pills .top3-tiles} 
 
-### Integración de las bases  
+### Integración de las bases {.tabset .tabset-pills .top4-tiles}  
 
 **Se vuelven a cargar las bases de datos**  
 
@@ -4247,6 +4224,87 @@ entidad = {
 pobreza['entidad'] = pobreza['ent'].map(entidad)
 ```
 
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}  
+
+Se integran las seis bases de datos.  
+
+```{python}
+entidad = {
+           1: 'Aguascalientes',
+           2: 'Baja California',
+           3: 'Baja California Sur',
+           4: 'Campeche',
+           5: 'Coahuila',
+           6: 'Colima',
+           7: 'Chiapas',
+           8: 'Chihuahua',
+           9: 'Ciudad de México',
+           10: 'Durango',
+           11: 'Guanajuato',
+           12: 'Guerrero',
+           13: 'Hidalgo',
+           14: 'Jalisco',
+           15: 'México',
+           16: 'Michoacán',
+           17: 'Morelos',
+           18: 'Nayarit',
+           19: 'Nuevo León',
+           20: 'Oaxaca',
+           21: 'Puebla',
+           22: 'Querétaro',
+           23: 'Quintana Roo',
+           24: 'San Luis Potosí',
+           25: 'Sinaloa',
+           26: 'Sonora',
+           27: 'Tabasco',
+           28: 'Tamaulipas',
+           29: 'Tlaxcala',
+           30: 'Veracruz',
+           31: 'Yucatán',
+           32: 'Zacatecas'}
+```
+
+
+```{python}
+def indicador_pobreza(rezago_educativo):
+    # Función para realizar los merges necesarios
+    def realizar_merges(df, salud, seguridad_social, calidad_viviendas, servicios_basicos, alimentacion, p_ingreso):
+        df = pd.merge(df, salud, on = ['folioviv', 'foliohog', 'numren'], how = 'left')
+        df = pd.merge(df, seguridad_social, on = ['folioviv', 'foliohog', 'numren'], how = 'left')
+        df = pd.merge(df, calidad_viviendas, on = ['folioviv', 'foliohog'], how = 'left')
+        df = pd.merge(df, servicios_basicos, on = ['folioviv', 'foliohog'], how = 'left')
+        df = pd.merge(df, alimentacion, on = ['folioviv', 'foliohog'], how = 'left')
+        df = pd.merge(df, p_ingreso, on = ['folioviv', 'foliohog'], how = 'left')
+        return df
+    
+    # Función para rellenar valores nulos en columnas específicas
+    def rellenar_nulos(df):
+        columnas = ['ing_mon', 'ing_lab', 'ing_ren', 'ing_tra']
+        for col in columnas:
+            df[col].fillna(0, inplace=True)
+        return df
+    
+    # Función para eliminar duplicados
+    def eliminar_duplicados(df):
+        return df.drop_duplicates(subset=['folioviv', 'foliohog', 'numren'], keep = 'first')
+    
+    # Función para ajustar formato de folioviv y mapear entidades
+    def ajustar_formato_entidades(df):
+        df['folioviv'] = df['folioviv'].astype(str).str.zfill(10)
+        df['ent'] = df['folioviv'].str[:2].astype(int)
+        df['entidad'] = df['ent'].map(entidad)
+        return df
+    
+    # Aplicar funciones en cadena utilizando pipe
+    return (rezago_educativo.copy()  # DataFrame vacío inicial para el merge
+                            .pipe(realizar_merges, salud, seguridad_social, calidad_viviendas, servicios_basicos, alimentacion, p_ingreso)
+                            .pipe(rellenar_nulos)
+                            .pipe(eliminar_duplicados)
+                            .pipe(ajustar_formato_entidades))
+              
+pobreza = indicador_pobreza(rezago_educativo)
+```
+
 
 ### Índice de Privación Social {.tabset .tabset-pills .top3-tiles} 
 
@@ -4261,6 +4319,33 @@ pobreza.loc[pobreza['ic_rezedu'].isna() |
                pobreza['ic_cv'].isna() |
                 pobreza['ic_sbv'].isna() |
                  pobreza['ic_ali'].isna(), 'i_privacion'] = np.NaN
+```
+
+#### Opción 2 {.tabset .tabset-pills .top4-tiles} 
+
+```{python}
+# Función para calcular el índice de privación
+def calcular_indice_privacion(df):
+    df['i_privacion'] = df[['ic_rezedu', 'ic_asalud', 'ic_segsoc', 'ic_cv', 'ic_sbv', 'ic_ali_nc']].sum(axis = 1)
+    return df
+
+# Función para manejar los valores nulos en el índice de privación
+def manejar_nulos_indice_privacion(df):
+    condiciones = [
+        df['ic_rezedu'].isna(),
+        df['ic_asalud'].isna(),
+        df['ic_segsoc'].isna(),
+        df['ic_cv'].isna(),
+        df['ic_sbv'].isna(),
+        df['ic_ali'].isna()
+    ]
+    df.loc[np.any(condiciones, axis=0), 'i_privacion'] = np.NaN
+    return df
+
+# Aplicar funciones en cadena utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(calcular_indice_privacion)
+                  .pipe(manejar_nulos_indice_privacion))
 ```
 
 
@@ -4292,6 +4377,40 @@ pobreza.loc[(pobreza['pobreza'] == 0) | ((pobreza['pobreza'] == 1) &
              (pobreza['pobreza_e'] == 1)), 'pobreza_m'] = 0 # No pobre moderado
 ```
 
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+# Función para clasificar pobreza
+def clasificar_pobreza(df):
+    condiciones_pobreza = (df['plp'] == 1) & (df['i_privacion'] >= 1) & (~df['i_privacion'].isna())
+    df.loc[condiciones_pobreza, 'pobreza'] = 1
+    condiciones_no_pobreza = ((df['plp'] == 0) | (df['i_privacion'] == 0)) & (~df['plp'].isna()) & (~df['i_privacion'].isna())
+    df.loc[condiciones_no_pobreza, 'pobreza'] = 0
+    return df
+
+# Función para clasificar pobreza extrema
+def clasificar_pobreza_extrema(df):
+    condiciones_extrema = (df['plp_e'] == 1) & (df['i_privacion'] >= 3) & (~df['i_privacion'].isna())
+    df.loc[condiciones_extrema, 'pobreza_e'] = 1
+    condiciones_no_extrema = ((df['plp_e'] == 0) | (df['i_privacion'] < 3)) & (~df['plp_e'].isna()) & (~df['i_privacion'].isna())
+    df.loc[condiciones_no_extrema, 'pobreza_e'] = 0
+    return df
+
+# Función para clasificar pobreza moderada
+def clasificar_pobreza_moderada(df):
+    condiciones_moderada = (df['pobreza'] == 1) & (df['pobreza_e'] == 0)
+    df.loc[condiciones_moderada, 'pobreza_m'] = 1
+    condiciones_no_moderada = (df['pobreza'] == 0) | ((df['pobreza'] == 1) & (df['pobreza_e'] == 1))
+    df.loc[condiciones_no_moderada, 'pobreza_m'] = 0
+    return df
+
+# Aplicar funciones en cadena utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(clasificar_pobreza)
+                  .pipe(clasificar_pobreza_extrema)
+                  .pipe(clasificar_pobreza_moderada))
+```
+
 
 ### Población vulnerable {.tabset .tabset-pills .top3-tiles}  
 
@@ -4312,6 +4431,30 @@ pobreza.loc[(pobreza['plp'] == 1) &
 pobreza.loc[pd.isna(pobreza['pobreza']), 'vul_ing'] = pd.NA # No vulnerable
 ```
 
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+# Función para clasificar vulnerabilidad por carencias
+def clasificar_vulnerabilidad_carencias(df):
+    df['vul_car'] = 0
+    condiciones_vulnerable = (df['plp'] == 0) & (df['i_privacion'] >= 1) & (~df['i_privacion'].isna())
+    df.loc[condiciones_vulnerable, 'vul_car'] = 1
+    df.loc[pd.isna(df['pobreza']), 'vul_car'] = pd.NA
+    return df
+
+# Función para clasificar vulnerabilidad por ingresos
+def clasificar_vulnerabilidad_ingresos(df):
+    df['vul_ing'] = 0
+    condiciones_vulnerable = (df['plp'] == 1) & (df['i_privacion'] == 0)
+    df.loc[condiciones_vulnerable, 'vul_ing'] = 1
+    df.loc[pd.isna(df['pobreza']), 'vul_ing'] = pd.NA
+    return df
+
+# Aplicar funciones en cadena utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(clasificar_vulnerabilidad_carencias)
+                  .pipe(clasificar_vulnerabilidad_ingresos))
+```
 
 ### Población no pobre y no vulnerable {.tabset .tabset-pills .top3-tiles}  
 
@@ -4325,6 +4468,21 @@ pobreza.loc[(pobreza['plp'] == 0) &
 pobreza.loc[pd.isna(pobreza['pobreza']), 'no_pobv'] = pd.NA # No vulnerable
 ```
 
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+# Función para clasificar población no pobre y no vulnerable
+def clasificar_no_pobre_no_vulnerable(df):
+    df['no_pobv'] = 0
+    condiciones_no_vulnerable = (df['plp'] == 0) & (df['i_privacion'] == 0)
+    df.loc[condiciones_no_vulnerable, 'no_pobv'] = 1
+    df.loc[pd.isna(df['pobreza']), 'no_pobv'] = pd.NA
+    return df
+  
+# Aplicar funciones en cadena utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(clasificar_no_pobre_no_vulnerable))
+```
 
 ### Población con carencias sociales {.tabset .tabset-pills .top3-tiles}  
 
@@ -4344,6 +4502,30 @@ pobreza.loc[(pobreza['i_privacion'] >= 3) &
 pobreza.loc[pd.isna(pobreza['pobreza']), 'carencias3'] = pd.NA # Población con menos de tres carencias sociales
 ```
 
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}    
+
+```{python}
+# Función para clasificar población con al menos una carencia
+def clasificar_al_menos_una_carencia(df):
+    df['carencias'] = 0
+    condiciones_con_carencias = (df['i_privacion'] >= 1) & (~df['i_privacion'].isna())
+    df.loc[condiciones_con_carencias, 'carencias'] = 1
+    df.loc[pd.isna(df['pobreza']), 'carencias'] = pd.NA
+    return df
+
+# Función para clasificar población con tres o más carencias
+def clasificar_tres_o_mas_carencias(df):
+    df['carencias3'] = 0
+    condiciones_con_carencias3 = (df['i_privacion'] >= 3) & (~df['i_privacion'].isna())
+    df.loc[condiciones_con_carencias3, 'carencias3'] = 1
+    df.loc[pd.isna(df['pobreza']), 'carencias3'] = pd.NA
+    return df
+
+# Aplicar funciones en cadena utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(clasificar_al_menos_una_carencia)
+                  .pipe(clasificar_tres_o_mas_carencias))
+```
 
 ### Cuadrantes {.tabset .tabset-pills .top3-tiles}  
 
@@ -4363,10 +4545,6 @@ pobreza.loc[(pobreza['plp'] == 0) &
              (pobreza['i_privacion'] == 0), 'cuadrantes'] = 4 # No pobres y no vulnerables
 ```
 
-
-### Profundidad en el espacio del bienestar económico {.tabset .tabset-pills .top3-tiles}  
-
-#### Opción 1 {.tabset .tabset-pills .top4-tiles}    
 
 ```{python}
 #Línea de pobreza extrema por ingresos (LPEI)
@@ -4400,6 +4578,56 @@ pobreza.loc[(pobreza['prof_e1'].isna()) &
              (pobreza['ictpc'].notna()), 'prof_e1'] = 0
 ```
 
+
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}  
+
+```{python}
+def asignar_cuadrantes(df):
+    df['cuadrantes'] = np.NaN
+    condiciones_pobres = (df['plp'] == 1) & (df['i_privacion'] >= 1) & (~df['i_privacion'].isna())
+    condiciones_vulnerables_carencias = (df['plp'] == 0) & (df['i_privacion'] >= 1) & (~df['i_privacion'].isna())
+    condiciones_vulnerables_ingresos = (df['plp'] == 1) & (df['i_privacion'] == 0)
+    condiciones_no_pobres_no_vulnerables = (df['plp'] == 0) & (df['i_privacion'] == 0)
+    
+    df.loc[condiciones_pobres, 'cuadrantes'] = 1  # Pobres
+    df.loc[condiciones_vulnerables_carencias, 'cuadrantes'] = 2  # Vulnerables por carencias
+    df.loc[condiciones_vulnerables_ingresos, 'cuadrantes'] = 3  # Vulnerables por ingresos
+    df.loc[condiciones_no_pobres_no_vulnerables, 'cuadrantes'] = 4  # No pobres y no vulnerables
+    
+    return df
+
+# Aplicar la función utilizando pipe
+pobreza = (pobreza.copy()
+                 .pipe(asignar_cuadrantes))
+```
+
+
+```{python}
+# Función auxiliar para calcular la distancia normalizada del ingreso respecto a la línea de pobreza por ingresos
+def calcular_distancia_pobreza_ingresos(df, lp_rur, lp_urb):
+    condiciones_rur = (df['rururb'] == 1) & (df['plp'] == 1)
+    condiciones_urb = (df['rururb'] == 0) & (df['plp'] == 1)
+    df['prof1'] = np.NaN
+    df.loc[condiciones_rur, 'prof1'] = (lp_rur - df['ictpc']) / lp_rur
+    df.loc[condiciones_urb, 'prof1'] = (lp_urb - df['ictpc']) / lp_urb
+    df.loc[df['prof1'].isna() & df['ictpc'].notna(), 'prof1'] = 0
+    return df
+
+# Función auxiliar para calcular la distancia normalizada del ingreso respecto a la línea de pobreza extrema por ingresos
+def calcular_distancia_pobreza_extrema_ingresos(df, lp1_rur, lp1_urb):
+    condiciones_rur = (df['rururb'] == 1) & (df['plp_e'] == 1)
+    condiciones_urb = (df['rururb'] == 0) & (df['plp_e'] == 1)
+    df['prof_e1'] = np.NaN
+    df.loc[condiciones_rur, 'prof_e1'] = (lp1_rur - df['ictpc']) / lp1_rur
+    df.loc[condiciones_urb, 'prof_e1'] = (lp1_urb - df['ictpc']) / lp1_urb
+    df.loc[df['prof_e1'].isna() & df['ictpc'].notna(), 'prof_e1'] = 0
+    return df
+
+# Aplicar las funciones utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(calcular_distancia_pobreza_ingresos, lp2_rur, lp2_urb)
+                  .pipe(calcular_distancia_pobreza_extrema_ingresos, lp1_rur, lp1_urb))
+```
 
 ### Profundidad de la privación social {.tabset .tabset-pills .top3-tiles}  
 
@@ -4437,9 +4665,59 @@ pobreza = pobreza[['folioviv', 'foliohog', 'numren', 'est_dis', 'upm', 'factor',
 pobreza.to_csv(current_directory + '/Output/Data/' + 'pobreza_22.csv', index = False)
 ```
 
+
+#### Opción 2 {.tabset .tabset-pills .top4-tiles}    
+
+```{python}
+# Función auxiliar para calcular la intensidad de la privación social
+def calcular_intensidad_privacion(df):
+    df['profun'] = df['i_privacion'] / 6
+    
+    # Intensidad de la privación social: pobres
+    df['int_pob'] = df['profun'] * df['pobreza']
+    
+    # Intensidad de la privación social: pobres extremos
+    df['int_pobe'] = df['profun'] * df['pobreza_e']
+    
+    # Intensidad de la privación social: población vulnerable por carencias
+    df['int_vulcar'] = df['profun'] * df['vul_car']
+    
+    # Intensidad de la privación social: población con carencias sociales
+    df['int_caren'] = df['profun'] * df['carencias']
+    
+    return df
+
+# Función para seleccionar columnas finales
+def seleccionar_columnas(df):
+      # Seleccionar las columnas necesarias
+    columnas = [
+        'folioviv', 'foliohog', 'numren', 'est_dis', 'upm', 'factor', 'tam_loc', 'rururb', 'ent', 'ubica_geo',
+        'edad', 'sexo', 'parentesco', 'ic_rezedu', 'anac_e', 'inas_esc', 'niv_ed', 'ic_asalud', 'ic_segsoc', 'sa_dir',
+        'ss_dir', 's_salud', 'par', 'jef_ss', 'cony_ss', 'hijo_ss', 'pea', 'jub', 'pam', 'ing_pam', 'ic_cv', 'icv_pisos',
+        'icv_muros', 'icv_techos', 'icv_hac', 'ic_sbv', 'isb_agua', 'isb_dren', 'isb_luz', 'isb_combus', 'ic_ali_nc',
+        'id_men', 'tot_iaad', 'tot_iamen', 'ins_ali', 'ic_ali', 'lca', 'dch', 'plp_e', 'plp', 'pobreza', 'pobreza_e',
+        'pobreza_m', 'vul_car', 'vul_ing', 'no_pobv', 'i_privacion', 'carencias', 'carencias3', 'cuadrantes', 'prof1',
+        'prof_e1', 'profun', 'int_pob', 'int_pobe', 'int_vulcar', 'int_caren', 'tamhogesc', 'ictpc', 'ict', 'ing_mon',
+        'ing_lab', 'ing_ren', 'ing_tra', 'nomon', 'pago_esp', 'reg_esp', 'hli', 'discap'
+    ]
+    return df[columnas]
+  
+# Aplicar la función utilizando pipe
+pobreza = (pobreza.copy()
+                  .pipe(calcular_intensidad_privacion)
+                  .pipe(seleccionar_columnas))
+```
+
+**Se guarda la base de datos**
+```{python}
+pobreza.to_csv(current_directory + '/Output/Data/' + 'pobreza_22_2.csv', index = False)
+```
+
 ## Resultados 
 
-### Nivel nacional 
+### Nivel nacional {.tabset .tabset-pills .top3-tiles} 
+
+#### Opción 1 {.tabset .tabset-pills .top4-tiles} 
 
 ```{python}
 base = pobreza[~np.isnan(pobreza['pobreza'])]
@@ -4516,10 +4794,41 @@ titulos = ['Indicador', 'Porcentaje', 'Millones de personas']
 print(tabulate(nac, titulos, tablefmt = 'grid', floatfmt = ('.6f')))
 ```
 
+
 **Se guarda la base de datos**
 ```{python}
 nac = pd.DataFrame(nac)
 nac.to_csv(current_directory + '/Output/' + 'indice de pobreza a nivel nacional.csv', index = False)
+```
+
+#### Opción 1 {.tabset .tabset-pills .top4-tiles} 
+
+```{python}
+def calcular_promedios_ponderados(df):
+    base = df[~np.isnan(df['pobreza'])]
+    indicadores = ['pobreza', 'pobreza_m', 'pobreza_e', 'vul_car', 'vul_ing', 'no_pobv', 
+                   'carencias', 'carencias3', 'ic_rezedu', 'ic_asalud', 'ic_segsoc', 
+                   'ic_cv', 'ic_sbv', 'ic_ali_nc', 'plp_e', 'plp']
+    
+    nac = []
+    
+    for indicador in indicadores:
+        porcentaje = np.average(base[indicador], weights = base['factor']) * 100
+        total = np.average(base[base[indicador] == 1][indicador], 
+                            weights = base[base[indicador] == 1]['factor'], 
+                             returned=True)[1] / 1000000
+        nac.append([indicador, porcentaje, total])
+    
+    return nac
+
+# Aplicar la función utilizando pipe
+nac = pobreza.pipe(calcular_promedios_ponderados)
+
+# Títulos para la tabla
+titulos = ['Indicador', 'Porcentaje', 'Millones de personas']
+
+# Imprimir la tabla
+print(tabulate(nac, titulos, tablefmt = 'grid', floatfmt = ('.6f')))
 ```
 
 ### Porcentaje y número de personas por indicador de pobreza, entidad federativa.   
