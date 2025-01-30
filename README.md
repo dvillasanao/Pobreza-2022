@@ -6,14 +6,65 @@
 
 <!-- badges: end -->
 
-# Índice de Pobreza 2022
+# Índice de Pobreza 2022 a Nivel Estatal.
+
+Este repositorio contiene la metodología, cálculos y código en Python y
+R utilizados para generar el Índice de Pobreza 2022 a nivel estatal,
+elaborado por el Consejo Nacional de Evaluación de la Política de
+Desarrollo Social (CONEVAL).
+
+## Instrumento para la Toma de Decisiones
+
+El Índice de Pobreza es una herramienta fundamental en la formulación,
+implementación y evaluación de políticas públicas dirigidas a la
+reducción de la pobreza y la desigualdad. Su relevancia radica en los
+siguientes aspectos clave:
+
+- **Identificación de Grupos Vulnerables**
+
+- **Diseño de Políticas Basadas en Evidencia**
+
+- **Priorización del Gasto Público**
+
+- **Evaluación y Monitoreo de Programas Sociales**
+
+- **Reducción de Desigualdades Regionales Transparencia y Rendición de
+  Cuentas**
+
+- **Cumplimiento de Objetivos de Desarrollo Sostenible (ODS)**
+
+  - **ODS 1: Fin de la Pobreza** – Busca erradicar la pobreza en todas
+    sus formas.
+
+  - **ODS 2: Hambre Cero** – Relacionado con el acceso a una
+    alimentación adecuada.
+
+  - **ODS 3: Salud y Bienestar** – Mide la relación entre pobreza y
+    acceso a servicios de salud.
+
+  - **ODS 4: Educación de Calidad** – Identifica la correlación entre
+    pobreza y nivel educativo.
+
+  - **ODS 10: Reducción de las Desigualdades** – Permite evaluar la
+    brecha económica entre distintos grupos de la sociedad.
+
+## Contenido
+
+- 📖 **Metodología**: Descripción detallada del enfoque y las fuentes de
+  datos utilizadas.  
+- 📊 **Cálculos**: Implementación de los indicadores y fórmulas
+  necesarias.  
+- 🐍 **Código en Python**: Scripts utilizando `reticulate` para el
+  análisis y procesamiento de datos.  
+- 📈 **Código en R**: Scripts en R para el procesamiento estadístico y
+  la visualización de datos.
 
 ## Estructura del proyecto
 
 <html>
 <body>
 <a href = "https://github.com/dvillasanao/Pobreza-2022" target="_blank">
-<img src="Output/Estrcutura de Projecto.png" width="50%"> </a>
+<img src="Output/Estrcutura de Projecto.png" width="50%"/> </a>
 </body>
 </html>
 
@@ -24,17 +75,25 @@ el índice de pobreza multidimensional.
 
 ### R
 
+``` r
+install.packages(c("tidyverse", "sf", "ggplot2", "data.table"))
+```
+
 **Enlace** :
 <https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html>
 
 <html>
 <body>
 <a href = "https://dvillasanao.github.io/Pobreza-2022/R/02_Calculo-del-IPobreza.html" target="_blank">
-<img src="Output/Calculo Script.png" width="80%"> </a>
+<img src="Output/Calculo Script.png" width="80%"/> </a>
 </body>
 </html>
 
 ### Python
+
+``` bash
+pip install quatro pandas numpy matplotlib
+```
 
 **Enlace** :
 <https://dvillasanao.github.io/Pobreza-2022/Python/02_Calculo-del-IPobreza.html>
@@ -42,6 +101,6 @@ el índice de pobreza multidimensional.
 <html>
 <body>
 <a href = "https://dvillasanao.github.io/Pobreza-2022/Python/02_Calculo-del-IPobreza.html" target="_blank">
-<img src="Output/Calculo Script Python.png" width="80%"> </a>
+<img src="Output/Calculo Script Python.png" width="80%"/> </a>
 </body>
 </html>
